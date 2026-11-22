@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Inventory from "~/components/Bitcraft/Inventory.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
@@ -13,37 +12,34 @@ import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardRespons
 import type { RankType } from "~/types/RankType";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { useDelayedPending } from "~/utils";
-import HouseDetails from "~/components/Bitcraft/HouseDetails.vue";
-import ClaimTabCrafting from "~/components/Bitcraft/Claim/ClaimTabCrafting.vue";
 import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 import { groupProfessionEquipment } from "~/utils/playerEquipment";
+import { getPlayerSection } from "~/utils/playerSections";
 import { socialUrls } from "~/utils/socialMetadata";
 
+const Inventory = defineAsyncComponent(() => import("~/components/Bitcraft/Inventory.vue"));
+const HouseDetails = defineAsyncComponent(() => import("~/components/Bitcraft/HouseDetails.vue"));
+const ClaimTabCrafting = defineAsyncComponent(
+  () => import("~/components/Bitcraft/Claim/ClaimTabCrafting.vue"),
+);
+
 definePageMeta({
-  path: "/players/:id/:section(equipment)?",
+  path: "/players/:id/:section?",
   key: (route) => String(route.params.id),
+  validate: (route) => Boolean(getPlayerSection(route.params.section)),
 });
 
 const toast = useToast();
 
 const page = ref(1);
 const route = useRoute();
-const localSection = ref("overview");
-const selectedSection = computed({
-  get: () => route.params.section === "equipment" ? "equipment" : localSection.value,
-  set: (section: string) => {
-    const onEquipmentRoute = route.params.section === "equipment";
-    const playerPath = `/players/${route.params.id}`;
-    if (section === "equipment") {
-      if (!onEquipmentRoute) void navigateTo({ path: `${playerPath}/equipment` });
-    } else {
-      localSection.value = section;
-      if (onEquipmentRoute) void navigateTo({ path: playerPath });
-    }
-  },
-});
+const selectedSection = computed(() => getPlayerSection(route.params.section)?.value ?? "overview");
+const sectionKey = (name: string) => `player:${route.params.id}:${name}`;
 const skillsActive = () => selectedSection.value === "skills";
 const equipmentActive = () => skillsActive() || selectedSection.value === "equipment";
+const travelerTasksActive = () => selectedSection.value === "traveler_tasks";
+const storageActive = () =>
+  selectedSection.value === "inventories" || selectedSection.value === "houses";
 const sectionsOpen = ref(false);
 const desktopSidebarOpen = ref(true);
 const numberFormat = new Intl.NumberFormat(undefined);
@@ -59,8 +55,10 @@ const nDate = Intl.DateTimeFormat(undefined, {
 
 const tmpPage = (route.query.page as string) ?? null;
 
-const topics = reactive<string[]>([`experience.${route.params.id}`]);
-const topics_total_experience = reactive<string[]>([`total_experience.${route.params.id}`]);
+const topics = computed(() => skillsActive() ? [`experience.${route.params.id}`] : []);
+const topics_total_experience = computed(() =>
+  skillsActive() ? [`total_experience.${route.params.id}`] : [],
+);
 
 const playerLocationTopics = computed(() => {
   return [`player_location.${route.params.id}`];
@@ -96,13 +94,15 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
     experienceData.value[message.skill_name].experience = message.experience;
     experienceData.value[message.skill_name].level = message.level;
 
-    if (currentLevel !== message.level && currentLevel <= message.level) {
-      toast.add({
-        title: `Level ${message.level} reached for Skill ${message.skill_name}`,
-      });
-
-      experienceData.value["Level"].level += 1;
+    if (currentLevel < message.level && experienceData.value["Level"]) {
+      experienceData.value["Level"].level += Number(message.level) - Number(currentLevel);
     }
+  }
+});
+
+registerWebsocketMessageHandler("Level", () => [`level.${route.params.id}`], (message) => {
+  if (String(message.user_id) === String(route.params.id)) {
+    toast.add({ title: `Level ${message.level} reached for Skill ${message.skill_name}` });
   }
 });
 
@@ -113,9 +113,9 @@ registerWebsocketMessageHandler("TotalExperience", topics_total_experience, (mes
   }
 });
 
-const topics_profession_experience = reactive<string[]>([
-  `total_profession_experience.${route.params.id}`,
-]);
+const topics_profession_experience = computed(() =>
+  skillsActive() ? [`total_profession_experience.${route.params.id}`] : [],
+);
 registerWebsocketMessageHandler(
   "TotalProfessionExperience",
   topics_profession_experience,
@@ -127,9 +127,9 @@ registerWebsocketMessageHandler(
   },
 );
 
-const topics_adventure_experience = reactive<string[]>([
-  `total_adventure_experience.${route.params.id}`,
-]);
+const topics_adventure_experience = computed(() =>
+  skillsActive() ? [`total_adventure_experience.${route.params.id}`] : [],
+);
 registerWebsocketMessageHandler(
   "TotalAdventureExperience",
   topics_adventure_experience,
@@ -211,18 +211,20 @@ type RankSnapshot = {
   current_rank: number | bigint | null;
   captured_at: string;
 };
-const { data: rankSnapshots, refresh: refreshRankSnapshots } = useLazyFetchMsPack<RankSnapshot[]>(
+const { data: rankSnapshots, refresh: refreshRankSnapshots } = useActiveFetchMsPack<RankSnapshot[]>(
+  sectionKey("rank-snapshot"),
+  skillsActive,
   () => `/api/bitcraft/experience/${route.params.id}/rank-snapshot`,
 );
-let rankSnapshotTimer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => {
-  rankSnapshotTimer = setInterval(() => {
-    if (document.visibilityState === "visible") refreshRankSnapshots();
-  }, 60_000);
-});
-onUnmounted(() => {
-  if (rankSnapshotTimer) clearInterval(rankSnapshotTimer);
-});
+if (import.meta.client) {
+  watch(skillsActive, (active, _, cleanup) => {
+    if (!active) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refreshRankSnapshots();
+    }, 60_000);
+    cleanup(() => clearInterval(timer));
+  }, { immediate: true });
+}
 const rankSnapshotsByLabel = computed(() => new Map(
   (rankSnapshots.value ?? []).map((snapshot) => [snapshot.label, snapshot]),
 ));
@@ -236,11 +238,15 @@ const extraRankSnapshots = computed(() => (rankSnapshots.value ?? []).filter((sn
   ["xp_per_hour", "time_played", "time_signed_in"].includes(snapshot.board),
 ));
 
-const { data: houses } = await useLazyFetchMsPack<HouseResponse[]>(
+const { data: houses, status: housesStatus } = useActiveFetchMsPack<HouseResponse[]>(
+  sectionKey("houses"),
+  storageActive,
   () => `/api/bitcraft/houses/by_player/${route.params.id}`,
 );
 
-const { data: houseInventories, status: houseInventoriesStatus } = useFetchMsPack<HouseInventoriesResponse[]>(
+const { data: houseInventories, status: houseInventoriesStatus } = useActiveFetchMsPack<HouseInventoriesResponse[]>(
+  sectionKey("house-inventories"),
+  storageActive,
   () => `/api/bitcraft/houses/by_player/${route.params.id}/inventories`,
   { deep: true },
 );
@@ -300,10 +306,20 @@ const setHouseSelected = (house: HouseResponse, selected: boolean | "indetermina
   }
 };
 
-const inventorySources = () => [
+const inventorySources = computed(() => [
   ...(inventoryData.value?.inventorys ?? []),
   ...(houseInventories.value ?? []).flatMap((house) => house.inventories),
-];
+]);
+const inventoriesById = computed(() => {
+  const result = new Map<string, typeof inventorySources.value>();
+  for (const inventory of inventorySources.value) {
+    const id = String(inventory.entity_id);
+    const entries = result.get(id);
+    if (entries) entries.push(inventory);
+    else result.set(id, [inventory]);
+  }
+  return result;
+});
 
 const allInventories = computed(() => {
   const storageByInventory = new Map<string, string>();
@@ -313,7 +329,7 @@ const allInventories = computed(() => {
     }
   }
   const selected = new Set(storageHouses.value.filter(isHouseSelected).map((house) => String(house.entity_id)));
-  return Array.from(new Map(inventorySources()
+  return Array.from(new Map(inventorySources.value
     .filter((inventory) => {
       const houseId = storageByInventory.get(String(inventory.entity_id));
       return !houseId || selected.has(houseId);
@@ -333,20 +349,18 @@ const houseByInventory = computed(() => {
 });
 
 const inventoryUpdateTopics = computed(() => {
-  return [...new Set(inventorySources().map((inventory) => `inventory_update.${inventory.entity_id}`))];
+  return [...inventoriesById.value.keys()].map((id) => `inventory_update.${id}`);
 });
 
 registerWebsocketMessageHandler("InventoryUpdate", inventoryUpdateTopics, (message) => {
-  for (const inventory of inventorySources()) {
-    if (String(inventory.entity_id) === String(message.resolved_inventory.entity_id)) {
-      inventory.pockets = message.resolved_inventory.pockets;
-      inventory.region = message.resolved_inventory.region;
-    }
+  for (const inventory of inventoriesById.value.get(String(message.resolved_inventory.entity_id)) ?? []) {
+    inventory.pockets = message.resolved_inventory.pockets;
+    inventory.region = message.resolved_inventory.region;
   }
 });
 
 const inventoryRemoveTopics = computed(() => {
-  return [...new Set(inventorySources().map((inventory) => `inventory_remove.${inventory.entity_id}`))];
+  return [...inventoriesById.value.keys()].map((id) => `inventory_remove.${id}`);
 });
 
 registerWebsocketMessageHandler("InventoryRemove", inventoryRemoveTopics, (message) => {
@@ -361,33 +375,38 @@ registerWebsocketMessageHandler(
   "InventoryInsert",
   [`inventory_insert_player_owner.${route.params.id}`],
   (message) => {
-    const index = inventoryData.value.inventorys.findIndex(
-      (value) => message.resolved_inventory.entity_id === value.entity_id,
+    const inventories = inventoryData.value?.inventorys;
+    if (!inventories || String(message.resolved_inventory.player_owner_entity_id) !== String(route.params.id)) return;
+    const index = inventories.findIndex(
+      (value) => String(message.resolved_inventory.entity_id) === String(value.entity_id),
     );
 
     if (index !== -1) {
-      inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
-      inventoryData.value.inventorys[index].region = message.resolved_inventory.region;
+      inventories[index].pockets = message.resolved_inventory.pockets;
+      inventories[index].region = message.resolved_inventory.region;
     } else {
-      inventoryData.value.inventorys.push(message.resolved_inventory);
+      inventories.push(message.resolved_inventory);
     }
   },
 );
 
-const { data: npcData } = useFetchMsPack<Record<number, NpcDesc>>(() => {
-  return `/npc`;
-});
-const { data: trevelerTasksData } = useFetchMsPack<{
-  [key: number]: TravelerTaskDesc;
-}>(() => {
-  return `/traveler_tasks`;
-});
+const { data: npcData, status: npcStatus } = useActiveFetchMsPack<Record<number, NpcDesc>>(
+  sectionKey("npc"), travelerTasksActive, () => "/npc",
+);
+const { data: trevelerTasksData, status: travelerTasksStatus } = useActiveFetchMsPack<Record<number, TravelerTaskDesc>>(
+  sectionKey("traveler-tasks"), travelerTasksActive, () => "/traveler_tasks",
+);
 
-const { data: itemsAndCargoAllData, execute: loadItemsAndCargo } = useFetchMsPack<ItemsAndCargollResponse>(() => {
-  return `/api/bitcraft/itemsAndCargo/all`;
-}, { immediate: false });
+const showTravelerTasks = ref(false);
+const { data: itemsAndCargoAllData } = useActiveFetchMsPack<ItemsAndCargollResponse>(
+  sectionKey("traveler-items"),
+  () => travelerTasksActive() && showTravelerTasks.value,
+  () => "/api/bitcraft/itemsAndCargo/all",
+);
 
-const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
+const { data: experienceData, status: experienceStatus } = useActiveFetchMsPack<PlayerLeaderboardResponse>(
+  sectionKey("experience"),
+  skillsActive,
   () => {
     return `/api/bitcraft/experience/${route.params.id}`;
   },
@@ -546,7 +565,7 @@ const playerTitle = computed(() => `Player ${playerData.value?.username || route
 const playerDescription = computed(() => `View ${playerTitle.value} on BitCraft Hub, including skills, claims, crafting projects and inventories.`);
 const requestUrl = useRequestURL();
 const socialConfig = useRuntimeConfig();
-const playerSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, `/players/${route.params.id}`, socialConfig.public.socialImage));
+const playerSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, route.path, socialConfig.public.socialImage));
 useSeoMeta({
   title: () => playerTitle.value,
   description: () => playerDescription.value,
@@ -588,11 +607,6 @@ const travelerTaskGroups = computed(() => {
       totalCount: tasks.length,
     };
   });
-});
-
-const showTravelerTasks = ref(false);
-watch(showTravelerTasks, (visible) => {
-  if (visible && !itemsAndCargoAllData.value) loadItemsAndCargo();
 });
 
 const travelerTaskSummary = computed(() => {
@@ -702,7 +716,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
               <USlideover v-model:open="sectionsOpen" side="left" title="Player information" description="Choose a section or pin favorites for quick access.">
                 <UButton icon="i-lucide-panel-left-open" color="neutral" variant="soft" label="Player information" />
                 <template #body>
-                  <BitcraftPlayerSectionsMenu v-model="selectedSection" @select="sectionsOpen = false" />
+                   <BitcraftPlayerSectionsMenu :player-id="String(route.params.id)" :selected="selectedSection" @select="sectionsOpen = false" />
                 </template>
               </USlideover>
           </div>
@@ -716,10 +730,10 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :aria-label="desktopSidebarOpen ? 'Collapse player menu' : 'Expand player menu'" :aria-expanded="desktopSidebarOpen" aria-controls="desktop-player-menu"
                 @click="desktopSidebarOpen = !desktopSidebarOpen" />
             </div>
-            <BitcraftPlayerSectionsMenu v-model="selectedSection" :collapsed="!desktopSidebarOpen" />
+            <BitcraftPlayerSectionsMenu :player-id="String(route.params.id)" :selected="selectedSection" :collapsed="!desktopSidebarOpen" />
           </aside>
           <div class="min-w-0 flex-1">
-        <UCard v-show="selectedSection === 'overview'" :ui="{ body: 'p-4' }">
+        <UCard v-if="selectedSection === 'overview'" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Overview</h2>
@@ -753,7 +767,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           @refresh="refreshEquipment({ dedupe: 'defer' })"
         />
 
-        <div v-show="selectedSection === 'deployables'">
+        <div v-if="selectedSection === 'deployables'">
         <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deployables</h2>
@@ -793,13 +807,13 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         </UCard>
         <BitcraftPlayerExperienceHistory v-if="selectedSection === 'xp_history'" :player-id="String(route.params.id)" />
 
-        <div v-show="selectedSection === 'skills'">
+        <div v-if="selectedSection === 'skills'">
         <UCard v-if="expeirence" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
-            <p v-if="equipmentStatus === 'error'" class="text-xs text-muted">
-              Equipped charms and instruments are unavailable.
-            </p>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
+              <p v-if="equipmentStatus === 'error'" class="text-xs text-muted">
+                Equipped charms and instruments are unavailable.
+              </p>
             <div class="grid gap-2 lg:grid-cols-3 xl:grid-cols-4">
               <bitcraft-player-skill
                 v-for="[skill, xp_info] of Object.entries(expeirence)"
@@ -828,10 +842,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
-        <UEmpty v-else icon="i-lucide-chart-line" title="No skills available" />
+         <UProgress v-else-if="experienceStatus === 'pending' || experienceStatus === 'idle'" color="neutral" />
+         <UEmpty v-else icon="i-lucide-chart-line" title="No skills available" />
         </div>
 
-        <div v-show="selectedSection === 'traveler_tasks'">
+         <div v-if="selectedSection === 'traveler_tasks'">
         <UCard v-if="travelerTaskGroups.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -888,10 +903,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
-        <UEmpty v-else icon="i-lucide-list" title="No traveler tasks available" />
+         <UProgress v-else-if="[npcStatus, travelerTasksStatus].some((status) => status === 'pending' || status === 'idle')" color="neutral" />
+         <UEmpty v-else icon="i-lucide-list" title="No traveler tasks available" />
         </div>
 
-        <div v-show="selectedSection === 'inventories'">
+         <div v-if="selectedSection === 'inventories'">
         <UCard v-if="inventoryData?.inventorys.length || houseInventories?.length || houses?.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventories</h2>
@@ -964,10 +980,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </UButton>
           </div>
         </UCard>
+        <UProgress v-else-if="houseInventoriesStatus === 'idle' || houseInventoriesStatus === 'pending'" color="neutral" />
         <UEmpty v-else icon="i-lucide-package" title="No inventories available" />
         </div>
 
-        <div v-show="selectedSection === 'houses'">
+         <div v-if="selectedSection === 'houses'">
         <UCard v-if="houses && houses.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -989,7 +1006,8 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
-        <UEmpty v-else icon="i-lucide-house" title="No accessible houses" />
+         <UProgress v-else-if="housesStatus === 'pending' || housesStatus === 'idle'" color="neutral" />
+         <UEmpty v-else icon="i-lucide-house" title="No accessible houses" />
         </div>
           </div>
         </div>

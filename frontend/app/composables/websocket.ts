@@ -34,6 +34,8 @@ export function registerWebsocketMessageHandler<T extends OutboundWebSocketMessa
   store.subscribe(eventType, topics, handler, instanceId);
 
   onBeforeUnmount(() => {
-    store.unsubscribe(eventType, topics, instanceId);
+    // Reactive topics may already describe the next route while the registry
+    // still owns the previous topics. Dispose by owner, not by that getter.
+    store.unsubscribe(eventType, null, instanceId);
   });
 }

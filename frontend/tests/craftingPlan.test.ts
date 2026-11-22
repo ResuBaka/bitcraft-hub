@@ -617,10 +617,10 @@ async function pageState(input: RecipesAllResponse) {
     computed,
     watch,
     markRaw,
-    watchThrottled: () => {},
+    definePageMeta: () => {},
     useRoute: () => route,
     useSeoMeta: () => {},
-    useLazyFetchMsPack: () => ({ data: ref(), refresh: () => {} }),
+    useActiveFetchMsPack: () => ({ data: ref() }),
     useFetchMsPack: (url: () => string) => ({
       data: ref(url() === "/recipes/get_all" ? input : []),
     }),

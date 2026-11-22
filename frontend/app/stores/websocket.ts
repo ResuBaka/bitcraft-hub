@@ -29,9 +29,6 @@ export const useWebsocketStore = defineStore("websocket", () => {
       },
       immediate: false,
       onConnected: () => {
-        if (import.meta.env.DEV) {
-          console.log("Connected to websocket", topics_currently_subscribed.value);
-        }
         sendMessage({ t: "Subscribe", c: { topics: topics_currently_subscribed.value } });
         sendMessage({ t: "ListSubscribedTopics" });
       },
@@ -144,13 +141,13 @@ export const useWebsocketStore = defineStore("websocket", () => {
 
   function unsubscribe<T extends OutboundWebSocketMessages["t"]>(
     eventType: T,
-    topic: MaybeRefOrGetter<string | string[]>,
+    topic: string | null,
     instanceId: string,
   ) {
-    const unwrapped = toValue(topic);
-
-    const topics = typeof unwrapped === "string" ? [unwrapped] : unwrapped;
-    const { released, hasOwner } = topicRegistry.remove(`${eventType}:${instanceId}`, topics);
+    const owner = `${eventType}:${instanceId}`;
+    const { released, hasOwner } = topic === null
+      ? { released: topicRegistry.removeOwner(owner), hasOwner: false }
+      : topicRegistry.remove(owner, [topic]);
 
     if (!hasOwner && websocket_message_event_handler[eventType]) {
       websocket_message_event_handler[eventType].delete(instanceId);

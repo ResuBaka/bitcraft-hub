@@ -1,8 +1,19 @@
 import { expect, test } from "bun:test";
+import { claimTabSlug, getClaimTab, getLegacyClaimTab } from "../app/utils/claimTabs";
 
-test("crafting is an accepted claim tab for URL synchronization", async () => {
-  const source = await Bun.file(new URL("../app/pages/claims/[id].vue", import.meta.url)).text();
-  const validTabs = source.match(/const validTabs = new Set\(\[([\s\S]*?)\]\)/)?.[1];
-  expect(validTabs).toBeDefined();
-  expect(validTabs).toContain('"crafting"');
+test("claim tabs use path slugs and the base claim URL opens Members", () => {
+  expect(getClaimTab(undefined)).toBe("members");
+  expect(claimTabSlug("members")).toBe("");
+  expect(getClaimTab("crafting")).toBe("crafting");
+  expect(getClaimTab("xp-history")).toBe("xp_history");
+  expect(claimTabSlug("player_offline_tools")).toBe("player-offline-tools");
+  expect(getClaimTab("wrong-tab")).toBeUndefined();
+});
+
+test("legacy tab values resolve to the canonical claim paths", () => {
+  const legacy = getLegacyClaimTab("inventory_changelogs");
+  expect(legacy && claimTabSlug(legacy)).toBe("inventory-changelogs");
+  expect(getLegacyClaimTab("crafting")).toBe("crafting");
+  expect(getLegacyClaimTab(["xp_history", "members"])).toBeUndefined();
+  expect(getLegacyClaimTab("wrong-tab")).toBeUndefined();
 });

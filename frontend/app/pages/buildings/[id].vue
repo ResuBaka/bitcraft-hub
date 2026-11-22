@@ -17,6 +17,9 @@ const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack<Inven
 const inventories = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
 });
+const inventoryPageSize = 8;
+const visibleCount = ref(inventoryPageSize);
+watch(() => route.params.id, () => { visibleCount.value = inventoryPageSize; });
 
 const buildingTitle = computed(() => {
   const nickname = buildingsFetch.value?.nickname;
@@ -68,14 +71,23 @@ useSeoMeta({
 
           <div v-if="inventories.length" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <bitcraft-inventory
-              v-for="inventory in inventories"
+              v-for="inventory in inventories.slice(0, visibleCount)"
               :key="inventory.entity_id.toString()"
               :inventory="inventory"
             />
           </div>
+          <UButton
+            v-if="visibleCount < inventories.length"
+            class="mt-3"
+            color="neutral"
+            variant="soft"
+            @click="visibleCount += inventoryPageSize"
+          >
+            Show more inventories ({{ inventories.length - visibleCount }} remaining)
+          </UButton>
 
           <UEmpty
-            v-else
+            v-if="!inventories.length"
             icon="i-lucide-box"
             title="No inventories found"
             description="This building does not have visible inventories yet."

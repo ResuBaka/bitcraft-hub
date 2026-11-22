@@ -85,7 +85,7 @@ const { data: itemOptions } = await useLazyFetchMsPack<MarketItemCargoDescRespon
   () => {
     return `/market/item_cargo_desc`;
   },
-  { deep: false },
+  { deep: false, server: false },
 );
 
 const { data: marketStatsData, pending: marketStatsPending } =
@@ -93,24 +93,19 @@ const { data: marketStatsData, pending: marketStatsPending } =
     () => {
       return `/market/claim/${props.claimId}`;
     },
-    { deep: false },
+    { deep: false, server: false },
   );
 
 const {
   data: selectedMarketOrdersData,
   pending: selectedOrdersPending,
-  refresh: refreshSelectedOrders,
-} = await useLazyFetchMsPack<MarketOrdersResponse>(
-  () => {
-    return `/market/orders/claim/${props.claimId}`;
-  },
+} = useActiveFetchMsPack<MarketOrdersResponse>(
+  `claim-market:${props.claimId}:selected-orders`,
+  () => selectedItemKeys.value.length > 0,
+  () => `/market/orders/claim/${props.claimId}`,
   {
     deep: false,
-    immediate: false,
-    onRequest: ({ options }) => {
-      const items = selectedItemKeys.value.join(",");
-      options.query = items ? { items } : {};
-    },
+    query: computed(() => ({ items: selectedItemKeys.value.join(",") })),
   },
 );
 
@@ -400,24 +395,6 @@ const selectedItems = computed(() => {
 watch(
   selectedItemKeys,
   (keys) => {
-    if (!import.meta.client) {
-      marketOrders.value = createEmptyMarketOrders();
-      return;
-    }
-
-    if (!keys.length) {
-      marketOrders.value = createEmptyMarketOrders();
-      return;
-    }
-
-    refreshSelectedOrders();
-  },
-  { immediate: true },
-);
-
-watch(
-  selectedItemKeys,
-  (keys) => {
     if (!keys.length) {
       return;
     }
@@ -656,7 +633,9 @@ const visibleClaimIds = computed(() => {
   return [...ids];
 });
 
-const { data: claimNames } = await useLazyFetchMsPack<Map<number, ClaimSummary>>(
+const { data: claimNames } = useActiveFetchMsPack<Record<string, ClaimSummary>>(
+  `claim-market:${props.claimId}:claim-names`,
+  () => selectedItemKeys.value.length > 0,
   () => `/claims/names`,
 );
 
@@ -872,7 +851,8 @@ const userIdsTopics = computed(() => {
 });
 
 registerWebsocketMessageHandler("PlayerUsername", userIdsTopics, (message) => {
-  usernames.value[message.entity_id.toString()] = message.username;
+  const id = message.entity_id.toString();
+  if (userIds.value.has(id)) usernames.value[id] = message.username;
 });
 </script>
 
@@ -1021,7 +1001,7 @@ registerWebsocketMessageHandler("PlayerUsername", userIdsTopics, (message) => {
                       class="text-primary-500 hover:underline"
                     >
                       {{
-                        claimNames?.[row.original.claim_entity_id].name ||
+                         claimNames?.[String(row.original.claim_entity_id)]?.name ||
                         row.original.claim_entity_id.toString()
                       }}
                     </NuxtLink>
@@ -1105,7 +1085,7 @@ registerWebsocketMessageHandler("PlayerUsername", userIdsTopics, (message) => {
                       class="text-primary-500 hover:underline"
                     >
                       {{
-                        claimNames?.[row.original.claim_entity_id].name ||
+                         claimNames?.[String(row.original.claim_entity_id)]?.name ||
                         row.original.claim_entity_id.toString()
                       }}
                     </NuxtLink>

@@ -3,16 +3,8 @@ import type { SortingState } from "@tanstack/vue-table";
 
 const toast = useToast();
 
-import ClaimTabBuildings from "~/components/Bitcraft/Claim/ClaimTabBuildings.vue";
-import ClaimTabEvents from "~/components/Bitcraft/Claim/ClaimTabEvents.vue";
-import ClaimTabCrafting from "~/components/Bitcraft/Claim/ClaimTabCrafting.vue";
-import ClaimTabInventoryChangelogs from "~/components/Bitcraft/Claim/ClaimTabInventoryChangelogs.vue";
-import ClaimTabLeaderboards from "~/components/Bitcraft/Claim/ClaimTabLeaderboards.vue";
 import ClaimTabMembers from "~/components/Bitcraft/Claim/ClaimTabMembers.vue";
-import ClaimTabTravelerTasks from "~/components/Bitcraft/Claim/ClaimTabTravelerTasks.vue";
-import ClaimTabUpgrades from "~/components/Bitcraft/Claim/ClaimTabUpgrades.vue";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
-import PlayerExperienceHistory from "~/components/Bitcraft/PlayerExperienceHistory.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
@@ -30,8 +22,41 @@ import { raritySort } from "~/utils";
 import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
-import ClaimTabInventorySection from "~/components/Bitcraft/Claim/ClaimTabInventorySection.vue";
+import { claimTabSlug, getClaimTab, getLegacyClaimTab, type ClaimTab } from "~/utils/claimTabs";
 import { socialUrls } from "~/utils/socialMetadata";
+
+const ClaimMarket = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimMarket.vue"));
+const ClaimTabBuildings = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabBuildings.vue"));
+const ClaimTabEvents = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabEvents.vue"));
+const ClaimTabCrafting = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabCrafting.vue"));
+const ClaimTabInventoryChangelogs = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabInventoryChangelogs.vue"));
+const ClaimTabInventorySection = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabInventorySection.vue"));
+const ClaimTabLeaderboards = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabLeaderboards.vue"));
+const ClaimTabTravelerTasks = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabTravelerTasks.vue"));
+const ClaimTabUpgrades = defineAsyncComponent(() => import("~/components/Bitcraft/Claim/ClaimTabUpgrades.vue"));
+const PlayerExperienceHistory = defineAsyncComponent(() => import("~/components/Bitcraft/PlayerExperienceHistory.vue"));
+
+definePageMeta({
+  path: "/claims/:id/:tab?",
+  key: (route) => String(route.params.id),
+  validate: (route) => Boolean(getClaimTab(route.params.tab)),
+  middleware: (to) => {
+    const { tab: legacyTab, ...query } = to.query;
+    if (legacyTab === undefined) return;
+    const tab = to.params.tab
+      ? getClaimTab(to.params.tab)
+      : getLegacyClaimTab(legacyTab);
+    return navigateTo(
+      {
+        name: "claims-id",
+        params: { id: to.params.id, tab: claimTabSlug(tab ?? "members") },
+        query,
+        hash: to.hash,
+      },
+      { replace: true },
+    );
+  },
+});
 
 const {
   public: { iconDomain },
@@ -49,11 +74,23 @@ const perPage = 1500;
 const search = ref<string | null>("");
 
 const route = useRoute();
+const tab = computed(() => getClaimTab(route.params.tab) ?? "members");
 const configStore = useConfigStore();
 const isHighlighted = computed(() =>
   configStore.highlighted_claims.some((claim) => claim.id === String(route.params.id)),
 );
 const router = useRouter();
+
+// Don't serialize inactive tab data into the page payload, or retain it after
+// the tab closes. A fixed key also avoids caching every filter/page combination.
+function useClaimTabData<T>(
+  section: ClaimTab,
+  key: string,
+  request: () => string,
+  query?: ComputedRef<Record<string, string | number | (number | string)[] | undefined>>,
+) {
+  return useActiveFetchMsPack<T>(`claim:${route.params.id}:${key}`, () => tab.value === section, request, { query });
+}
 
 const player_id = ref<bigint | null>();
 const item_objects = ref<ItemCargo[]>([]);
@@ -104,29 +141,28 @@ const { data: claimFetch } = useFetchMsPack<ClaimDescriptionStateWithInventoryAn
   return `/api/bitcraft/claims/${route.params.id.toString()}`;
 });
 
-const { data: buildingDescs } = useFetchMsPack<BuildingDescriptionsResponse>(() => {
-  return `/api/bitcraft/desc/buildings?per_page=1000`;
-});
+const { data: buildingDescs } = useClaimTabData<BuildingDescriptionsResponse>(
+  "buildings",
+  "building-descriptions",
+  () => `/api/bitcraft/desc/buildings?per_page=1000`,
+);
+const buildingIcons = computed(() => new Map(
+  buildingDescs.value?.buildings?.map((desc) => [desc.id, desc.icon_asset_name]),
+));
+const getBuildingIcon = (buildingDescId: number) => buildingIcons.value.get(buildingDescId);
 
-const getBuildingIcon = (buildingDescId: number) => {
-  const desc = buildingDescs.value?.buildings?.find((desc) => desc.id === buildingDescId);
-
-  if (desc) {
-    return desc.icon_asset_name;
-  }
-
-  return desc;
-};
-
-const { data: trevelerTasksFetch } = useFetchMsPack<{
+const { data: trevelerTasksFetch, pending: travelerTasksPending } = useClaimTabData<{
   [key: number]: TravelerTaskDesc;
-}>(() => {
+}>("traveler_tasks", "traveler-tasks", () => {
   return `/traveler_tasks`;
 });
 
-const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(() => {
-  return `/api/bitcraft/itemsAndCargo/all`;
-});
+const { data: itemsAndCargoAllFetch, pending: travelerItemsPending } =
+  useClaimTabData<ItemsAndCargollResponse>(
+    "traveler_tasks",
+    "traveler-items",
+    () => `/api/bitcraft/itemsAndCargo/all`,
+  );
 
 const travelerSortLookup = {
   rumbagh: 1,
@@ -194,84 +230,66 @@ watch(inventoryChangelogQuery, (filters) => {
   void router.replace({ query });
 });
 
-const { data: InventoryChangelogFetch } = useFetchMsPack<
-  InventoryChangelog[]
->(
-  () => {
-    return `/claims/inventory_changelog/${route.params.id.toString()}`;
-  },
-  { query: inventoryChangelogQuery },
+const { data: InventoryChangelogFetch } = useClaimTabData<InventoryChangelog[]>(
+  "inventory_changelogs",
+  "inventory-changelog",
+  () => `/claims/inventory_changelog/${route.params.id.toString()}`,
+  inventoryChangelogQuery,
 );
 
-const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack<BuildingStatesResponse>(
+const { data: buildingsFetch, pending: buildingsPending } = useClaimTabData<BuildingStatesResponse>(
+  "buildings",
+  "buildings",
   () => {
     return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&page=${page.value}&per_page=${perPage}&skip_static_buildings=true`;
   },
 );
 
-const topicsPlayer = computed<string[]>(() => {
-  if (claimFetch.value === undefined) {
-    return [];
-  }
-  return (
-    Object.keys(claimFetch.value?.members).map((entity_id) => {
-      return `player_state.${entity_id}`;
-    }) ?? []
-  );
-});
+type ClaimMembers = Record<string, ClaimDescriptionStateMember>;
+const members = computed(() => (claimFetch.value?.members ?? {}) as ClaimMembers);
+const memberPresenceRevision = ref(0);
+const memberCount = computed(() => Object.keys(members.value).length);
+const topicsPlayer = computed(() =>
+  Object.keys(claimFetch.value?.members ?? {}).map((id) => `player_state.${id}`),
+);
+const claimLocal = shallowRef<{ num_tiles: number; supplies: number; treasury: number }>();
 
 registerWebsocketMessageHandler(
   "ClaimLocalState",
   [`claim_local_state.${route.params.id}`],
   (message) => {
-    if (Number(message.entity_id) === Number(route.params.id)) {
-      if (claimFetch.value) {
-        claimFetch.value.num_tiles = message.num_tiles;
-        claimFetch.value.supplies = message.supplies;
-        claimFetch.value.treasury = message.treasury;
-        claimFetch.value.xp_gained_since_last_coin_minting =
-          message.xp_gained_since_last_coin_minting;
-        triggerRef(claimFetch);
-      }
+    if (String(message.entity_id) === String(route.params.id)) {
+      claimLocal.value = {
+        num_tiles: message.num_tiles,
+        supplies: message.supplies,
+        treasury: message.treasury,
+      };
     }
   },
 );
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  let onlineState = message.signed_in ? "Online" : "Offline";
+  const member = members.value[String(message.entity_id)];
+  const onlineState = message.signed_in ? "Online" : "Offline";
+  if (!member || member.online_state === onlineState) return;
 
-  if (claimFetch.value.members[message.entity_id].online_state !== onlineState) {
-    if (message.signed_in) {
-      toast.add({
-        title: `${claimFetch.value.members[message.entity_id].user_name} signed in`,
-      });
-    } else {
-      toast.add({
-        title: `${claimFetch.value.members[message.entity_id].user_name} signed out`,
-      });
-    }
-    claimFetch.value.members[message.entity_id].online_state = onlineState;
-    triggerRef(claimFetch);
-  }
+  toast.add({ title: `${member.user_name} signed ${message.signed_in ? "in" : "out"}` });
+  member.online_state = onlineState;
+  memberPresenceRevision.value++;
 });
 
 const topicsLevel = computed<string[]>(() => {
-  if (claimFetch.value === undefined) {
-    return [];
-  }
-  return (
-    Object.values(claimFetch.value?.members)
-      .filter((member) => member.online_state === "Online")
-      .map((member) => {
-        return `level.${member.entity_id}`;
-      }) ?? []
-  );
+  void memberPresenceRevision.value;
+  return Object.values(members.value)
+    .filter((member) => member.online_state === "Online")
+    .map((member) => `level.${member.entity_id}`);
 });
 
 registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
-  if (claimFetch.value?.members[message.user_id]) {
+  const member = members.value[String(message.user_id)];
+  if (member) {
     toast.add({
-      title: `Player ${claimFetch.value?.members[message.user_id].user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
+      title: `Player ${member.user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
     });
 
   }
@@ -281,12 +299,28 @@ const topicsExperience = computed(() =>
   topicsLevel.value.map((topic) => topic.replace(/^level\./, "experience.")),
 );
 
+const memberXpRevision = ref(0);
+let memberXpTimer: ReturnType<typeof setTimeout> | undefined;
+const allMembers = computed(() => {
+  void memberPresenceRevision.value;
+  void memberXpRevision.value;
+  return Object.values(members.value);
+});
+onScopeDispose(() => {
+  if (memberXpTimer !== undefined) clearTimeout(memberXpTimer);
+});
 registerWebsocketMessageHandler("Experience", topicsExperience, (message) => {
-  const member = claimFetch.value?.members[message.user_id];
+  const member = members.value[String(message.user_id)];
   if (member) {
+    const xp = Number(message.experience);
+    if (member.skills_ranks?.[message.skill_name] === xp) return;
     member.skills_ranks ??= {};
-    member.skills_ranks[message.skill_name] = Number(message.experience);
-    triggerRef(claimFetch);
+    member.skills_ranks[message.skill_name] = xp;
+    // Coalesce incoming XP events without invalidating inventory or presence topics.
+    memberXpTimer ??= setTimeout(() => {
+      memberXpTimer = undefined;
+      memberXpRevision.value++;
+    }, 200);
   }
 });
 
@@ -294,11 +328,11 @@ const claim = computed(() => {
   return claimFetch.value ?? undefined;
 });
 const buildings = computed(() => {
-  if (!buidlingsFetch.value?.buildings.length) {
+  if (!buildingsFetch.value?.buildings.length) {
     return [];
   }
 
-  return buidlingsFetch.value?.buildings.filter((building) => {
+  return buildingsFetch.value.buildings.filter((building) => {
     return (
       !search.value || building.building_name.toLowerCase().includes(search.value.toLowerCase())
     );
@@ -480,7 +514,7 @@ const claimOwner = computed(() => {
 const claimTitle = computed(() => `Claim ${claim.value?.name ?? route.params.id}`);
 const requestUrl = useRequestURL();
 const socialConfig = useRuntimeConfig();
-const claimSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, `/claims/${route.params.id}`, socialConfig.public.socialImage));
+const claimSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, route.path, socialConfig.public.socialImage));
 const claimDescription = computed(() => {
   if (!claim.value) {
     return `View ${claimTitle.value}, including members, buildings, inventory, and activity.`;
@@ -489,7 +523,7 @@ const claimDescription = computed(() => {
   const ownerName = claimOwner.value?.user_name;
   const owner = ownerName ? ` by ${ownerName}` : "";
   const memberCount = Object.keys(claim.value.members ?? {}).length;
-  const buildingCount = buidlingsFetch.value?.buildings.length ?? 0;
+  const buildingCount = claim.value.building_states?.length ?? 0;
   const itemCount = claim.value.inventorys?.buildings?.length ?? 0;
   return `${claimTitle.value}${owner} with ${memberCount} members, ${buildingCount} buildings, and ${itemCount} items.`;
 });
@@ -546,33 +580,14 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   return result;
 };
 
-const validTabs = new Set([
-  "members",
-  "building_items",
-  "player_items",
-  "player_tools",
-  "player_offline_items",
-  "player_offline_tools",
-  "buildings",
-  "crafting",
-  "leaderboards",
-  "xp_history",
-  "upgrades",
-  "inventory_changelogs",
-  "events",
-  "traveler_tasks",
-  "marketplace",
-]);
-
-const initialTab = (() => {
-  const next = (route.query.tab as string) || "";
-  if (next && validTabs.has(next)) {
-    return next;
+function claimTabTo(next: ClaimTab) {
+  const query = { ...route.query };
+  if (next !== tab.value) {
+    delete query.search;
+    delete query.items;
   }
-  return "members";
-})();
-
-let tab = ref(initialTab);
+  return { name: "claims-id", params: { id: route.params.id, tab: claimTabSlug(next) }, query };
+}
 
 let memberSearch = ref<string | null>(null);
 let showOnlyOnlineMembers = ref(false);
@@ -591,12 +606,7 @@ const defaultMemberSort = (rows: ({ permissions: number } & ClaimDescriptionStat
 };
 
 const membersForTable = computed(() => {
-  if (!claim.value?.members) {
-    return [];
-  }
-  const rows = Object.values<{ permissions: number } & ClaimDescriptionStateMember>(
-    claim.value.members,
-  )
+  const rows = allMembers.value
     .filter((member) => {
       if (showOnlyOnlineMembers.value && member.online_state !== "Online") {
         return false;
@@ -610,7 +620,7 @@ const membersForTable = computed(() => {
     })
     .map((member) => {
       let permissions = 0;
-      if (claimOwner.id === member.entity_id) {
+      if (claimOwner.value?.entity_id === member.entity_id) {
         permissions += 18;
       }
 
@@ -639,20 +649,9 @@ const membersForTable = computed(() => {
   return defaultMemberSort(rows);
 });
 
-const onMemberSearch = () => {
-  if (tab.value !== "members") {
-    tab.value = "members";
-  }
-};
-
 const onlinePlayersCount = computed(() => {
-  if (claimFetch.value === undefined) {
-    return 0;
-  }
-  return (
-    Object.values(claimFetch.value?.members).filter((member) => member.online_state === "Online")
-      .length ?? 0
-  );
+  void memberPresenceRevision.value;
+  return Object.values(members.value).filter((member) => member.online_state === "Online").length;
 });
 
 const memberSkills = [
@@ -745,11 +744,11 @@ const upgradesByTier = computed(() => {
   return Array.from(tiers.entries()).sort((a, b) => a[0] - b[0]);
 });
 
-const tabItems = computed(() => {
+const tabItems = computed<{ value: ClaimTab; label: string }[]>(() => {
   return [
     {
       value: "members",
-      label: `Members (${membersForTable.value.length || 0})`,
+      label: `Members (${memberCount.value})`,
     },
     {
       value: "marketplace",
@@ -775,7 +774,7 @@ const tabItems = computed(() => {
       value: "building_items",
       label: `Building items (${inventorysBuildings.value.length || 0})`,
     },
-    { value: "buildings", label: `Buildings (${buildings.value.length || 0})` },
+    { value: "buildings", label: `Buildings (${claim.value?.building_states?.length ?? 0})` },
     { value: "crafting", label: "Crafting" },
     { value: "leaderboards", label: "Leaderboards" },
     { value: "xp_history", label: "XP history" },
@@ -785,7 +784,7 @@ const tabItems = computed(() => {
     },
     {
       value: "inventory_changelogs",
-      label: `Inventory changes (${InventoryChangelogFetch.value?.length || 0})`,
+      label: "Inventory changes",
     },
     { value: "traveler_tasks", label: "Traveler tasks" },
     { value: "events", label: "Events" },
@@ -1042,39 +1041,6 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
 };
 
 watch(
-  () => route.query.tab,
-  (value) => {
-    const next = typeof value === "string" ? value : "";
-    if (next && validTabs.has(next) && tab.value !== next) {
-      tab.value = next;
-    }
-  },
-  { immediate: true },
-);
-
-watch(
-  tab,
-  (value) => {
-    if (!value || !validTabs.has(value)) {
-      return;
-    }
-
-    if (route.query.tab !== value) {
-      if ("search" in route.query) {
-        delete route.query.search;
-      }
-
-      if ("items" in route.query) {
-        delete route.query.items;
-      }
-
-      router.replace({ query: { ...route.query, tab: value } });
-    }
-  },
-  { immediate: false },
-);
-
-watch(
   inventoryBuildingsSearch,
   (value, oldValue) => {
     if (value !== oldValue) {
@@ -1160,17 +1126,17 @@ watch(
                 <span class="text-gray-800 dark:text-gray-100">Members: </span>
                 <span class="text-emerald-600 dark:text-emerald-400">{{ onlinePlayersCount }}</span
                 >/<span class="text-gray-800 dark:text-gray-100">{{
-                  claimFetch ? Object.values(claimFetch.members).length : 0
+                  memberCount
                 }}</span>
               </UBadge>
               <UBadge color="neutral" variant="soft">
-                Supplies: {{ numberFormat.format(claim.supplies ?? 0) }}<template v-if="claimMaxSupplies !== null"> / {{ numberFormat.format(claimMaxSupplies) }}</template>
+                Supplies: {{ numberFormat.format(claimLocal?.supplies ?? claim.supplies ?? 0) }}<template v-if="claimMaxSupplies !== null"> / {{ numberFormat.format(claimMaxSupplies) }}</template>
               </UBadge>
               <UBadge color="neutral" variant="soft">
-                Tiles: {{ numberFormat.format(claim.num_tiles ?? 0) }}
+                Tiles: {{ numberFormat.format(claimLocal?.num_tiles ?? claim.num_tiles ?? 0) }}
               </UBadge>
               <UBadge color="neutral" variant="soft">
-                Treasury: {{ numberFormat.format(claim.treasury ?? 0) }}
+                Treasury: {{ numberFormat.format(claimLocal?.treasury ?? claim.treasury ?? 0) }}
               </UBadge>
               <UBadge color="neutral" variant="soft">
                 Buildings: {{ numberFormat.format(claimFetch?.building_states?.length || 0) }}
@@ -1186,31 +1152,33 @@ watch(
 
         <UCard :ui="{ body: 'sm:p-1 p-0', header: 'sm:p-3 p-0' }">
           <div>
-            <div class="flex flex-wrap gap-2 p-4">
+            <nav class="flex flex-wrap gap-2 p-4" aria-label="Claim information">
               <UButton
                 v-for="item in tabItems"
                 :key="item.value"
                 :label="item.label"
                 :variant="tab === item.value ? 'solid' : 'soft'"
+                :aria-current="tab === item.value ? 'page' : undefined"
                 size="xs"
-                @click="tab = item.value"
+                :to="claimTabTo(item.value)"
+                no-prefetch
               />
-            </div>
+            </nav>
             <div class="border-t border-gray-200 p-4 dark:border-gray-800">
-              <bitcraft-claim-market
+              <ClaimMarket
                 v-if="tab === 'marketplace'"
                 :claim-id="route.params.id.toString()"
-              ></bitcraft-claim-market>
+              />
               <ClaimTabMembers
                 v-else-if="tab === 'members'"
                 :online-players-count="onlinePlayersCount"
-                :member-count="claimFetch ? Object.values(claimFetch.members).length : 0"
+                :member-count="memberCount"
                 :member-search="memberSearch"
                 :show-only-online-members="showOnlyOnlineMembers"
                 :member-sorting="memberSorting"
                 :member-columns="memberColumns"
                 :members-for-table="membersForTable"
-                :all-members="Object.values(claimFetch?.members ?? {})"
+                :all-members="allMembers"
                 :member-skills="memberSkills"
                 :member-secondary-skills="memberSecondarySkills"
                 :tier-to-color="tierToColor"
@@ -1221,7 +1189,6 @@ watch(
                 @update:member-search="(value) => (memberSearch = value)"
                 @update:show-only-online-members="(value) => (showOnlyOnlineMembers = value)"
                 @update:member-sorting="(value) => (memberSorting = value)"
-                @member-search-changed="onMemberSearch"
               />
 
               <ClaimTabInventorySection
@@ -1344,7 +1311,7 @@ watch(
                 :buildings="buildings"
                 :buildings-pending="buildingsPending"
                 :page="page"
-                :total="Number(buidlingsFetch?.total ?? 0)"
+                 :total="Number(buildingsFetch?.total ?? 0)"
                 :per-page="perPage"
                 :icon-domain="iconDomain"
                 :get-building-icon="getBuildingIcon"
@@ -1387,16 +1354,19 @@ watch(
                 @range-changed="updateInventoryChangesRange"
               />
 
-              <ClaimTabTravelerTasks
-                v-else-if="tab === 'traveler_tasks'"
-                :traveler-columns="travelerColumns"
-                :traveler-task-rows="travelerTaskRows"
-                :claim-members="claimFetch.members"
-                :items-and-cargo-all-fetch="itemsAndCargoAllFetch"
-                :tier-to-color="tierToColor"
-                :number-format="numberFormat"
-                :get-traveler-item-icon="getTravelerItemIcon"
-              />
+              <template v-else-if="tab === 'traveler_tasks'">
+                <UProgress v-if="travelerTasksPending || travelerItemsPending" color="neutral" />
+                <ClaimTabTravelerTasks
+                  v-else
+                  :traveler-columns="travelerColumns"
+                  :traveler-task-rows="travelerTaskRows"
+                  :claim-members="claimFetch.members"
+                  :items-and-cargo-all-fetch="itemsAndCargoAllFetch"
+                  :tier-to-color="tierToColor"
+                  :number-format="numberFormat"
+                  :get-traveler-item-icon="getTravelerItemIcon"
+                />
+              </template>
               <ClaimTabEvents
                 v-else-if="tab === 'events'"
                 :claim-id="route.params.id.toString()"

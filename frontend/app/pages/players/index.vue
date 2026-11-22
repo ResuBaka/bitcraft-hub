@@ -1,111 +1,24 @@
 <script setup lang="ts">
-import { watchDebounced } from "@vueuse/shared";
 import type { PlayersResponse } from "~/types/PlayersResponse";
 import { useDelayedPending } from "~/utils";
 
-const page = ref(1);
 const perPage = 6 * 5;
-
-const search = ref<string | null>("");
-const debouncedSearch = ref<string | null>("");
-const showOnlyOnlinePlayers = ref<boolean>(false);
-
-const route = useRoute();
-const router = useRouter();
-
-if (route.query.search) {
-  debouncedSearch.value = route.query.search as string;
-  search.value = route.query.search as string;
-}
-
-if (route.query.page) {
-  page.value = parseInt(route.query.page as string);
-}
-
-const {
-  data: players,
-  pending,
-} = await useLazyFetchMsPack<PlayersResponse>(
-  () => {
-    const url = `/api/bitcraft/players?`;
-    let paramter = new URLSearchParams();
-
-    if (search.value) {
-      paramter.set("search", search.value);
-    }
-
-    if (page.value) {
-      paramter.set("page", page.value.toString());
-    }
-
-    if (showOnlyOnlinePlayers.value) {
-      paramter.set("online", "true");
-    }
-
-    paramter.set("per_page", perPage.toString());
-
-    return url + paramter;
-  },
+const { page, search, searchTerm, filter } = useCatalogControls();
+const showOnlyOnlinePlayers = filter("online", (value) => value === "true", (value) => value ? "true" : undefined);
+const { data: players, pending } = await useLazyFetchMsPack<PlayersResponse>(
+  "/api/bitcraft/players",
   {
-    // onRequest: ({ options }) => {
-    //   options.query = options.query || {};
-    //
-    //   if (search.value) {
-    //     options.query.search = search.value;
-    //   }
-    //
-    //   if (page.value) {
-    //     options.query.page = page.value;
-    //   }
-    //
-    //   if (perPage) {
-    //     options.query.per_page = perPage;
-    //   }
-    //
-    //   if (showOnlyOnlinePlayers.value) {
-    //     options.query.online = true;
-    //   }
-    //
-    //   console.log(options.query);
-    //
-    //   if (Object.keys(options.query).length > 2) {
-    //     const query = { ...options.query };
-    //     delete query.per_page;
-    //     router.push({ query });
-    //   } else if (options.query.page <= 1) {
-    //     router.push({});
-    //   }
-    // },
+    key: "catalog:players",
+    query: computed(() => ({
+      page: page.value,
+      per_page: perPage,
+      search: searchTerm.value,
+      online: showOnlyOnlinePlayers.value || undefined,
+    })),
   },
 );
 
 const showPending = useDelayedPending(pending, 150);
-
-const changePage = (value: number) => {
-  page.value = value;
-  router.push({
-    query: {
-      ...route.query,
-      page: value,
-    },
-  });
-};
-
-watch(showOnlyOnlinePlayers, () => {
-  page.value = 1;
-});
-
-watchDebounced(
-  debouncedSearch,
-  () => {
-    if (search.value !== debouncedSearch.value) {
-      page.value = 1;
-    }
-
-    search.value = debouncedSearch.value;
-  },
-  { debounce: 200, maxWait: 222 },
-);
 
 const currentPlayers = computed(() => {
   return players.value?.players ?? [];
@@ -114,11 +27,6 @@ const currentPlayers = computed(() => {
 const totalCount = computed(() => {
   if (!players.value?.total) return 0;
   return Number(players.value.total);
-});
-
-const length = computed(() => {
-  if (!totalCount.value) return 0;
-  return Math.ceil(totalCount.value / perPage);
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
@@ -195,7 +103,7 @@ useSeoMeta({
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <UInput
-            v-model="debouncedSearch"
+            v-model="search"
             icon="i-lucide-search"
             placeholder="Search players"
             variant="outline"
@@ -220,7 +128,6 @@ useSeoMeta({
           size="sm"
           :disabled="showPending"
           :sibling-count="4"
-          @update:page="changePage"
         />
       </div>
 

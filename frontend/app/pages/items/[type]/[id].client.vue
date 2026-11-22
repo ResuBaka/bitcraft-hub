@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 import AutocompleteClaim from "~/components/Bitcraft/autocomplete/AutocompleteClaim.vue";
 import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
 import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
@@ -18,6 +17,10 @@ import type { InventoryQuantities, RecipeSelections } from "~/utils/craftingPlan
 import { getItemOperationRecipes } from "~/utils/itemOperations";
 import { rarityToTextClass, tierToTextClass } from "~/utils";
 
+// Keep one recipe graph while moving between item details; leaving the recipe
+// route still disposes its data, filters, and computed plan.
+definePageMeta({ key: "item-recipe" });
+
 const playerId = ref<bigint | null>(null);
 const claimId = ref<bigint | null | undefined>(null);
 const amount = ref<number>(1);
@@ -25,33 +28,18 @@ const progressPerHit = ref<number>(1);
 const selections = shallowRef<RecipeSelections>(new Map());
 const route = useRoute();
 
-const { data: claimInventoryData, refresh: refreshClaimInventory } =
-  await useLazyFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
+const { data: claimInventoryData } =
+  useActiveFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
+    "item-recipe:claim-inventory",
+    () => claimId.value != null,
     () => `/api/bitcraft/claims/${claimId.value}`,
-    { immediate: false, watch: false },
   );
-const { data: playerInventoryData, refresh: refreshPlayerInventory } =
-  await useLazyFetchMsPack<InventorysResponse>(
+const { data: playerInventoryData } =
+  useActiveFetchMsPack<InventorysResponse>(
+    "item-recipe:player-inventory",
+    () => playerId.value != null,
     () => `/api/bitcraft/inventorys/owner_entity_id/${playerId.value}`,
-    { immediate: false, watch: false },
   );
-
-watchThrottled(
-  () => claimId.value,
-  () => {
-    if (claimId.value != null) refreshClaimInventory();
-    else claimInventoryData.value = undefined;
-  },
-  { throttle: 50 },
-);
-watchThrottled(
-  () => playerId.value,
-  () => {
-    if (playerId.value != null) refreshPlayerInventory();
-    else playerInventoryData.value = undefined;
-  },
-  { throttle: 50 },
-);
 
 const { data: allRecipiesFetch } = useFetchMsPack<RecipesAllResponse>(() => `/recipes/get_all`);
 const { data: extractionRecipesFetch } = useFetchMsPack<ExtractionRecipeResponse[]>(

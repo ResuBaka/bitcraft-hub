@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 import ItemHint from "./ItemHint.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
 import type { HouseResponse } from "~/types/HouseResponse";
-import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
-import AutocompleteUser from "./autocomplete/AutocompleteUser.vue";
-import InventoryChanges from "./InventoryChanges.vue";
 import { rarityToBorderClass } from "~/utils";
 import { pocketMatchesSearch } from "~/utils/inventorySearch";
+
+const AutocompleteItem = defineAsyncComponent(() => import("./autocomplete/AutocompleteItem.vue"));
+const AutocompleteUser = defineAsyncComponent(() => import("./autocomplete/AutocompleteUser.vue"));
+const InventoryChanges = defineAsyncComponent(() => import("./InventoryChanges.vue"));
 
 const props = defineProps<{
   inventory: ResolvedInventory;
@@ -57,43 +57,21 @@ const inventoryLabel = computed(() => {
   return props.inventory.nickname || props.inventory.entity_id?.toString();
 });
 
-const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } = useFetchMsPack<
-  InventoryChangelog[]
->(() => `/api/bitcraft/inventorys/changes/${props.inventory.entity_id}`, {
-  immediate: false,
-  onRequest: ({ options }) => {
-    options.query = options.query || {};
-    if (itemObjects.value.length) {
-      options.query.item_id = itemObjects.value.map((item) => item.id);
-      options.query.item_type = itemObjects.value.map((item) => item.type);
-    }
-    if (playerId.value) {
-      options.query.user_id = playerId.value.toString();
-    }
-    if (inventoryChangesStartDay.value) {
-      options.query.start_day = inventoryChangesStartDay.value;
-    }
-    if (inventoryChangesEndDay.value) {
-      options.query.end_day = inventoryChangesEndDay.value;
-    }
-    options.query.per_page = 20;
+const { data: InventoryChangesFetch } = useActiveFetchMsPack<InventoryChangelog[]>(
+  `inventory-history:${useId()}`,
+  () => showChangelog.value,
+  () => `/api/bitcraft/inventorys/changes/${props.inventory.entity_id}`,
+  {
+    query: computed(() => ({
+      per_page: 20,
+      item_id: itemObjects.value.length ? itemObjects.value.map((item) => item.id) : undefined,
+      item_type: itemObjects.value.length ? itemObjects.value.map((item) => item.type) : undefined,
+      user_id: playerId.value?.toString(),
+      start_day: inventoryChangesStartDay.value,
+      end_day: inventoryChangesEndDay.value,
+    })),
   },
-});
-
-watchThrottled(
-  () => [
-    itemObjects.value,
-    playerId.value,
-    inventoryChangesStartDay.value,
-    inventoryChangesEndDay.value,
-  ],
-  () => { if (showChangelog.value) InventoryChangesRefresh(); },
-  { throttle: 50 },
 );
-
-watch(showChangelog, (visible) => {
-  if (visible) InventoryChangesRefresh();
-});
 
 const updateInventoryChangesRange = (range: { startDay: string; endDay: string }) => {
   inventoryChangesStartDay.value = range.startDay;

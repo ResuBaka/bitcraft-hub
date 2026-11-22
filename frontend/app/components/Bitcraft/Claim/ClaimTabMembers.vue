@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SortingState } from "@tanstack/vue-table";
-import { getSortedRowModel } from "@tanstack/vue-table";
+import { getPaginationRowModel, getSortedRowModel } from "@tanstack/vue-table";
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
 import { expToLevel, levelToColor, levelToTier } from "~/utils";
@@ -26,21 +26,47 @@ const props = defineProps<{
 const skillMaxLevels = computed(() => {
   const result: Record<string, { all: number | null; online: number | null }> = {};
   for (const skill of [...props.memberSkills, ...props.memberSecondarySkills]) {
-    let all: number | null = null;
-    let online: number | null = null;
+    let maxXp: number | null = null;
+    let maxOnlineXp: number | null = null;
     for (const member of props.allMembers) {
       const xp = member.skills_ranks?.[skill];
       if (xp == null) continue;
-      const level = expToLevel(xp);
-      all = Math.max(all ?? 0, level);
-      if (member.online_state === "Online") online = Math.max(online ?? 0, level);
+      const value = Number.isFinite(xp) ? xp : 0;
+      maxXp = Math.max(maxXp ?? 0, value);
+      if (member.online_state === "Online") maxOnlineXp = Math.max(maxOnlineXp ?? 0, value);
     }
-    result[skill] = { all, online };
+    result[skill] = {
+      all: maxXp == null ? null : expToLevel(maxXp),
+      online: maxOnlineXp == null ? null : expToLevel(maxOnlineXp),
+    };
   }
   return result;
 });
 
 const showToolHints = ref(false);
+const pagination = ref({ pageIndex: 0, pageSize: 20 });
+const paginationOptions = {
+  getPaginationRowModel: getPaginationRowModel(),
+  autoResetPageIndex: false,
+};
+const getRowId = (member: ClaimDescriptionStateMember) => String(member.entity_id);
+function setMemberPage(pageIndex: number) {
+  if (pagination.value.pageIndex !== pageIndex) {
+    pagination.value = { ...pagination.value, pageIndex };
+  }
+}
+
+watch(
+  [() => props.memberSearch, () => props.showOnlyOnlineMembers, () => props.memberSorting],
+  () => setMemberPage(0),
+);
+watch(
+  () => props.membersForTable.length,
+  (count) => {
+    const lastPage = Math.max(0, Math.ceil(count / pagination.value.pageSize) - 1);
+    setMemberPage(Math.min(pagination.value.pageIndex, lastPage));
+  },
+);
 
 const toolHint = (member: ClaimDescriptionStateMember, skill: string) => {
   const xp = member.skills_ranks?.[skill];
@@ -94,10 +120,13 @@ const emit = defineEmits<{
       </div>
     </div>
     <UTable
+      v-model:pagination="pagination"
       :sorting="memberSorting"
       :columns="memberColumns"
       :data="membersForTable"
+      :get-row-id="getRowId"
       :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
+      :pagination-options="paginationOptions"
       class="claim-table"
       @update:sorting="(value) => emit('update:memberSorting', value)"
     >
@@ -153,6 +182,7 @@ const emit = defineEmits<{
       <template #user-cell="{ row }">
         <NuxtLink
           :to="{ name: 'players-id', params: { id: row.original.entity_id } }"
+          no-prefetch
           class="font-semibold hover:underline"
           :class="
             row.original.online_state === 'Online'
@@ -225,6 +255,14 @@ const emit = defineEmits<{
         </div>
       </template>
     </UTable>
+    <UPagination
+      v-if="membersForTable.length > pagination.pageSize"
+      :page="pagination.pageIndex + 1"
+      :items-per-page="pagination.pageSize"
+      :total="membersForTable.length"
+      class="self-center"
+      @update:page="setMemberPage($event - 1)"
+    />
   </div>
 </template>
 

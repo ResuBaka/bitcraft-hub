@@ -1,82 +1,18 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 import { useDelayedPending } from "~/utils";
 import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
 
-const page = ref(1);
 const perPage = 30;
-
-const search = ref<string | null>("");
-
-const route = useRoute();
-const router = useRouter();
-
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
-}
-const tmpSearch = (route.query.search as string) ?? null;
-
-if (tmpSearch) {
-  search.value = tmpSearch;
-}
-
-const { data, pending, refresh } = await useLazyFetchMsPack<BuildingDescriptionsResponse>(
-  () => {
-    return `/api/bitcraft/desc/buildings`;
-  },
+const { page, search, searchTerm } = useCatalogControls();
+const { data, pending } = await useLazyFetchMsPack<BuildingDescriptionsResponse>(
+  "/api/bitcraft/desc/buildings",
   {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-
-      if (search.value) {
-        options.query.search = search.value;
-      }
-
-      if (page.value) {
-        options.query.page = page.value;
-      }
-
-      if (perPage) {
-        options.query.per_page = perPage;
-      }
-
-      if (Object.keys(options.query).length > 2) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page <= 1) {
-        router.push({});
-      }
-    },
+    key: "catalog:buildings",
+    query: computed(() => ({ page: page.value, per_page: perPage, search: searchTerm.value })),
   },
 );
 
 const showPending = useDelayedPending(pending, 150);
-
-const changePage = (value: number) => {
-  page.value = value;
-  router.push({
-    query: {
-      ...route.query,
-      page: value,
-    },
-  });
-  refresh();
-};
-
-watchThrottled(
-  () => [search.value],
-  (value, oldValue) => {
-    if (value[0] !== oldValue[0]) {
-      page.value = 1;
-    }
-
-    refresh();
-  },
-  { throttle: 50 },
-);
 
 const currentBuildings = computed(() => {
   return data.value?.buildings ?? [];
@@ -133,7 +69,6 @@ useSeoMeta({
           size="sm"
           :disabled="showPending"
           :sibling-count="4"
-          @update:page="changePage"
         />
       </div>
 

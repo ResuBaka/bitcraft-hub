@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { refDebounced } from "@vueuse/core";
+import { iconAssetUrlName } from "~/composables/iconAssetName";
 import { rarityToTextClass, tierToBorderClass, tierToTextClass } from "~/utils";
 import type { AllInventoryStatsResponse } from "~/types/AllInventoryStatsResponse";
 import type { MetaResponse } from "~/types/MetaResponse";
 import type { ItemExpended } from "~/types/ItemExpended";
 
-const page = ref(1);
+const itemsPage = ref(1);
+const cargoPage = ref(1);
+const pageSize = 20;
 
 const tag = ref<string | null>(null);
 const tier = ref<number | null>(null);
 const rarity = ref<string | null>(null);
-const search = ref<string | null>("");
-const debouncedSearch = ref<string | null>("");
-
 const route = useRoute();
-
-debouncedSearch.value = (route.query.search as string) ?? "";
-search.value = debouncedSearch.value;
+const search = ref(typeof route.query.search === "string" ? route.query.search : "");
+const debouncedSearch = refDebounced(search, 150);
+const searchText = computed(() => debouncedSearch.value?.trim().toLocaleLowerCase() ?? "");
 tag.value = (route.query.tag as string) ?? null;
 rarity.value = (route.query.rarity as string) ?? null;
 
@@ -30,6 +30,7 @@ const { data, pending } = await useLazyFetchMsPack<AllInventoryStatsResponse>(
   },
   {
     timeout: 15000,
+    server: false,
   },
 );
 
@@ -85,6 +86,7 @@ const items = computed(() => {
     return [];
   }
   const filtered = Object.values(data.value.items).filter((value) => {
+    if (!value[1]) return false;
     if (tag.value && value[1]?.tag !== tag.value) {
       return false;
     }
@@ -97,7 +99,7 @@ const items = computed(() => {
       return false;
     }
 
-    if (!debouncedSearch.value) {
+    if (!searchText.value) {
       return true;
     }
 
@@ -105,18 +107,18 @@ const items = computed(() => {
       return false;
     }
 
-    if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+    if (value[1].name.toLocaleLowerCase().includes(searchText.value)) {
       return true;
     }
 
-    if (value[1].rarity.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+    if (value[1].rarity.toLocaleLowerCase().includes(searchText.value)) {
       return true;
     }
 
     return false;
   });
 
-  if (!debouncedSearch.value && !tag.value && !tier.value && !rarity.value) {
+  if (!searchText.value && !tag.value && !tier.value && !rarity.value) {
     return filtered.slice(0, 19);
   }
 
@@ -128,6 +130,7 @@ const cargo = computed(() => {
     return [];
   }
   const filtered = Object.values(data.value.cargo).filter((value) => {
+    if (!value[1]) return false;
     if (tag.value && value[1]?.tag !== tag.value) {
       return false;
     }
@@ -140,7 +143,7 @@ const cargo = computed(() => {
       return false;
     }
 
-    if (!debouncedSearch.value) {
+    if (!searchText.value) {
       return true;
     }
 
@@ -148,18 +151,18 @@ const cargo = computed(() => {
       return false;
     }
 
-    if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+    if (value[1].name.toLocaleLowerCase().includes(searchText.value)) {
       return true;
     }
 
-    if (value[1].rarity.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+    if (value[1].rarity.toLocaleLowerCase().includes(searchText.value)) {
       return true;
     }
 
     return false;
   });
 
-  if (!debouncedSearch.value && !tag.value && !tier.value && !rarity.value) {
+  if (!searchText.value && !tag.value && !tier.value && !rarity.value) {
     return filtered.slice(0, 19);
   }
 
@@ -174,15 +177,45 @@ const regionsByQuantity = (regions: { [key: number]: bigint }) =>
   );
 
 const imageErrors = ref(new Set<number>());
+const expandedRegions = ref(new Set<string>());
+function toggleRegions(key: string, event: Event) {
+  if ((event.currentTarget as HTMLDetailsElement).open) expandedRegions.value.add(key);
+  else expandedRegions.value.delete(key);
+}
 
-const iconForItem = (item: ItemExpended) => {
+const iconForItem = (item: ItemExpended | null) => {
   if (!item?.icon_asset_name) {
     return null;
   }
 
-  const icon = iconAssetUrlNameRandom(item.icon_asset_name);
+  const icon = iconAssetUrlName(item.icon_asset_name);
   return icon.show ? icon.url : null;
 };
+const currentItems = computed(() =>
+  items.value.slice((itemsPage.value - 1) * pageSize, itemsPage.value * pageSize)
+    .map((item) => ({ item, icon: iconForItem(item[1]) })),
+);
+const currentCargo = computed(() =>
+  cargo.value.slice((cargoPage.value - 1) * pageSize, cargoPage.value * pageSize)
+    .map((item) => ({ item, icon: iconForItem(item[1]) })),
+);
+watch([searchText, tag, tier, rarity], () => {
+  itemsPage.value = 1;
+  cargoPage.value = 1;
+});
+watch([currentItems, currentCargo], () => {
+  const ids = new Set([...currentItems.value, ...currentCargo.value].map(({ item }) => item[1]?.id));
+  for (const id of imageErrors.value) {
+    if (!ids.has(id)) imageErrors.value.delete(id);
+  }
+  const keys = new Set([
+    ...currentItems.value.map(({ item }) => `item:${item[1]?.id}`),
+    ...currentCargo.value.map(({ item }) => `cargo:${item[1]?.id}`),
+  ]);
+  for (const key of expandedRegions.value) {
+    if (!keys.has(key)) expandedRegions.value.delete(key);
+  }
+});
 
 const onImageError = (id: number) => {
   imageErrors.value.add(id);
@@ -230,7 +263,7 @@ useSeoMeta({
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <UInput
-            v-model="debouncedSearch"
+            v-model="search"
             icon="i-lucide-search"
             placeholder="Search items or rarity"
             variant="outline"
@@ -253,12 +286,12 @@ useSeoMeta({
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Items</h2>
             <span class="text-sm text-gray-500 dark:text-gray-400">
-              Showing {{ numberFormat.format(items.length) }}
+              Showing {{ numberFormat.format(currentItems.length) }} of {{ numberFormat.format(items.length) }}
             </span>
           </div>
           <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <UCard
-              v-for="item in items"
+              v-for="{ item, icon } in currentItems"
               :key="`item:${item[1].id}`"
               :class="['border border-l-4', tierToBorderClass(item[1].tier)]"
             >
@@ -280,11 +313,11 @@ useSeoMeta({
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <picture v-if="iconForItem(item[1]) && !hasImageError(item[1].id)">
-                    <source :srcset="`${iconForItem(item[1])}.jxl`" type="image/jxl" />
-                    <source :srcset="`${iconForItem(item[1])}.avif`" type="image/avif" />
+                  <picture v-if="icon && !hasImageError(item[1].id)">
+                    <source :srcset="`${icon}.jxl`" type="image/jxl" />
+                    <source :srcset="`${icon}.avif`" type="image/avif" />
                     <img
-                      :src="`${iconForItem(item[1])}.webp`"
+                      :src="`${icon}.webp`"
                       :alt="item[1].name"
                       class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
                       loading="lazy"
@@ -301,32 +334,35 @@ useSeoMeta({
                 >
                   {{ item[1].rarity }}
                 </div>
-                <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
-                  <summary class="cursor-pointer">By region</summary>
-                  <div
+                 <details class="mt-2 text-xs text-gray-600 dark:text-gray-300" @toggle="toggleRegions(`item:${item[1].id}`, $event)">
+                   <summary class="cursor-pointer">By region</summary>
+                   <template v-if="expandedRegions.has(`item:${item[1].id}`)">
+                   <div
                     v-for="[region, quantity] in regionsByQuantity(item[2])"
                     :key="region"
                     class="flex justify-between gap-3"
                   >
                     <span>Region <bitcraft-region :region="Number(region)" /></span>
                     <span>{{ numberFormat.format(quantity) }}</span>
-                  </div>
+                   </div>
+                   </template>
                 </details>
               </div>
             </UCard>
           </div>
+          <UPagination v-if="items.length > pageSize" v-model:page="itemsPage" :total="items.length" :items-per-page="pageSize" class="self-center" />
 
           <div class="h-px bg-gray-200 dark:bg-gray-800"></div>
 
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cargo</h2>
             <span class="text-sm text-gray-500 dark:text-gray-400">
-              Showing {{ numberFormat.format(cargo.length) }}
+              Showing {{ numberFormat.format(currentCargo.length) }} of {{ numberFormat.format(cargo.length) }}
             </span>
           </div>
           <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <UCard
-              v-for="item in cargo"
+              v-for="{ item, icon } in currentCargo"
               :key="`cargo:${item[1].id}`"
               :class="['border border-l-4', tierToBorderClass(item[1].tier)]"
             >
@@ -348,11 +384,11 @@ useSeoMeta({
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <picture v-if="iconForItem(item[1]) && !hasImageError(item[1].id)">
-                    <source :srcset="`${iconForItem(item[1])}.jxl`" type="image/jxl" />
-                    <source :srcset="`${iconForItem(item[1])}.avif`" type="image/avif" />
+                  <picture v-if="icon && !hasImageError(item[1].id)">
+                    <source :srcset="`${icon}.jxl`" type="image/jxl" />
+                    <source :srcset="`${icon}.avif`" type="image/avif" />
                     <img
-                      :src="`${iconForItem(item[1])}.webp`"
+                      :src="`${icon}.webp`"
                       :alt="item[1].name"
                       class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
                       loading="lazy"
@@ -369,20 +405,23 @@ useSeoMeta({
                 >
                   {{ item[1].rarity }}
                 </div>
-                <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
-                  <summary class="cursor-pointer">By region</summary>
-                  <div
+                 <details class="mt-2 text-xs text-gray-600 dark:text-gray-300" @toggle="toggleRegions(`cargo:${item[1].id}`, $event)">
+                   <summary class="cursor-pointer">By region</summary>
+                   <template v-if="expandedRegions.has(`cargo:${item[1].id}`)">
+                   <div
                     v-for="[region, quantity] in regionsByQuantity(item[2])"
                     :key="region"
                     class="flex justify-between gap-3"
                   >
                     <span>Region <bitcraft-region :region="Number(region)" /></span>
                     <span>{{ numberFormat.format(quantity) }}</span>
-                  </div>
+                   </div>
+                   </template>
                 </details>
               </div>
             </UCard>
           </div>
+          <UPagination v-if="cargo.length > pageSize" v-model:page="cargoPage" :total="cargo.length" :items-per-page="pageSize" class="self-center" />
         </div>
       </template>
       <template v-else>

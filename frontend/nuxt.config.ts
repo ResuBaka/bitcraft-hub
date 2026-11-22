@@ -1,7 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
 export default defineNuxtConfig({
-  devtools: { enabled: true },
+  devtools: { enabled: process.env.NUXT_DEVTOOLS_ENABLED === "true" },
+  experimental: {
+    defaults: {
+      // Large tables and catalogs shouldn't queue an idle task for every link.
+      nuxtLink: { prefetchOn: { visibility: false, interaction: true } },
+    },
+  },
   devServer: { host: 'localhost' },
   nitro: {
     preset: "bun"

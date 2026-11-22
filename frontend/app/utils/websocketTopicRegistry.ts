@@ -39,6 +39,10 @@ export class WebsocketTopicRegistry {
     const released = removed.filter((topic) => !this.isUsed(topic));
     return { released, hasOwner: this.owners.has(owner) };
   }
+
+  removeOwner(owner: string): string[] {
+    return this.remove(owner, [...(this.owners.get(owner) ?? [])]).released;
+  }
 }
 
 /** Older servers report scoped IDs using Rust's Option debug format. */

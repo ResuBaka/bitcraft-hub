@@ -44,6 +44,15 @@ describe("websocket topic ownership", () => {
     expect(registry.remove("ack", [])).toEqual({ released: [], hasOwner: false });
   });
 
+  test("disposes all registered topics even before a reactive change is reconciled", () => {
+    const registry = new WebsocketTopicRegistry();
+    registry.add("old-page", ["claim.1", "shared"]);
+    registry.add("new-page", ["claim.2", "shared"]);
+    expect(registry.removeOwner("old-page")).toEqual(["claim.1"]);
+    expect(registry.removeOwner("new-page")).toEqual(["claim.2", "shared"]);
+    expect(registry.removeOwner("old-page")).toEqual([]);
+  });
+
   test("recognizes canonical and legacy subscription acknowledgements", () => {
     expect(hasSubscribedTopic(["player_crafting.42"], "player_crafting", "42")).toBe(true);
     expect(hasSubscribedTopic(["player_crafting.Some(42)"], "player_crafting", "42")).toBe(true);

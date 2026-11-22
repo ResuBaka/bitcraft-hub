@@ -181,13 +181,17 @@ function timeAgo(date: number) {
   return "just now";
 }
 
-const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(() => {
-  return `/api/bitcraft/itemsAndCargo/all`;
-});
-
-const { data: PlayerUsernameStateFetch } = useFetchMsPack<PlayerUsernameStateResponse>(() => {
-  return `/api/bitcraft/players/all`;
-});
+const historyKey = `inventory-history-labels:${useId()}`;
+const { data: ItemAndCargoFetch } = useActiveFetchMsPack<ItemsAndCargollResponse>(
+  `${historyKey}:items`,
+  () => props.items.some((row) => row.old_item_id != null || row.new_item_id != null),
+  () => "/api/bitcraft/itemsAndCargo/all",
+);
+const { data: PlayerUsernameStateFetch } = useActiveFetchMsPack<PlayerUsernameStateResponse>(
+  `${historyKey}:players`,
+  () => props.items.some((row) => row.user_id != null),
+  () => "/api/bitcraft/players/all",
+);
 
 const columns = [
   { id: "user", header: "Player" },

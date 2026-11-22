@@ -1,28 +1,25 @@
 <script setup lang="ts">
-import { equipmentPlayerSection, getFavoritePlayerSections, insertPlayerSectionFavorite, movePlayerSectionFavorite, togglePlayerSectionFavorite } from "~/utils/playerSections";
+import {
+  getFavoritePlayerSections,
+  insertPlayerSectionFavorite,
+  movePlayerSectionFavorite,
+  playerSections,
+  togglePlayerSectionFavorite,
+  type PlayerSection,
+} from "~/utils/playerSections";
 
-const selected = defineModel<string>({ required: true });
-defineProps<{ collapsed?: boolean }>();
+const props = defineProps<{ playerId: string; selected: PlayerSection["value"]; collapsed?: boolean }>();
 const emit = defineEmits<{ select: [] }>();
+const route = useRoute();
 const config = useConfigStore();
 const dragged = ref<string | null>(null);
 const dropPreview = ref<{ target: string; position: "before" | "after" } | null>(null);
-const sections = [
-  { value: "overview", label: "Overview", icon: "i-lucide-user" },
-  equipmentPlayerSection,
-  { value: "deployables", label: "Deployables", icon: "i-lucide-box" },
-  { value: "crafting", label: "Crafting projects", icon: "i-lucide-hammer" },
-  { value: "xp_history", label: "XP history", icon: "i-lucide-chart-no-axes-combined" },
-  { value: "skills", label: "Skills", icon: "i-lucide-award" },
-  { value: "traveler_tasks", label: "Traveler tasks", icon: "i-lucide-list-checks" },
-  { value: "inventories", label: "Inventories", icon: "i-lucide-backpack" },
-  { value: "houses", label: "Accessible houses", icon: "i-lucide-house" },
-];
-const favorites = computed(() => getFavoritePlayerSections(sections, config.favorite_player_sections));
-function select(value: string) {
-  selected.value = value;
-  emit("select");
-}
+const favorites = computed(() => getFavoritePlayerSections(playerSections, config.favorite_player_sections));
+const sectionTo = (section: PlayerSection) => ({
+  name: "players-id",
+  params: { id: props.playerId, section: section.slug },
+  query: route.query,
+});
 function toggle(value: string) {
   config.favorite_player_sections = togglePlayerSectionFavorite(config.favorite_player_sections, value);
 }
@@ -87,14 +84,15 @@ function endTouch(event: TouchEvent) {
         <UButton v-for="section in favorites" :key="`favorite-${section.value}`"
           :icon="section.icon" :aria-label="`Favorite: ${section.label}`" :title="`Favorite: ${section.label}`"
           :variant="selected === section.value ? 'solid' : 'ghost'" color="neutral"
-          class="mx-auto" @click="select(section.value)" />
+          :aria-current="selected === section.value ? 'page' : undefined"
+          class="mx-auto" :to="sectionTo(section)" @click="emit('select')" />
         <div class="my-1 border-t border-gray-200 dark:border-gray-800" />
       </template>
-      <UButton v-for="section in sections" :key="section.value"
+      <UButton v-for="section in playerSections" :key="section.value"
         :icon="section.icon" :aria-label="section.label" :title="section.label"
         :aria-current="selected === section.value ? 'page' : undefined"
         :variant="selected === section.value ? 'solid' : 'ghost'" color="neutral"
-        class="mx-auto" @click="select(section.value)" />
+        class="mx-auto" :to="sectionTo(section)" @click="emit('select')" />
     </template>
     <template v-else>
     <template v-if="favorites.length">
@@ -117,16 +115,19 @@ function endTouch(event: TouchEvent) {
           <UIcon name="i-lucide-grip-vertical" class="size-4" />
         </button>
         <UButton class="min-w-0 flex-1" :icon="section.icon" :label="section.label"
-          :variant="selected === section.value ? 'solid' : 'soft'" color="neutral" @click="select(section.value)" />
+          :variant="selected === section.value ? 'solid' : 'soft'" color="neutral"
+          :aria-current="selected === section.value ? 'page' : undefined"
+          :to="sectionTo(section)" @click="emit('select')" />
         <UButton icon="i-lucide-star" color="warning" variant="soft" size="xs"
           :aria-label="`Unpin ${section.label}`" @click="toggle(section.value)" />
       </div>
     </template>
     <p class="px-2 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">All sections</p>
-    <div v-for="section in sections" :key="section.value" class="flex items-center gap-1">
+    <div v-for="section in playerSections" :key="section.value" class="flex items-center gap-1">
       <UButton class="min-w-0 flex-1" :icon="section.icon" :label="section.label"
         :variant="selected === section.value ? 'solid' : 'soft'" color="neutral"
-        :aria-current="selected === section.value ? 'page' : undefined" @click="select(section.value)" />
+        :aria-current="selected === section.value ? 'page' : undefined"
+        :to="sectionTo(section)" @click="emit('select')" />
       <UButton icon="i-lucide-star"
         :color="config.favorite_player_sections.includes(section.value) ? 'warning' : 'neutral'"
         :variant="config.favorite_player_sections.includes(section.value) ? 'soft' : 'ghost'"

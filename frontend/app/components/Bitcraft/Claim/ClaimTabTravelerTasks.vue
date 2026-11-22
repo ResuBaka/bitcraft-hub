@@ -37,6 +37,8 @@ defineProps<{
                 <img
                   :src="`${getTravelerItemIcon(shownItem)}.webp`"
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   class="h-10 w-10 rounded-md object-contain"
                 />
               </picture>
@@ -78,6 +80,7 @@ defineProps<{
             v-for="playerId of row.original.players"
             :key="playerId"
             :to="{ name: 'players-id', params: { id: playerId } }"
+            no-prefetch
             class="text-sm font-semibold text-gray-900 hover:underline dark:text-gray-100"
           >
             <BitcraftPlayerName :player-id="playerId">{{ claimMembers[playerId.toString()]?.user_name }}</BitcraftPlayerName>

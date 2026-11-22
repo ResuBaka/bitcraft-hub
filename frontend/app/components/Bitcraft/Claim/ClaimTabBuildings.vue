@@ -35,12 +35,15 @@ const emit = defineEmits<{
         v-for="building in buildings"
         :key="building.entity_id"
         :to="{ name: 'buildings-id', params: { id: building.entity_id.toString() } }"
+        no-prefetch
         class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-semibold text-gray-900 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-100 dark:hover:bg-gray-900"
       >
         <img
           v-if="iconDomain && getBuildingIcon(building.building_description_id)"
           :src="`${iconDomain}/${getBuildingIcon(building.building_description_id)}.webp`"
           alt=""
+          loading="lazy"
+          decoding="async"
           class="h-10 w-10 rounded-md object-cover"
         />
         <span>{{ building.building_name }}</span>

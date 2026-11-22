@@ -1,68 +1,28 @@
 <script setup lang="ts">
-import { watchDebounced, watchThrottled } from "@vueuse/shared";
-import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { iconAssetUrlName } from "~/composables/iconAssetName";
 import type { ItemsAndCargoResponse } from "~/types/ItemsAndCargoResponse";
 import type { MetaResponse } from "~/types/MetaResponse";
 import { rarityToTextClass, tierToBorderClass, tierToTextClass, useDelayedPending } from "~/utils";
 
-const page = ref(1);
 const perPage = 20;
-
-const tag = ref<string | null>(null);
-const tier = ref<number | null>(null);
-const search = ref<string | null>("");
-const debouncedSearch = ref<string | null>("");
-
-const route = useRoute();
-const router = useRouter();
-
-debouncedSearch.value = (route.query.search as string) ?? "";
-search.value = debouncedSearch.value;
-tag.value = (route.query.tag as string) ?? null;
-
-if (route.query.tier) {
-  tier.value = parseInt(route.query.tier);
-}
-if (route.query.page) {
-  page.value = parseInt(route.query.page);
-}
-
-const { data, pending, refresh } = await useLazyFetchMsPack<ItemsAndCargoResponse>(
-  () => {
-    return `/api/bitcraft/itemsAndCargo`;
-  },
+const { page, search, searchTerm, filter } = useCatalogControls();
+const tag = filter("tag", (value) => value ?? null, (value) => value ?? undefined);
+const tier = filter(
+  "tier",
+  (value) => value && Number.isSafeInteger(Number(value)) ? Number(value) : null,
+  (value) => value == null ? undefined : String(value),
+);
+const { data, pending } = await useLazyFetchMsPack<ItemsAndCargoResponse>(
+  "/api/bitcraft/itemsAndCargo",
   {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-
-      if (search.value) {
-        options.query.search = search.value;
-      }
-
-      if (page.value) {
-        options.query.page = page.value;
-      }
-
-      if (tag.value) {
-        options.query.tag = tag.value;
-      }
-
-      if (tier.value) {
-        options.query.tier = tier.value;
-      }
-
-      if (perPage) {
-        options.query.per_page = perPage;
-      }
-
-      if (Object.keys(options.query).length > 2) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page <= 1) {
-        router.push({});
-      }
-    },
+    key: "catalog:items",
+    query: computed(() => ({
+      page: page.value,
+      per_page: perPage,
+      search: searchTerm.value,
+      tag: tag.value ?? undefined,
+      tier: tier.value ?? undefined,
+    })),
   },
 );
 
@@ -90,48 +50,34 @@ const tierOptions = computed(() => {
   ];
 });
 
-const imageErrors = ref(new Set<number>());
-const itemImageElements = new Map<number, HTMLImageElement>();
-const itemIconUrls = useState<Record<string, string | null>>("items-page-icon-urls", () => ({}));
-
-const itemIconCacheKey = (item: ItemsAndCargoResponse["items"][number]) => {
-  return `${item.id}:${item.icon_asset_name ?? ""}`;
-};
+const imageErrors = ref(new Set<string>());
+const itemImageElements = new Map<string, HTMLImageElement>();
+onScopeDispose(() => itemImageElements.clear());
 
 const iconForItem = (item: ItemsAndCargoResponse["items"][number]) => {
   if (!item.icon_asset_name) {
     return null;
   }
 
-  const cacheKey = itemIconCacheKey(item);
-  const cachedIconUrl = itemIconUrls.value[cacheKey];
-
-  if (cachedIconUrl !== undefined) {
-    return cachedIconUrl;
-  }
-
-  const icon = iconAssetUrlNameRandom(item.icon_asset_name);
-  const iconUrl = icon.show ? icon.url : null;
-
-  itemIconUrls.value[cacheKey] = iconUrl;
-
-  return iconUrl;
+  const icon = iconAssetUrlName(item.icon_asset_name);
+  return icon.show ? icon.url : null;
 };
 
-const onImageError = (id: number) => {
+const onImageError = (id: string) => {
   imageErrors.value.add(id);
 };
 
-const hasImageError = (id: number) => imageErrors.value.has(id);
+const hasImageError = (id: string) => imageErrors.value.has(id);
 
 const items = computed(() => {
   return (data.value?.items ?? []).map((item) => ({
     ...item,
+    key: `${item.type}:${item.id}`,
     iconUrl: iconForItem(item),
   }));
 });
 
-const syncImageErrorState = (id: number) => {
+const syncImageErrorState = (id: string) => {
   const imageElement = itemImageElements.get(id);
 
   if (!imageElement?.complete) {
@@ -143,7 +89,7 @@ const syncImageErrorState = (id: number) => {
   }
 };
 
-const setItemImageElement = (id: number, element: Element | null) => {
+const setItemImageElement = (id: string, element: Element | null) => {
   if (element instanceof HTMLImageElement) {
     itemImageElements.set(id, element);
     syncImageErrorState(id);
@@ -161,14 +107,14 @@ const syncVisibleImageErrors = async () => {
   await nextTick();
 
   for (const item of items.value) {
-    if (item.iconUrl && !hasImageError(item.id)) {
-      syncImageErrorState(item.id);
+    if (item.iconUrl && !hasImageError(item.key)) {
+      syncImageErrorState(item.key);
     }
   }
 };
 
 const isFiltering = computed(() => {
-  return Boolean(debouncedSearch.value || tag.value || tier.value);
+  return Boolean(searchTerm.value || tag.value || tier.value);
 });
 
 const emptyTitle = computed(() => {
@@ -181,42 +127,13 @@ const emptyDescription = computed(() => {
     : "Try changing your search criteria.";
 });
 
-const changePage = (value: number) => {
-  page.value = value;
-  router.push({
-    query: {
-      ...route.query,
-      page: value,
-    },
-  });
-  refresh();
-};
-
-watchDebounced(
-  debouncedSearch,
-  () => {
-    search.value = debouncedSearch.value;
-
-    refresh();
-  },
-  { debounce: 100, maxWait: 200 },
-);
-
-watchThrottled(
-  () => [tag.value, tier.value, search.value],
-  (value, oldValue) => {
-    if (value[1] !== oldValue[1] || value[2] !== oldValue[2] || value[3] !== oldValue[3]) {
-      page.value = 1;
-    }
-
-    refresh();
-  },
-  { throttle: 50 },
-);
-
 watch(
   items,
-  () => {
+  (rows) => {
+    const keys = new Set(rows.map((item) => item.key));
+    for (const key of imageErrors.value) {
+      if (!keys.has(key)) imageErrors.value.delete(key);
+    }
     syncVisibleImageErrors();
   },
   { flush: "post" },
@@ -227,7 +144,7 @@ onMounted(() => {
 });
 
 useSeoMeta({
-  title: () => `Items ${data.value?.total ?? 0} ${search.value ?? ""}`,
+  title: () => `Items ${data.value?.total ?? 0} ${searchTerm.value ?? ""}`,
   description: "List of all the Items in the game",
 });
 </script>
@@ -260,7 +177,7 @@ useSeoMeta({
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <UInput
-            v-model="debouncedSearch"
+            v-model="search"
             icon="i-lucide-search"
             placeholder="Search items"
             variant="outline"
@@ -276,7 +193,6 @@ useSeoMeta({
           :items-per-page="perPage"
           size="sm"
           :disabled="showPending"
-          @update:page="changePage"
         />
       </div>
 
@@ -287,7 +203,7 @@ useSeoMeta({
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <UCard
               v-for="item in items"
-              :key="item.id"
+              :key="item.key"
               :ui="{ body: 'p-2' }"
               :class="['border-l-4', tierToBorderClass(item.tier)]"
             >
@@ -299,16 +215,16 @@ useSeoMeta({
                   >
                     {{ item.name }}
                   </NuxtLink>
-                  <picture v-if="item.iconUrl && !hasImageError(item.id)">
+                  <picture v-if="item.iconUrl && !hasImageError(item.key)">
                     <source :srcset="`${item.iconUrl}.jxl`" type="image/jxl" />
                     <source :srcset="`${item.iconUrl}.avif`" type="image/avif" />
                     <img
-                      :ref="(element) => setItemImageElement(item.id, element as Element | null)"
+                      :ref="(element) => setItemImageElement(item.key, element as Element | null)"
                       :src="`${item.iconUrl}.webp`"
                       :alt="item.name"
                       class="h-auto max-h-18 w-auto max-w-full rounded border border-gray-200 object-contain dark:border-gray-800"
                       loading="lazy"
-                      @error="onImageError(item.id)"
+                      @error="onImageError(item.key)"
                     />
                   </picture>
                 </div>

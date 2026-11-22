@@ -1,5 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { getFavoritePlayerSections, insertPlayerSectionFavorite, movePlayerSectionFavorite, togglePlayerSectionFavorite } from "../app/utils/playerSections";
+import { getFavoritePlayerSections, getPlayerSection, insertPlayerSectionFavorite, movePlayerSectionFavorite, playerSections, togglePlayerSectionFavorite } from "../app/utils/playerSections";
+
+describe("player section routes", () => {
+  test("uses the base player URL for overview and resolves each unique section slug", () => {
+    expect(getPlayerSection(undefined)?.value).toBe("overview");
+    expect(getPlayerSection("")?.value).toBe("overview");
+    expect(getPlayerSection("xp-history")?.value).toBe("xp_history");
+    expect(getPlayerSection("traveler-tasks")?.value).toBe("traveler_tasks");
+    for (const section of playerSections) {
+      expect(getPlayerSection(section.slug)).toBe(section);
+    }
+  });
+
+  test("rejects unknown and multi-segment section params", () => {
+    expect(getPlayerSection("typo")).toBeUndefined();
+    expect(getPlayerSection(["stats", "other"])).toBeUndefined();
+  });
+});
 
 describe("player section favorites", () => {
   test("pins and unpins sections without changing the original list", () => {

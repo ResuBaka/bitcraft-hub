@@ -1,33 +1,3 @@
-<script setup lang="ts">
-import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
-
-const page = ref(1);
-const perPage = 30;
-
-const search = ref<string | null>("");
-const route = useRoute();
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
-}
-
-const { data: claimFetch } = useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
-  return `/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
-});
-
-const claim = computed(() => {
-  return claimFetch.value ?? undefined;
-});
-const buildings = computed(() => {
-  return buidlingsFetch.value?.buildings ?? [];
-});
-
-const length = computed(() => {
-  return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
-});
-</script>
-
 <template>
   <!--  <v-container fluid>-->
   <!--    <v-card v-if="claim !== undefined">-->

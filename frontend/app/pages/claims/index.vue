@@ -1,100 +1,27 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 import { useDelayedPending } from "~/utils";
 import type { ClaimResponse } from "~/types/ClaimResponse";
 
-const page = ref(1);
 const perPage = 20;
-
-const search = ref<string | null>("");
-
-const route = useRoute();
-const router = useRouter();
-
-const showEmptySupplies = ref(false);
-
-if (route.query.search) {
-  search.value = route.query.search as string;
-}
-
-if (route.query.page) {
-  page.value = parseInt(route.query.page);
-}
-
-const {
-  data: claims,
-  pending,
-  refresh,
-} = await useLazyFetchMsPack<ClaimResponse>(
-  () => {
-    return `/api/bitcraft/claims`;
-  },
+const { page, search, searchTerm, filter } = useCatalogControls();
+const showEmptySupplies = filter("ses", (value) => value === "true", (value) => value ? "true" : undefined);
+const { data: claims, pending } = await useLazyFetchMsPack<ClaimResponse>(
+  "/api/bitcraft/claims",
   {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-
-      if (search.value) {
-        options.query.search = search.value;
-      }
-
-      if (page.value) {
-        options.query.page = page.value;
-      }
-
-      if (perPage) {
-        options.query.per_page = perPage;
-      }
-
-      if (showEmptySupplies.value) {
-        options.query.ses = showEmptySupplies.value.toString();
-      }
-
-      if (Object.keys(options.query).length > 2) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page <= 1) {
-        router.push({});
-      }
-    },
+    key: "catalog:claims",
+    query: computed(() => ({
+      page: page.value,
+      per_page: perPage,
+      search: searchTerm.value,
+      ses: showEmptySupplies.value || undefined,
+    })),
   },
 );
 
 const showPending = useDelayedPending(pending, 150);
 
-const changePage = (value: number) => {
-  page.value = value;
-  router.push({
-    query: {
-      ...route.query,
-      page: value,
-    },
-  });
-  refresh();
-};
-
-watchThrottled(
-  () => [search.value, showEmptySupplies.value],
-  (value, oldValue) => {
-    if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
-      page.value = 1;
-    }
-
-    refresh();
-  },
-  { throttle: 50 },
-);
-
 const currentClaims = computed(() => {
   return claims.value?.claims ?? [];
-});
-
-const length = computed(() => {
-  if (claims.value?.total) {
-    return Math.ceil(claims.value?.total / perPage);
-  }
-
-  return 0;
 });
 
 useSeoMeta({
@@ -130,7 +57,6 @@ useSeoMeta({
             :items-per-page="perPage"
             :disabled="showPending"
             :sibling-count="4"
-            @update:page="changePage"
           />
         </div>
         <UProgress v-if="showPending" animation="carousel" />

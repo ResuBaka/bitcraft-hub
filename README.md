@@ -34,6 +34,9 @@ Start the development server on `http://localhost:3000`:
 bun run dev
 ```
 
+Nuxt DevTools are off by default to keep local browser profiling representative.
+Run `NUXT_DEVTOOLS_ENABLED=true bun run dev` if you need the DevTools overlay.
+
 ### Production
 
 Build the application for production:
