@@ -60,7 +60,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                     continue;
                                 }
                                 if let Err(error) = super::snapshot::reconcile(
-                                    &global_app_state.conn, database_name, &on_conflict, batch_size,
+                                    &global_app_state.conn, database_name, batch_size,
                                     crate::websocket::initial_batches::rows(data, batches),
                                 ).await {
                                     tracing::error!(%error, region = database_name, "Could not reconcile initial vault collectibles");

@@ -15,15 +15,7 @@ fn estimated_bytes(row: &Model) -> usize {
 }
 
 fn next_write(rows: &[Model], limit: NonZeroUsize) -> (usize, usize) {
-    let mut bytes = 0usize;
-    for (i, row) in rows.iter().enumerate() {
-        let next = bytes.saturating_add(estimated_bytes(row));
-        if i != 0 && next > limit.get() {
-            return (i, bytes);
-        }
-        bytes = next;
-    }
-    (rows.len(), bytes)
+    crate::websocket::snapshot_write::write_prefix(rows, limit, estimated_bytes)
 }
 
 const UPSERT: &str = r#"

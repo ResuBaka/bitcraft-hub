@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::websocket::snapshot_write::{self, Writer};
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages, WorkerReceiveMetrics};
@@ -51,7 +52,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                     &global_app_state.conn,
                                     ::entity::traveler_task_state::Column::Region,
                                     database_name,
-                                    &on_conflict,
+                                    Writer::Fixed(snapshot_write::traveler_tasks),
                                     batch_size,
                                     incoming,
                                     |model| model.entity_id,

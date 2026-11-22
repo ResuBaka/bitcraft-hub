@@ -54,7 +54,7 @@ pub(crate) fn start_worker_deployable_state(
                                     &global_app_state.conn,
                                     deployable_state::Column::Region,
                                     database_name,
-                                    &on_conflict,
+                                    crate::websocket::snapshot_write::deployable_writer(),
                                     batch_size,
                                     incoming,
                                     |model| model.entity_id,

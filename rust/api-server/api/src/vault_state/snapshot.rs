@@ -1,15 +1,15 @@
 //! Each snapshot row is a complete vault, but vaults need not arrive in key order.
 use super::bitcraft::collectible_keys_filter;
 use crate::websocket::initial_sync::bigint_keys_filter;
+use crate::websocket::snapshot_write::vault_collectibles;
 use entity::{
     shared::Region,
     vault_state_collectibles::{Column as C, Entity as E, Model},
 };
 use futures::{Stream, TryStreamExt};
 use game_module::module_bindings::{VaultCollectible, VaultState};
-use migration::OnConflict;
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -19,7 +19,6 @@ const COLLECTIBLES: usize = 32_768;
 struct Comparison<'a> {
     db: &'a DatabaseConnection,
     region: Region,
-    conflict: &'a OnConflict,
     write_limit: usize,
     // Only query vaults known to exist in this region. New/moved keys still upsert.
     fetch: Vec<i64>,
@@ -88,25 +87,21 @@ impl Comparison<'_> {
         let mut changed = self
             .incoming
             .drain()
-            .map(|((entity_id, id), (activated, count))| {
-                Model {
-                    entity_id,
-                    id,
-                    activated,
-                    count,
-                    region: self.region,
-                }
-                .into_active_model()
+            .map(|((entity_id, id), (activated, count))| Model {
+                entity_id,
+                id,
+                activated,
+                count,
+                region: self.region,
             });
+        let mut batch = Vec::new();
         loop {
-            let batch: Vec<_> = changed.by_ref().take(self.write_limit).collect();
+            batch.extend(changed.by_ref().take(self.write_limit));
             if batch.is_empty() {
                 break;
             }
-            E::insert_many(batch)
-                .on_conflict(self.conflict.clone())
-                .exec_without_returning(self.db)
-                .await?;
+            self.db.execute_raw(vault_collectibles(&batch)).await?;
+            batch.clear();
         }
         Ok(())
     }
@@ -115,7 +110,6 @@ impl Comparison<'_> {
 pub(super) async fn reconcile(
     db: &DatabaseConnection,
     region: Region,
-    conflict: &OnConflict,
     write_limit: usize,
     incoming: impl Stream<Item = Result<VaultState, DbErr>>,
 ) -> Result<(), DbErr> {
@@ -133,7 +127,6 @@ pub(super) async fn reconcile(
     let mut batch = Comparison {
         db,
         region,
-        conflict,
         write_limit: write_limit.clamp(1, 3000),
         fetch: Vec::new(),
         incoming: HashMap::new(),

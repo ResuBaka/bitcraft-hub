@@ -1,4 +1,5 @@
 //! Bounded database comparisons for complete regional and global snapshots.
+use super::snapshot_write::Writer;
 use entity::shared::Region;
 use futures::{Stream, TryStreamExt, stream};
 use migration::OnConflict;
@@ -64,7 +65,7 @@ where
     reconcile_scoped::<E, _, _, _, _, _>(
         conn,
         Condition::all(),
-        on_conflict,
+        on_conflict.into(),
         batch_size,
         stream::iter(incoming.map(Ok)),
         key,
@@ -100,11 +101,11 @@ pub(crate) async fn flush_before_snapshot<E: EntityTrait, K>(
 /// An error aborts reconciliation before stale rows are deleted. `incoming` must
 /// represent a complete region, not an individual page of a subscription response.
 #[allow(clippy::too_many_arguments)]
-pub(crate) async fn reconcile<E, K, I, Key, Filter, Observe>(
+pub(crate) async fn reconcile<'a, E, K, I, Key, Filter, Observe>(
     conn: &DatabaseConnection,
     region_column: E::Column,
     region: Region,
-    on_conflict: &OnConflict,
+    writer: impl Into<Writer<'a, E>>,
     batch_size: usize,
     incoming: I,
     key: Key,
@@ -123,7 +124,7 @@ where
     reconcile_scoped::<E, _, _, _, _, _>(
         conn,
         Condition::all().add(region_column.eq(region)),
-        on_conflict,
+        writer.into(),
         batch_size,
         stream::iter(incoming.map(Ok)),
         key,
@@ -160,7 +161,7 @@ where
     reconcile_scoped::<E, _, _, _, _, _>(
         conn,
         Condition::all().add(region_column.eq(region)),
-        on_conflict,
+        on_conflict.into(),
         batch_size,
         incoming,
         key,
@@ -174,7 +175,7 @@ where
 async fn reconcile_scoped<E, K, I, Key, Filter, Observe>(
     conn: &DatabaseConnection,
     scope: Condition,
-    on_conflict: &OnConflict,
+    writer: Writer<'_, E>,
     batch_size: usize,
     incoming: I,
     key: Key,
@@ -243,17 +244,12 @@ where
             let changed = existing.remove(&model_key).as_ref() != Some(&model);
             observe(&model, changed);
             if changed {
-                changes.push(model.into_active_model());
+                changes.push(model);
             }
         }
         // Avoid holding full existing rows while awaiting a database write.
         existing.clear();
-        if !changes.is_empty() {
-            E::insert_many(changes.drain(..))
-                .on_conflict(on_conflict.clone())
-                .exec(conn)
-                .await?;
-        }
+        writer.write(conn, &mut changes).await?;
     }
 
     let mut remaining = remaining.into_iter();

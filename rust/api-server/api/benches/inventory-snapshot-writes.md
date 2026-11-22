@@ -81,6 +81,8 @@ writer source are in `rust/api-server/target/inventory-writer-profile-fq6sz8/`.
 
 ## Which snapshot writers should use this next?
 
+The first two migrations are measured in [passive craft and vault snapshot writes](craft-vault-snapshot-writes.md).
+
 Re-attributing the existing `live-unnest.zst` capture gives the following
 shortlist. Decimal MB of outstanding allocations originating from each table's
 snapshot upsert stack, including driver allocations. The first column is measured

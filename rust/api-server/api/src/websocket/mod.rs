@@ -60,6 +60,7 @@ mod overworld;
 #[expect(dead_code, reason = "Portal dimension subscriptions are currently disabled")]
 mod portal_locations;
 mod startup;
+pub(crate) mod snapshot_write;
 pub(crate) use metric_handles::WorkerReceiveMetrics;
 use metric_handles::{ListenerMetrics, WorkerSendMetrics};
 pub(crate) mod worker_channel;

@@ -5,6 +5,7 @@ use crate::{
         worker_channel::UnboundedReceiver,
     },
 };
+use crate::websocket::snapshot_write::{Writer, passive_crafts};
 use entity::passive_craft_state::{Column, Entity, Model};
 use game_module::module_bindings::PassiveCraftState;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, sea_query};
@@ -72,7 +73,7 @@ impl Pending {
             &state.conn,
             Column::Region,
             region,
-            conflict,
+            Writer::Fixed(passive_crafts),
             batch_size,
             rows.into_iter().map(|row| Model::from_wire(row, region)),
             |row| row.entity_id,
@@ -194,6 +195,22 @@ mod tests {
             .snapshot(&state(db.clone()), &conflict(), vec![wire(1)], 4, 100)
             .await;
         assert_eq!(db.into_transaction_log().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn failed_snapshot_write_stops_before_stale_deletion() {
+        let stale = std::collections::BTreeMap::from([("0".to_owned(), sea_orm::Value::from(99i64))]);
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![stale]])
+            .append_exec_results([sea_orm::MockExecResult::default()])
+            .append_exec_errors([DbErr::Custom("write failed".into())])
+            .into_connection();
+        Pending::default()
+            .snapshot(&state(db.clone()), &conflict(), vec![wire(1), wire(2), wire(3)], 7, 1)
+            .await;
+        let log = db.into_transaction_log();
+        assert_eq!(log.len(), 3, "one key read and two attempted writes");
+        assert!(!format!("{log:?}").contains("DELETE FROM"));
     }
 
     #[tokio::test]

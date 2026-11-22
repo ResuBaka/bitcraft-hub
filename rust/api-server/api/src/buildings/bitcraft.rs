@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::websocket::snapshot_write::{self, Writer};
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
@@ -58,7 +59,7 @@ pub(crate) fn start_worker_building_state(
                                     &global_app_state.conn,
                                     ::entity::building_state::Column::Region,
                                     database_name,
-                                    &on_conflict,
+                                    Writer::Fixed(snapshot_write::buildings),
                                     batch_size,
                                     incoming,
                                     |model| model.entity_id,

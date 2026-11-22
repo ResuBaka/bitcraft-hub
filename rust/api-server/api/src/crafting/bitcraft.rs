@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::websocket::snapshot_write::{self, Writer};
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
@@ -194,7 +195,7 @@ impl PendingActions {
             &state.conn,
             ::entity::progressive_action_state::Column::Region,
             region,
-            conflict,
+            Writer::Fixed(snapshot_write::progressive_actions),
             batch_size,
             data.into_iter().map(|value| {
                 ::entity::progressive_action_state::ModelBuilder::new(value)
@@ -434,7 +435,7 @@ mod tests {
         )]);
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![keys]])
-            .append_query_errors([DbErr::Custom("snapshot failure".into())])
+            .append_exec_errors([DbErr::Custom("snapshot failure".into())])
             .into_connection();
         PendingActions::default()
             .reconcile_snapshot(&state(db.clone()), &conflict(), vec![wire(1, 300)], 7, 100)

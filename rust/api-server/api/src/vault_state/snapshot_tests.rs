@@ -5,12 +5,6 @@ use sea_orm::{
 };
 use std::collections::BTreeMap;
 
-fn conflict() -> OnConflict {
-    OnConflict::columns([C::EntityId, C::Id])
-        .update_columns([C::Activated, C::Count, C::Region])
-        .to_owned()
-}
-
 fn vault(entity_id: u64, ids: impl IntoIterator<Item = i32>) -> VaultState {
     VaultState {
         entity_id,
@@ -56,7 +50,7 @@ async fn incomplete_snapshot_or_failed_upsert_never_removes_stale_keys() {
         if interrupted {
             input.push(Err(DbErr::Custom("incomplete".into())));
         }
-        let result = reconcile(&db, 7, &conflict(), 3000, stream::iter(input)).await;
+        let result = reconcile(&db, 7, 3000, stream::iter(input)).await;
         assert!(result.is_err());
         let log = format!("{:?}", db.into_transaction_log());
         assert!(log.contains("INSERT INTO"));
@@ -105,7 +99,6 @@ async fn postgres_entity_snapshot_handles_moves_empty_removed_and_oversized_vaul
     reconcile(
         &db,
         7,
-        &conflict(),
         3000,
         stream::iter(input.into_iter().map(Ok)),
     )
@@ -126,7 +119,7 @@ async fn postgres_entity_snapshot_handles_moves_empty_removed_and_oversized_vaul
     );
     assert!(got.iter().all(|m| m.activated && m.count == 3));
     // A complete empty snapshot deletes only this region.
-    reconcile(&db, 7, &conflict(), 3000, stream::empty())
+    reconcile(&db, 7, 3000, stream::empty())
         .await
         .unwrap();
     let rest = E::find().all(&db).await.unwrap();

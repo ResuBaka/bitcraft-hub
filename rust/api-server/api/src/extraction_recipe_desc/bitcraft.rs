@@ -48,13 +48,13 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                                     let model: ::entity::extraction_recipe_desc::Model = value.into();
                                     model
                                 }) {
-                                    local_messages.push(model.into_active_model());
+                                    local_messages.push(model);
                                     if local_messages.len() >= batch_size {
-                                       insert_multiple(&global_app_state, &on_conflict, &mut local_messages).await;
+                                       write_snapshot(&global_app_state, &mut local_messages).await;
                                     }
                                 }
                                 if !local_messages.is_empty() {
-                                    insert_multiple(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    write_snapshot(&global_app_state, &mut local_messages).await;
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
@@ -148,4 +148,10 @@ async fn insert_multiple(
     }
 
     messages.clear();
+}
+
+async fn write_snapshot(state: &AppState, rows: &mut Vec<extraction_recipe_desc::Model>) {
+    if let Err(error) = crate::websocket::snapshot_write::extraction_writer().write(&state.conn, rows).await {
+        tracing::error!(%error, "Could not write extraction recipe snapshot batch");
+    }
 }

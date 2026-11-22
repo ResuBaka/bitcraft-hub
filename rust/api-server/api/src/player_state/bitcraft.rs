@@ -18,6 +18,7 @@ struct PendingPlayerDelete {
 }
 
 enum PlayerStateDbOperation {
+    SnapshotUpsert(Vec<::entity::player_state::Model>),
     Upsert(Vec<::entity::player_state::ActiveModel>),
     DeleteForRegion {
         ids: Vec<i64>,
@@ -189,7 +190,7 @@ impl PlayerStateWorker {
                             .ranking_system
                             .time_signed_in
                             .update(model.entity_id, model.time_signed_in as i64);
-                        local_messages.push(model.into_active_model());
+                        local_messages.push(model);
                     }
                     entry.remove();
                 }
@@ -203,17 +204,16 @@ impl PlayerStateWorker {
                         .ranking_system
                         .time_signed_in
                         .update(model.entity_id, model.time_signed_in as i64);
-                    local_messages.push(model.into_active_model());
+                    local_messages.push(model);
                 }
             }
             if local_messages.len() >= self.batch_size {
-                self.queue_upserts(std::mem::take(&mut local_messages))
-                    .await;
+                self.queue_snapshot_upserts(std::mem::take(&mut local_messages)).await;
             }
         }
 
         if !local_messages.is_empty() {
-            self.queue_upserts(local_messages).await;
+            self.queue_snapshot_upserts(local_messages).await;
         }
 
         metrics::gauge!(
@@ -281,6 +281,12 @@ impl PlayerStateWorker {
         self.cache_player_and_publish_presence(&model, false);
         self.ids.push(model.entity_id);
         self.messages.push(model.into_active_model());
+    }
+
+    async fn queue_snapshot_upserts(&self, rows: Vec<::entity::player_state::Model>) {
+        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::SnapshotUpsert(rows)).await {
+            tracing::error!(%error, "Could not queue PlayerState snapshot upserts");
+        }
     }
 
     async fn handle_update(
@@ -632,6 +638,13 @@ fn start_player_state_db_worker(global_app_state: AppState) -> Sender<PlayerStat
     global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
+                PlayerStateDbOperation::SnapshotUpsert(mut rows) => {
+                    use crate::websocket::snapshot_write::{Writer, players};
+                    if let Err(error) = Writer::<entity::player_state::Entity>::Fixed(players)
+                        .write(&global_app_state.conn, &mut rows).await {
+                        tracing::error!(%error, "Could not write PlayerState snapshot");
+                    }
+                }
                 PlayerStateDbOperation::Upsert(messages) => {
                     insert_multiple_player_state(&global_app_state, &on_conflict, messages).await;
                 }
@@ -1468,7 +1481,7 @@ mod tests {
         worker.flush().await;
         assert!(matches!(
             operations.try_recv().unwrap(),
-            PlayerStateDbOperation::Upsert(_)
+            PlayerStateDbOperation::SnapshotUpsert(_)
         ));
         assert!(operations.try_recv().is_err());
         expire_deletes(&mut worker);

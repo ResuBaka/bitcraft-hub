@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::websocket::snapshot_write::{self, Writer};
 use crate::leaderboard::experience_to_level;
 use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
@@ -311,15 +312,6 @@ impl ExperienceStateWorker {
             );
             return;
         }
-        let on_conflict = sea_query::OnConflict::columns([
-            ::entity::experience_state::Column::EntityId,
-            ::entity::experience_state::Column::SkillId,
-        ])
-        .update_columns([
-            ::entity::experience_state::Column::Experience,
-            ::entity::experience_state::Column::Region,
-        ])
-        .to_owned();
         let state = &self.global_app_state;
         if let Err(error) = crate::websocket::initial_sync::reconcile::<
             ::entity::experience_state::Entity,
@@ -332,7 +324,7 @@ impl ExperienceStateWorker {
             &state.conn,
             ::entity::experience_state::Column::Region,
             database_name,
-            &on_conflict,
+            Writer::Fixed(snapshot_write::experience),
             self.batch_size,
             initial_experience_rows(state, data, database_name),
             |model| (model.entity_id, model.skill_id),
