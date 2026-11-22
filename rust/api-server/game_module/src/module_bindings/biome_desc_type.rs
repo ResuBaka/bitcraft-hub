@@ -53,7 +53,6 @@ impl __sdk::__query_builder::HasCols for BiomeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct BiomeDescIxCols {
     pub biome_type: __sdk::__query_builder::IxCol<BiomeDesc, u8>,
-    pub disallow_player_build: __sdk::__query_builder::IxCol<BiomeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for BiomeDesc {
@@ -61,10 +60,6 @@ impl __sdk::__query_builder::HasIxCols for BiomeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         BiomeDescIxCols {
             biome_type: __sdk::__query_builder::IxCol::new(table_name, "biome_type"),
-            disallow_player_build: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "disallow_player_build",
-            ),
         }
     }
 }

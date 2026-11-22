@@ -61,7 +61,6 @@ impl __sdk::__query_builder::HasCols for EnemyScalingDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct EnemyScalingDescIxCols {
-    pub enemy_type_id: __sdk::__query_builder::IxCol<EnemyScalingDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<EnemyScalingDesc, i32>,
 }
 
@@ -69,7 +68,6 @@ impl __sdk::__query_builder::HasIxCols for EnemyScalingDesc {
     type IxCols = EnemyScalingDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         EnemyScalingDescIxCols {
-            enemy_type_id: __sdk::__query_builder::IxCol::new(table_name, "enemy_type_id"),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
         }
     }

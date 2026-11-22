@@ -59,7 +59,6 @@ impl __sdk::__query_builder::HasCols for KnowledgeScrollDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct KnowledgeScrollDescIxCols {
     pub item_id: __sdk::__query_builder::IxCol<KnowledgeScrollDesc, i32>,
-    pub known_by_default: __sdk::__query_builder::IxCol<KnowledgeScrollDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for KnowledgeScrollDesc {
@@ -67,7 +66,6 @@ impl __sdk::__query_builder::HasIxCols for KnowledgeScrollDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         KnowledgeScrollDescIxCols {
             item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
-            known_by_default: __sdk::__query_builder::IxCol::new(table_name, "known_by_default"),
         }
     }
 }
