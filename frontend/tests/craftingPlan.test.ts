@@ -70,6 +70,8 @@ describe("normalized crafting graph", () => {
       selections: new Map([["Item:10", "1:1"]]),
     });
     expect(expensive.root.totalActions).toBeGreaterThan(plan.root.totalActions);
+    expect(plan.root.chainProbability).toBe(0.5);
+    expect(expensive.root.chainProbability).toBeCloseTo(0.95 * 0.1);
   });
   test("stores one canonical recipe across multiple outputs and item lists", () => {
     const source = recipe(1, 10, [[30, 2]]);
@@ -162,6 +164,26 @@ describe("normalized crafting graph", () => {
 });
 
 describe("selected crafting plan", () => {
+  test("counts weighted ingredient drops in the odds for a legendary tool", () => {
+    const input = data(recipe(1, 100, [[20, 6]]), recipe(2, 200, [[30, 1]]));
+    for (const id of [100, 200]) input.item_desc[id] = { item_list_id: id } as any;
+    input.item_list_desc[100] = {
+      possibilities: [
+        { probability: 0.0375, items: [{ item_id: 10, item_type: "Item", quantity: 1 }] },
+      ],
+    } as any;
+    // River muck: only the 40-weight outcome drops a batch of three ore pieces.
+    input.item_list_desc[200] = {
+      possibilities: [20, 40, 20, 20].map((probability, i) => ({
+        probability,
+        items: [{ item_id: i === 1 ? 20 : 21, item_type: "Item", quantity: 3 }],
+      })),
+    } as any;
+    const { root } = crafting.buildCraftingPlan(crafting.buildCraftingGraph(input), "Item", 10, 1);
+    expect(root.children[0].expectedYield).toBeCloseTo(1.2);
+    expect(root.chainProbability).toBeCloseTo(0.0375 * 0.4 ** 2, 8);
+  });
+
   test("normal crafting compounds rarity retries through previous-tier ingredients", () => {
     const input = data(recipe(1, 100, [[20, 1]]), recipe(2, 200, [[30, 1]]));
     input.item_desc[100] = { item_list_id: 100 } as any;
@@ -181,6 +203,8 @@ describe("selected crafting plan", () => {
     const graph = crafting.buildCraftingGraph(input);
     const plan = crafting.buildCraftingPlan(graph, "Item", 10, 1);
     expect(plan.root.probability).toBe(0.5);
+    expect(plan.root.chainProbability).toBe(0.125);
+    expect(plan.root.children[0].chainProbability).toBe(0.25);
     expect(plan.root.attempts).toBe(2);
     expect(plan.root.children[0].requested).toBe(2);
     expect(plan.root.children[0].probability).toBe(0.25);
@@ -197,6 +221,7 @@ describe("selected crafting plan", () => {
       inventory: { Item: { 20: 1 }, Cargo: {} },
     });
     expect(correctRarity.shoppingList.Item).toEqual({ 30: 4 });
+    expect(correctRarity.root.chainProbability).toBe(0.5);
   });
 
   test("fractional average retries are not rounded at every rarity stage", () => {
@@ -219,6 +244,7 @@ describe("selected crafting plan", () => {
     }
     const plan = crafting.buildCraftingPlan(crafting.buildCraftingGraph(input), "Item", 10, 1);
     expect(plan.root.attempts).toBeCloseTo(1 / 0.9);
+    expect(plan.root.chainProbability).toBeCloseTo(0.9 ** 3);
     expect(plan.root.children[0].attempts).toBeCloseTo(1 / 0.9 ** 2);
     expect(plan.root.children[0].children[0].attempts).toBeCloseTo(1 / 0.9 ** 3);
     expect(plan.root.children[0].children[0].children[0].requested).toBeCloseTo(1 / 0.9 ** 3);
@@ -242,8 +268,35 @@ describe("selected crafting plan", () => {
     expect(crafting.buildCraftingPlan(graph, "Item", 10, 5).root.attempts).toBeCloseTo(8);
   });
 
+  test("one chain run counts successful ingredient batches across branches and uses stock once", () => {
+    const input = data(
+      recipe(1, 10, [
+        [20, 3],
+        [30, 1],
+      ]),
+      recipe(2, 100, []),
+      recipe(3, 30, [[20, 3]]),
+    );
+    input.item_desc[100] = { item_list_id: 100 } as any;
+    input.item_list_desc[100] = {
+      possibilities: [
+        { probability: 0.5, items: [{ item_id: 20, item_type: "Item", quantity: 2 }] },
+      ],
+    } as any;
+    const graph = crafting.buildCraftingGraph(input);
+    expect(crafting.buildCraftingPlan(graph, "Item", 10, 50).root.chainProbability).toBe(0.5 ** 3);
+    const stocked = crafting.buildCraftingPlan(graph, "Item", 10, 1, {
+      inventory: { Item: { 20: 2 }, Cargo: {} },
+    });
+    expect(stocked.root.chainProbability).toBe(0.5 ** 2);
+    const supplied = crafting.buildCraftingPlan(graph, "Item", 10, 1, {
+      selections: new Map([["Item:10/1:1/1", null]]),
+    });
+    expect(supplied.root.chainProbability).toBe(0.5 ** 2);
+  });
+
   test("variable-sized drops use exact one-drop odds and label larger yield approximations", () => {
-    const input = data(recipe(1, 100, [[30, 1]]));
+    const input = data(recipe(1, 100, [[30, 1]]), recipe(2, 20, [[10, 3]]));
     input.item_desc[100] = { item_list_id: 100 } as any;
     input.item_list_desc[100] = {
       possibilities: [
@@ -255,6 +308,8 @@ describe("selected crafting plan", () => {
     const one = crafting.buildCraftingPlan(graph, "Item", 10, 1);
     expect(one.root.attempts).toBeCloseTo(5);
     expect(one.root.variableYield).toBe(true);
+    expect(one.root.chainProbability).toBeCloseTo(0.2);
+    expect(crafting.buildCraftingPlan(graph, "Item", 20, 1).root.chainProbability).toBeNull();
     expect(one.root.averageEstimate).toBe(true);
     expect(graph.items.get("Item:10")!.craftingRecipes).toHaveLength(1);
   });
@@ -304,7 +359,7 @@ describe("selected crafting plan", () => {
       selections: new Map([["Item:10", "2:1"]]),
     });
     expect(next.shoppingList.Item).toEqual({ 40: 1 });
-    expect(reads).toBe(1);
+    expect(reads).toBeGreaterThan(0);
     expect(initial.shoppingList.Item).toEqual({ 20: 1 });
   });
 

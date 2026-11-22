@@ -65,11 +65,21 @@ export function resolveDropOutcomes(
 
     lists.add(listId!);
     const result: Outcomes = new Map();
-    let totalProbability = 0;
+    // Some recipes use relative weights (e.g. 499:1 for leather). Others
+    // use fractional probabilities where a missing remainder means no drop.
+    const totalWeight = list.possibilities.reduce(
+      (sum, { probability }) =>
+        sum + (probability > 0 && Number.isFinite(probability) ? probability : 0),
+      0,
+    );
+    const weighted =
+      totalWeight > 1 &&
+      (list.possibilities.some(({ probability }) => probability > 1) ||
+        list.possibilities.every(({ probability }) => Number.isInteger(probability)));
+    const divisor = weighted ? totalWeight : 1;
     for (const possibility of list.possibilities) {
-      const probability = possibility.probability;
+      const probability = possibility.probability / divisor;
       if (!(probability > 0) || !Number.isFinite(probability)) continue;
-      totalProbability += probability;
       if (probability !== 1) probabilistic = true;
       const branch: Outcomes = new Map();
       for (const inner of possibility.items) combine(branch, stackOutcomes(inner));
@@ -94,6 +104,7 @@ export function resolveDropOutcomes(
     lists.delete(listId!);
     // MessagePack exposes the game's float32 values (e.g. .925 + .075 can
     // arrive as 1.0000000149). Do not mistake that rounding for overlapping odds.
+    const totalProbability = totalWeight / divisor;
     const invalidTotal = totalProbability > 1 + 1e-6;
     if (invalidTotal) probabilistic = true;
     for (const outcome of result.values()) {

@@ -317,6 +317,7 @@ export type CraftingPlanNode = {
   recipeId: number | null;
   recipeQuantity: number;
   probability: number | null;
+  chainProbability: number | null;
   expectedYield: number | null;
   variableYield: boolean;
   attempts: number;
@@ -395,6 +396,72 @@ export function buildCraftingPlan(
     return hits * fullHitXp + Math.ceil((progress - hits * power) * rate);
   }
 
+  function selectedOutput(item: GraphItem | undefined, path: string) {
+    const chosen = options.selections?.has(path)
+      ? options.selections.get(path)
+      : item?.defaultRecipe;
+    return (
+      item?.recipes.find((edge) => edge.key === chosen) ??
+      (chosen === null ? undefined : item?.recipes.find((edge) => edge.key === item.defaultRecipe))
+    );
+  }
+
+  function requiresExisting(
+    item: GraphItem | undefined,
+    key: string,
+    path: string,
+    cycle: boolean,
+  ) {
+    const supplied = item?.gatherOnly || options.selections?.get(path) === null;
+    return (
+      options.extraction?.[key] === undefined &&
+      (cycle || (!!item?.craftingRecipes.length && !supplied))
+    );
+  }
+
+  // One fresh run for one drop of the inspected item. Expected retry demand
+  // is intentionally not used: a run succeeds only if no craft misses.
+  function firstRunChance(key: string, path: string, output: RecipeOutput) {
+    const stock = new Map<string, number>();
+    const variableSurplus = new Set<string>();
+    const active = new Set(ancestors);
+    function craft(key: string, path: string, output: RecipeOutput, runs: number): number | null {
+      if (output.probability === null) return null;
+      let chance = output.probability ** runs;
+      active.add(key);
+      for (const [i, input] of graph.recipes.get(output.recipeId)!.ingredients.entries()) {
+        const childKey = itemKey(input.item_type, input.item_id);
+        const childPath = `${path}/${output.key}/${i}`;
+        const available =
+          stock.get(childKey) ?? options.inventory?.[input.item_type][input.item_id] ?? 0;
+        const needed = runs * input.quantity - available;
+        stock.set(childKey, Math.max(0, -needed));
+        if (needed <= 0) continue;
+        if (variableSurplus.has(childKey)) return null;
+        const item = graph.items.get(childKey);
+        const child = selectedOutput(item, childPath);
+        // Base materials are supplied. An unresolved crafting cycle has no
+        // known production odds unless its existing input was in stock.
+        if (active.has(childKey) || !child) {
+          if (requiresExisting(item, childKey, childPath, active.has(childKey))) return null;
+          continue;
+        }
+        // For a variable yield we only know how many successful crafts are
+        // needed when even the smallest drop is sufficient.
+        if (child.fixedQuantity === null && needed > child.minQuantity) return null;
+        const batches = child.fixedQuantity === null ? 1 : Math.ceil(needed / child.fixedQuantity);
+        const childChance = craft(childKey, childPath, child, batches);
+        if (childChance === null) return null;
+        chance *= childChance;
+        stock.set(childKey, batches * child.minQuantity - needed);
+        if (child.fixedQuantity === null) variableSurplus.add(childKey);
+      }
+      active.delete(key);
+      return chance;
+    }
+    return craft(key, path, output, 1);
+  }
+
   function visit(
     type: ItemType,
     id: number,
@@ -405,14 +472,8 @@ export function buildCraftingPlan(
     nodeCount++;
     const key = itemKey(type, id);
     const item = graph.items.get(key);
-    const chosen = options.selections?.has(path)
-      ? options.selections.get(path)
-      : item?.defaultRecipe;
-    const output =
-      item?.recipes.find((output) => output.key === chosen) ??
-      (chosen === null
-        ? undefined
-        : item?.recipes.find((output) => output.key === item.defaultRecipe));
+    const chosen = options.selections?.get(path);
+    const output = selectedOutput(item, path);
     const cycle = ancestors.has(key);
     // An explicit recraft consumes the existing equipment as an ingredient,
     // rather than counting that equipment as an already-finished output.
@@ -432,6 +493,7 @@ export function buildCraftingPlan(
       recipeId: output?.recipeId ?? null,
       recipeQuantity: output?.quantity ?? 1,
       probability: output?.probability ?? null,
+      chainProbability: null,
       expectedYield: output?.expectedQuantity ?? null,
       variableYield: output?.fixedQuantity === null,
       attempts: 0,
@@ -456,12 +518,7 @@ export function buildCraftingPlan(
       node.recipeId = null;
       node.recipeKey = null;
       const effort = options.extraction?.[key];
-      const suppliedDirectly =
-        item?.gatherOnly || (options.selections?.has(path) && chosen === null);
-      node.status =
-        effort === undefined && (cycle || (!!item?.craftingRecipes.length && !suppliedDirectly))
-          ? "requires-existing"
-          : "gather";
+      node.status = requiresExisting(item, key, path, cycle) ? "requires-existing" : "gather";
       node.actions =
         effort === undefined ? 0 : expectedDemand ? effort * needed : Math.ceil(effort * needed);
       node.totalActions = node.actions;
@@ -479,6 +536,7 @@ export function buildCraftingPlan(
 
     const recipe = graph.recipes.get(output.recipeId)!;
     node.status = "craft";
+    node.chainProbability = firstRunChance(key, path, output);
     const averageDemand =
       expectedDemand || output.probability !== 1 || output.fixedQuantity === null;
     node.averageEstimate = averageDemand;

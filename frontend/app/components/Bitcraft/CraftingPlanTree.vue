@@ -189,8 +189,8 @@ const getKey = (item: CraftingTreeItem) => item.path;
                   <span
                     v-if="row.node.status === 'craft'"
                     class="text-primary"
-                    :title="`${formatCraftingChance(row.node.probability)} chance per craft`"
-                    >{{ formatCraftingChance(row.node.probability) }}</span
+                    title="Drop chance including prerequisite crafts, with no retries"
+                    >{{ formatCraftingChance(row.node.chainProbability) }}</span
                   >
                   <UIcon
                     v-if="row.node.status === 'inventory'"

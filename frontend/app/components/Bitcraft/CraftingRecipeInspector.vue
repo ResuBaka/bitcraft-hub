@@ -30,7 +30,7 @@ const hasOperations = computed(
       (output) => props.graph.recipes.get(output.recipeId)?.kind !== "craft",
     ),
 );
-const drop = computed(() => estimateDrop(props.item.probability, 0));
+const drop = computed(() => estimateDrop(props.item.chainProbability, 0));
 const recipeOptions = computed(() => [
   {
     value: "supply",
@@ -48,7 +48,7 @@ const recipeOptions = computed(() => [
     });
     return {
       value: output.key,
-      label: `Recipe ${index + 1} · ${formatCraftingChance(output.probability)} chance · ${formatCraftingQuantity(step)} step actions`,
+      label: `Recipe ${index + 1} · ${formatCraftingChance(output.probability)} per craft · ${formatCraftingQuantity(step)} step actions`,
       description: inputs.join(" + ") || "No input materials",
     };
   }),
@@ -201,28 +201,33 @@ const recipeChoice = computed({
     >
       <h4 class="text-sm font-semibold text-highlighted">Drop chance</h4>
       <p class="text-sm font-semibold text-primary">
-        {{ formatCraftingChance(item.probability) }} per craft for this exact item / rarity
+        {{ formatCraftingChance(item.chainProbability) }} for the full crafting chain
       </p>
-      <template
-        v-if="drop && item.probability !== null && item.probability > 0 && item.probability < 1"
-      >
+      <p class="text-sm">Final craft alone: {{ formatCraftingChance(item.probability) }}</p>
+      <p class="text-xs text-muted">
+        A run starts with your selected inventory and supplied base materials. It succeeds if every
+        required ingredient craft and the final craft drop the needed item without a retry.
+      </p>
+      <p v-if="!drop" class="text-xs text-muted">
+        The selected recipes don't give enough information to calculate exact chain odds.
+      </p>
+      <template v-if="drop && drop.probability > 0 && drop.probability < 1">
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div class="rounded-lg border border-default p-2">
             <span class="block text-xs text-muted">One drop, on average</span
-            >{{ formatCraftingQuantity(drop.averageAttempts) }} attempts
+            >{{ formatCraftingQuantity(drop.averageAttempts) }} runs
           </div>
           <div class="rounded-lg border border-default p-2">
             <span class="block text-xs text-muted">95% chance of one drop</span
             >{{
               drop.attempts95 === null
                 ? "Unavailable"
-                : `${formatCraftingQuantity(drop.attempts95)} attempts`
+                : `${formatCraftingQuantity(drop.attempts95)} runs`
             }}
           </div>
         </div>
         <p class="text-xs text-muted">
-          Local odds only, assuming independent attempts. Not a 95% guarantee for the entire chain
-          or for multiple copies.
+          These estimates assume independent runs with the same starting materials each time.
         </p>
       </template>
       <p v-if="item.expectedDemand" class="text-xs text-muted">
