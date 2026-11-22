@@ -136,6 +136,7 @@ where
 /// Streaming snapshot variant. Upstream errors abort before stale-row deletion;
 /// successful earlier batches may already have been persisted.
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(crate) async fn reconcile_stream<E, K, I, Key, Filter, Observe>(
     conn: &DatabaseConnection,
     region_column: E::Column,

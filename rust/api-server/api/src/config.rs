@@ -143,6 +143,8 @@ impl fmt::Display for LogLevel {
 #[serde(default)]
 pub(crate) struct DatabaseConfig {
     pub(crate) url: String,
+    /// Maximum live ingestion batching window. Full batches and closed queues flush early.
+    pub(crate) worker_flush_ms: u64,
     pub(crate) max_connections: u32,
     pub(crate) min_connections: u32,
     pub(crate) connect_timeout: u64,
@@ -154,6 +156,7 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             url: "".to_string(),
+            worker_flush_ms: 2_000,
             max_connections: 50,
             min_connections: 3,
             connect_timeout: 10,
@@ -179,6 +182,8 @@ pub(crate) struct SpacetimeDbConfig {
     /// Global database name. Its connection uses the base port without an offset.
     pub(crate) database: String,
     pub(crate) databases: Vec<String>,
+    /// Existing directory for opt-in regional BSATN replay captures.
+    pub(crate) region_capture_dir: Option<std::path::PathBuf>,
     pub(crate) password: String,
     pub(crate) username: String,
     pub(crate) websocket_protocol: String,
@@ -195,6 +200,7 @@ impl Default for SpacetimeDbConfig {
             base_port: None,
             database: "".to_string(),
             databases: vec![],
+            region_capture_dir: None,
             password: "".to_string(),
             username: "token".to_string(),
             websocket_protocol: "wss://".to_string(),

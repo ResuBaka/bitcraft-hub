@@ -28,7 +28,7 @@ pub(super) fn start(config: &Config, state: AppState) {
         while !stop.is_cancelled() {
             let timing = ConnectionTiming::default();
             let result = match connect_to_db(
-                state.clone(), token.clone(), &database, &host, timing.clone(), None,
+                DbConnection::builder(), state.clone(), token.clone(), &database, &host, timing.clone(), None,
             ) {
                 Ok(ctx) => sync(&ctx, state.ranking_system.clone(), stop.child_token()).await,
                 Err(error) => Err(error.into()),

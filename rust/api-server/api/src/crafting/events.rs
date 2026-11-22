@@ -179,12 +179,13 @@ pub(crate) fn register_listeners(
     });
 }
 
-pub(crate) fn start_worker(state: AppState) -> UnboundedSender<craft_activity::ActiveModel> {
+pub(crate) fn start_worker(state: AppState, flush_delay: Duration) -> UnboundedSender<craft_activity::ActiveModel> {
     let (tx, mut rx) =
         worker_channel::shutdown_channel::<craft_activity::ActiveModel>(&state.shutdown);
     state.shutdown.clone().spawn_worker(async move {
         let mut batch = Vec::with_capacity(500);
-        while rx.recv_many(&mut batch, 500).await != 0 {
+        while crate::websocket::batched_worker::collect_db_batch(&mut rx, &mut batch, 500, flush_delay).await != 0 {
+            metrics::histogram!("worker_db_flush_rows", "worker" => "craft_activity").record(batch.len() as f64);
             for attempt in 1..=3 {
                 match tokio::time::timeout(Duration::from_secs(30), craft_activity::Entity::insert_many(batch.clone()).exec(&state.conn)).await {
                     Ok(Ok(_)) => break,
@@ -283,7 +284,7 @@ mod tests {
             .into_connection();
         let (out, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db.clone(), out, Default::default());
-        let tx = start_worker(state.clone());
+        let tx = start_worker(state.clone(), Duration::from_secs(60));
         tx.send(hit(
             &CraftEvent {
                 actor_entity_id: 6,

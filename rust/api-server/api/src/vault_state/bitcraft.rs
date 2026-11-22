@@ -1,10 +1,9 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
-use crate::websocket::initial_sync::{composite_filter, reconcile_stream};
+use crate::websocket::initial_sync::composite_filter;
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::vault_state_collectibles;
-use futures::TryStreamExt;
 use game_module::module_bindings::VaultState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter};
@@ -13,7 +12,7 @@ use std::time::Duration;
 
 // Two array parameters keep PostgreSQL's statement shape independent of batch
 // size and entity distribution. Multi-argument unnest pairs corresponding keys.
-fn collectible_keys_filter(keys: &[(i64, i32)]) -> Condition {
+pub(super) fn collectible_keys_filter(keys: &[(i64, i32)]) -> Condition {
     let (entities, ids): (Vec<i64>, Vec<i32>) = keys.iter().copied().unzip();
     Condition::all().add(sea_query::Expr::cust_with_values(
         r#"("entity_id", "id") IN (SELECT * FROM unnest($1::bigint[], $2::integer[]))"#,
@@ -54,28 +53,15 @@ pub(crate) fn start_worker_vault_state_collectibles(
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, batches } => {
                                 // Older live events must not be written after the newer snapshot.
-                                insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut messages).await;
-                                delete_collectibles(&global_app_state, &mut messages_delete).await;
-                                let incoming = crate::websocket::initial_batches::rows(data, batches).map_ok(|vault| {
-                                    let entity_id = vault.entity_id as i64;
-                                    futures::stream::iter(vault.collectibles.into_iter().map(move |collectible| Ok::<_, sea_orm::DbErr>(vault_state_collectibles::Model {
-                                        entity_id,
-                                        id: collectible.id,
-                                        activated: collectible.activated,
-                                        count: collectible.count,
-                                        region: database_name,
-                                    })))
-                                }).try_flatten();
-                                if let Err(error) = reconcile_stream::<vault_state_collectibles::Entity, _, _, _, _, _>(
-                                    &global_app_state.conn,
-                                    vault_state_collectibles::Column::Region,
-                                    database_name,
-                                    &on_conflict,
-                                    batch_size,
-                                    incoming,
-                                    |model| (model.entity_id, model.id),
-                                    collectible_keys_filter,
-                                    |_, _| {},
+                                let upserts = insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut messages).await;
+                                let deletes = delete_collectibles(&global_app_state, &mut messages_delete).await;
+                                if let Err(error) = upserts.and(deletes) {
+                                    tracing::error!(%error, region = database_name, "Could not flush live writes before vault snapshot");
+                                    continue;
+                                }
+                                if let Err(error) = super::snapshot::reconcile(
+                                    &global_app_state.conn, database_name, &on_conflict, batch_size,
+                                    crate::websocket::initial_batches::rows(data, batches),
                                 ).await {
                                     tracing::error!(%error, region = database_name, "Could not reconcile initial vault collectibles");
                                 }
@@ -132,19 +118,12 @@ pub(crate) fn start_worker_vault_state_collectibles(
                 }
             }
 
-            if !messages.is_empty() {
-                //tracing::info!("Processing {} messages in batch", messages.len());
-                insert_multiple_vault_state_collectibles(
-                    &global_app_state,
-                    &on_conflict,
-                    &mut messages,
-                )
-                .await;
-                // Your batch processing logic here
+            if let Err(error) = insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut messages).await {
+                tracing::error!(%error, "Could not upsert vault collectibles");
             }
 
-            if !messages_delete.is_empty() {
-                delete_collectibles(&global_app_state, &mut messages_delete).await;
+            if let Err(error) = delete_collectibles(&global_app_state, &mut messages_delete).await {
+                tracing::error!(%error, "Could not delete vault collectibles");
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
@@ -160,18 +139,15 @@ async fn insert_multiple_vault_state_collectibles(
     global_app_state: &AppState,
     on_conflict: &sea_query::OnConflict,
     messages: &mut Vec<::entity::vault_state_collectibles::ActiveModel>,
-) {
+) -> Result<(), sea_orm::DbErr> {
     if messages.is_empty() {
-        return;
+        return Ok(());
     }
-    let insert = ::entity::vault_state_collectibles::Entity::insert_many(std::mem::take(messages))
+    ::entity::vault_state_collectibles::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
-        .await;
-
-    if let Err(err) = insert {
-        tracing::error!("Error inserting VaultState: {}", err)
-    }
+        .await?;
+    Ok(())
 }
 
 type CollectibleDelete = (entity::shared::Region, i64, i32);
@@ -216,7 +192,8 @@ fn removed_collectibles(old: &VaultState, new: &VaultState) -> Vec<i32> {
         .collect()
 }
 
-async fn delete_collectibles(state: &AppState, deletes: &mut Vec<CollectibleDelete>) {
+async fn delete_collectibles(state: &AppState, deletes: &mut Vec<CollectibleDelete>) -> Result<(), sea_orm::DbErr> {
+    let mut result = Ok(());
     for chunk in std::mem::take(deletes).chunks(1_000) {
         // Group by region so no deletion can affect a replicated/moved row elsewhere.
         let regions = chunk.iter().map(|value| value.0).collect::<HashSet<_>>();
@@ -237,9 +214,11 @@ async fn delete_collectibles(state: &AppState, deletes: &mut Vec<CollectibleDele
                 .await
             {
                 tracing::error!(%error, region, "Could not delete vault collectibles");
+                result = Err(error);
             }
         }
     }
+    result
 }
 
 #[cfg(test)]

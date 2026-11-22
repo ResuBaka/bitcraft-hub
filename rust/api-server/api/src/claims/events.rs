@@ -329,12 +329,14 @@ async fn filter_building_regions(
 pub(crate) fn start_persistence_worker(
     state: AppState,
     region: Region,
+    flush_delay: Duration,
 ) -> Sender<claim_event::ActiveModel> {
     let (tx, rx) = channel(CLAIM_EVENT_QUEUE_CAPACITY);
     state.shutdown.clone().spawn_worker(async move {
         run_persistence_worker(
             rx,
             region,
+            flush_delay,
             |batch| {
                 let state = &state;
                 async move {
@@ -358,6 +360,7 @@ pub(crate) fn start_persistence_worker(
 async fn run_persistence_worker<F, Fut>(
     mut rx: Receiver<claim_event::ActiveModel>,
     region: Region,
+    flush_delay: Duration,
     mut persist: F,
     retry_delay: Duration,
     attempt_timeout: Duration,
@@ -366,7 +369,8 @@ async fn run_persistence_worker<F, Fut>(
     Fut: Future<Output = Result<(), sea_orm::DbErr>>,
 {
     let mut batch = Vec::with_capacity(CLAIM_EVENT_BATCH_SIZE);
-    while rx.recv_many(&mut batch, CLAIM_EVENT_BATCH_SIZE).await != 0 {
+    while crate::websocket::batched_worker::collect_db_batch(&mut rx, &mut batch, CLAIM_EVENT_BATCH_SIZE, flush_delay).await != 0 {
+        metrics::histogram!("worker_db_flush_rows", "worker" => "claim_event").record(batch.len() as f64);
         for attempt in 1..=CLAIM_EVENT_MAX_ATTEMPTS {
             match tokio::time::timeout(attempt_timeout, persist(batch.clone())).await {
                 Ok(Ok(())) => break,
@@ -585,6 +589,7 @@ mod tests {
             run_persistence_worker(
                 rx,
                 2,
+                Duration::from_secs(60),
                 |batch| {
                     attempts += 1;
                     let result = if batch[0].claim_entity_id == Set(42) {
@@ -618,6 +623,7 @@ mod tests {
             run_persistence_worker(
                 rx,
                 2,
+                Duration::from_secs(60),
                 |_| {
                     attempts += 1;
                     std::future::pending::<Result<(), sea_orm::DbErr>>()
@@ -640,6 +646,7 @@ mod tests {
         run_persistence_worker(
             rx,
             2,
+            Duration::from_secs(60),
             |_| {
                 attempts += 1;
                 std::future::ready(if attempts == 1 {

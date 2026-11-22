@@ -14,6 +14,12 @@ pub(crate) enum ClaimAtLocation {
 }
 
 type TileCoordinates = (i32, i32);
+
+// The index needs equality and a consistent sort order, not signed spatial
+// ordering. Preserve the full bit pattern of both axes in one comparison key.
+fn coordinate_key((x, z): TileCoordinates) -> u64 {
+    (u64::from(x as u32) << 32) | u64::from(z as u32)
+}
 const MAX_UNMATCHED_LOCATIONS: usize = 4096;
 const MAX_TILE_EDITS: usize = 4096;
 const MAX_DIRTY_COORDS: usize = 2 * MAX_TILE_EDITS;
@@ -49,7 +55,7 @@ struct TileRow {
 struct SortedOverworld {
     by_id: Box<[TileRow]>,
     // Store the keys directly so binary search doesn't chase row pointers.
-    coords: Box<[TileCoordinates]>,
+    coords: Box<[u64]>,
     rows_by_coord: Box<[u32]>,
     edits: HashMap<u64, Option<OverworldTile>>,
     // An empty list masks a coordinate whose base occupants were all removed.
@@ -72,10 +78,14 @@ impl SortedOverworld {
 
     fn replace_base(&mut self, rows: Vec<TileRow>) {
         let count = u32::try_from(rows.len()).expect("a region has too many overworld tiles");
-        let mut order: Vec<_> = (0..count).collect();
-        order.sort_unstable_by_key(|&slot| rows[slot as usize].tile.coords);
-        self.coords = order.iter().map(|&slot| rows[slot as usize].tile.coords).collect();
-        self.rows_by_coord = order.into_boxed_slice();
+        // Sort the coordinates themselves rather than chasing slots into the
+        // ID-sorted rows at each comparison. Keep lookup keys packed after the sort.
+        let mut keyed: Vec<_> = rows.iter().zip(0..count)
+            .map(|(row, slot)| (coordinate_key(row.tile.coords), slot))
+            .collect();
+        keyed.sort_unstable_by_key(|&(key, _)| key);
+        self.coords = keyed.iter().map(|&(key, _)| key).collect();
+        self.rows_by_coord = keyed.into_iter().map(|(_, slot)| slot).collect();
         self.by_id = rows.into_boxed_slice();
     }
 
@@ -90,10 +100,11 @@ impl SortedOverworld {
 
     fn base_at<'a>(
         rows: &'a [TileRow],
-        keys: &'a [TileCoordinates],
+        keys: &'a [u64],
         order: &'a [u32],
         coords: TileCoordinates,
     ) -> impl Iterator<Item = TileRow> + 'a {
+        let coords = coordinate_key(coords);
         let start = keys.partition_point(|&key| key < coords);
         keys[start..]
             .iter()
@@ -111,6 +122,9 @@ impl SortedOverworld {
     }
 
     fn replace(&mut self, id: u64, previous: Option<OverworldTile>, next: Option<OverworldTile>) {
+        if previous == next {
+            return;
+        }
         if let Some(old) = previous {
             let occupants = self.dirty_at(old.coords);
             if let Some(tile) = next.filter(|tile| tile.coords == old.coords) {
@@ -181,7 +195,9 @@ impl SortedOverworld {
 }
 
 enum Overworld {
-    Loading(HashMap<u64, OverworldTile>),
+    // Join both snapshot streams here. Each known claim has a single entry,
+    // whether its location is missing, interior or overworld.
+    Loading(HashMap<u64, (u64, Option<TileLocation>)>),
     Ready(SortedOverworld),
 }
 
@@ -192,39 +208,9 @@ impl Default for Overworld {
 }
 
 impl Overworld {
-    fn get(&self, id: u64) -> Option<OverworldTile> {
-        match self {
-            Self::Loading(rows) => rows.get(&id).copied(),
-            Self::Ready(index) => index.get(id),
-        }
-    }
-
-    fn replace(&mut self, id: u64, previous: Option<OverworldTile>, next: Option<OverworldTile>) {
-        if previous == next {
-            return;
-        }
-        match self {
-            Self::Loading(rows) => {
-                if let Some(tile) = next {
-                    rows.insert(id, tile);
-                } else {
-                    rows.remove(&id);
-                }
-            }
-            Self::Ready(index) => index.replace(id, previous, next),
-        }
-    }
-
     fn reserve(&mut self, additional: usize) {
         if let Self::Loading(rows) = self {
             rows.reserve(additional);
-        }
-    }
-
-    fn finish_initial(&mut self) {
-        if let Self::Loading(rows) = self {
-            let rows = std::mem::take(rows).into_iter().map(|(id, tile)| TileRow { id, tile }).collect();
-            *self = Self::Ready(SortedOverworld::new(rows));
         }
     }
 
@@ -273,20 +259,40 @@ impl LiveRegion {
                 None
             }
         };
-        self.overworld.replace(id, previous, next);
+        let Overworld::Ready(index) = &mut self.overworld else {
+            unreachable!("loading tiles keep their location in the pending join")
+        };
+        index.replace(id, previous, next);
     }
 
     fn set_claim(&mut self, id: u64, claim: Option<u64>) {
-        let previous = self.overworld.get(id);
+        let index = match &mut self.overworld {
+            Overworld::Loading(rows) => {
+                match claim {
+                    Some(claim) => {
+                        rows.entry(id)
+                            .and_modify(|entry| entry.0 = claim)
+                            .or_insert_with(|| (claim, self.unmatched_locations.remove(&id)));
+                    }
+                    None => {
+                        rows.remove(&id);
+                        self.unmatched_locations.remove(&id);
+                    }
+                }
+                return;
+            }
+            Overworld::Ready(index) => index,
+        };
+        let previous = index.get(id);
         let Some(claim) = claim else {
-            self.overworld.replace(id, previous, None);
+            index.replace(id, previous, None);
             self.interior_tiles.remove(&id);
             self.missing_locations.remove(&id);
             self.unmatched_locations.remove(&id);
             return;
         };
         if let Some(tile) = previous {
-            self.overworld.replace(id, previous, Some(OverworldTile { claim, ..tile }));
+            index.replace(id, previous, Some(OverworldTile { claim, ..tile }));
         } else if let Some(tile_claim) = self.interior_tiles.get_mut(&id) {
             *tile_claim = claim;
         } else if let Some(location) = self.unmatched_locations.remove(&id) {
@@ -297,10 +303,22 @@ impl LiveRegion {
     }
 
     fn set_location(&mut self, id: u64, location: Option<TileLocation>) {
-        let previous = self.overworld.get(id);
-        let claim = previous.map(|tile| tile.claim)
-            .or_else(|| self.interior_tiles.remove(&id))
-            .or_else(|| self.missing_locations.remove(&id));
+        let (previous, claim) = match &mut self.overworld {
+            Overworld::Loading(rows) => {
+                if let Some(entry) = rows.get_mut(&id) {
+                    entry.1 = location;
+                    return;
+                }
+                (None, None)
+            }
+            Overworld::Ready(index) => {
+                let previous = index.get(id);
+                let claim = previous.map(|tile| tile.claim)
+                    .or_else(|| self.interior_tiles.remove(&id))
+                    .or_else(|| self.missing_locations.remove(&id));
+                (previous, claim)
+            }
+        };
         match (claim, location) {
             (Some(claim), location) => self.store_location(id, claim, previous, location),
             (None, Some(location)) => {
@@ -330,9 +348,18 @@ impl LiveRegion {
     }
 
     fn finish_overworld_initial(&mut self) {
-        if self.claims_initial_received && self.locations_initial_received {
-            self.missing_locations.shrink_to_fit();
-            self.overworld.finish_initial();
+        if self.claims_initial_received && self.locations_initial_received
+            && let Overworld::Loading(pending) = &mut self.overworld
+        {
+            let mut rows = Vec::with_capacity(pending.len());
+            for (id, (claim, location)) in std::mem::take(pending) {
+                match location {
+                    Some(TileLocation::Overworld(coords)) => rows.push(TileRow { id, tile: OverworldTile { claim, coords } }),
+                    Some(TileLocation::Interior) => { self.interior_tiles.insert(id, claim); }
+                    None => { self.missing_locations.insert(id, claim); }
+                }
+            }
+            self.overworld = Overworld::Ready(SortedOverworld::new(rows));
         }
     }
 }
@@ -370,11 +397,7 @@ impl ClaimLocationSubscriptions {
     ) {
         self.update(region, |state| {
             let rows = rows.into_iter();
-            if state.locations_initial_received {
-                state.overworld.reserve(rows.size_hint().0.min(state.unmatched_locations.len()));
-            } else {
-                state.missing_locations.reserve(rows.size_hint().0);
-            }
+            state.overworld.reserve(rows.size_hint().0);
             for row in rows {
                 state.set_claim(row.entity_id, Some(row.claim_id));
             }
@@ -395,9 +418,7 @@ impl ClaimLocationSubscriptions {
         self.update(region, |state| {
             let rows = rows.into_iter();
             let count = rows.size_hint().0;
-            if state.claims_initial_received {
-                state.overworld.reserve(count.min(state.missing_locations.len()));
-            } else {
+            if !state.claims_initial_received {
                 state.unmatched_locations.reserve(count);
             }
             for row in rows {
@@ -637,9 +658,38 @@ mod tests {
             panic!("the initial join should build the sorted index");
         };
         assert_eq!(overworld.by_id.len(), 1);
-        assert_eq!(&*overworld.coords, &[(1, 0)]);
+        assert_eq!(&*overworld.coords, &[coordinate_key((1, 0))]);
         assert_eq!(region.unmatched_locations.capacity(), 0);
         assert_eq!(region.missing_locations.capacity(), 0);
+    }
+
+    #[test]
+    fn updates_between_initial_callbacks_survive_publication() {
+        use game_module::module_bindings::{ClaimTileState, LocationState};
+
+        for claims_first in [true, false] {
+            let index = ClaimLocationSubscriptions::default();
+            index.reset(1);
+            index.finish_initial(1);
+            let claims = [ClaimTileState { entity_id: 2, claim_id: 8 }];
+            let locations = [LocationState { entity_id: 2, chunk_index: 0, x: -2, z: 2, dimension: 1 }];
+            if claims_first {
+                index.claims_initial(1, &claims);
+                index.claim(1, 2, Some(9));
+                index.location(1, 3, Some((1, 1, -2)));
+                index.claim(1, 3, Some(17));
+                index.locations_initial(1, &locations);
+            } else {
+                index.locations_initial(1, &locations);
+                index.location(1, 2, Some((1, -3, 2)));
+                index.claim(1, 3, Some(17));
+                index.location(1, 3, Some((1, 1, -2)));
+                index.claims_initial(1, &claims);
+            }
+            assert_eq!(index.lookup(1, 1, 1000, -2000), ClaimAtLocation::Claim(17));
+            let (x, claim) = if claims_first { (-2, 9) } else { (-3, 8) };
+            assert_eq!(index.lookup(1, 1, x * 1000, 2000), ClaimAtLocation::Claim(claim));
+        }
     }
 
     #[test]
@@ -756,7 +806,7 @@ mod tests {
             assert_eq!(index.lookup((x, 0)), ClaimAtLocation::Claim(17));
         }
         assert!(index.edits.is_empty() && index.dirty_coords.is_empty());
-        assert_eq!(&*index.coords, &[(MAX_DIRTY_COORDS as i32 - 1, 0)]);
+        assert_eq!(&*index.coords, &[coordinate_key((MAX_DIRTY_COORDS as i32 - 1, 0))]);
     }
 
     #[test]

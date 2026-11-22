@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::leaderboard::experience_to_level;
 use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
-use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
+use crate::websocket::{BroadcastTopics, OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::shared::Region;
 use game_module::module_bindings::{ExperienceStack, ExperienceState};
 use migration::{OnConflict, sea_query};
@@ -478,14 +478,13 @@ impl ExperienceStateWorker {
         //     }
         // }
 
+        if old.experience_stacks == new.experience_stacks {
+            return;
+        }
         let id = new.entity_id as i64;
-        let observed_at = chrono::Utc::now();
-        let observed_claim = self.global_app_state.mobile_entity_state.get(&new.entity_id)
-            .filter(|location| location.region == database_name)
-            .map(|location| self.global_app_state.claim_locations.lookup(
-                location.region, location.dimension, location.location_x, location.location_z,
-            ))
-            .unwrap_or(crate::claims::claim_location::ClaimAtLocation::Unknown);
+        // Capture time and location once per update with a positive XP delta,
+        // never at DB flush time (the player might have moved by then).
+        let observation = std::cell::OnceCell::new();
         let mut new_total_exp = 0;
         let ranking = &self.global_app_state.ranking_system;
         let player = std::cell::OnceCell::new();
@@ -494,6 +493,7 @@ impl ExperienceStateWorker {
         let resolve_player =
             || player.get_or_init(|| ranking.global_leaderboard.resolve_player(id));
         let debug_ranks = tracing::enabled!(tracing::Level::DEBUG);
+        let tx = &self.global_app_state.tx;
         let mut new_total_level = 0;
         let mut new_profession_exp = 0;
         let mut new_adventure_exp = 0;
@@ -570,16 +570,17 @@ impl ExperienceStateWorker {
 
             if let Some(new_skill) = new_skill {
                 let new_level = calculation.expect("matched skill has a calculation").level;
-                let skill = if old_level != new_level || new_skill.quantity > es.quantity {
+                let skill_name = if (tx.has_subscribers() || debug_ranks)
+                    && (old_level != new_level || new_skill.quantity > es.quantity) {
                     self.global_app_state
                         .skill_desc
                         .get(&(es.skill_id as i64))
-                        .map(|skill| (skill.name.clone(), skill.skill_category))
+                        .map(|skill| skill.name.clone())
                 } else {
                     None
                 };
                 if old_level != new_level
-                    && let Some((skill_name, _)) = &skill
+                    && let Some(skill_name) = &skill_name
                 {
                     let _ = self
                         .global_app_state
@@ -592,6 +593,16 @@ impl ExperienceStateWorker {
                 }
 
                 if new_skill.quantity > es.quantity {
+                    let &(observed_at, observed_claim) = observation.get_or_init(|| {
+                        let at = chrono::Utc::now();
+                        let claim = self.global_app_state.mobile_entity_state.get(&new.entity_id)
+                            .filter(|location| location.region == database_name)
+                            .map(|location| self.global_app_state.claim_locations.lookup(
+                                location.region, location.dimension, location.location_x, location.location_z,
+                            ))
+                            .unwrap_or(crate::claims::claim_location::ClaimAtLocation::Unknown);
+                        (at, claim)
+                    });
                     self.pending.claim_history.push(ObservedClaimExperience {
                         recorded_at: observed_at,
                         player_id: id,
@@ -610,68 +621,26 @@ impl ExperienceStateWorker {
 
                     self.pending.upsert(model);
 
-                    if let Some((skill_name, skill_category)) = skill
-                        && skill_category != 0
-                    {
-                        let mut prev_rank = None;
-                        let post_rank;
-                        if let Some(skill_leaderboard) = self
-                            .global_app_state
-                            .ranking_system
-                            .skill_leaderboard(es.skill_id as i64)
-                        {
-                            if debug_ranks {
-                                prev_rank = skill_leaderboard.get_rank_resolved(resolve_player());
-                            }
-                            skill_leaderboard
-                                .update_resolved(resolve_player(), new_skill.quantity as i64);
-                            post_rank = skill_leaderboard.get_rank_resolved(resolve_player());
-                        } else {
-                            let skill_leaderboard = self
-                                .global_app_state
-                                .ranking_system
-                                .ensure_skill_leaderboard(es.skill_id as i64);
-                            skill_leaderboard
-                                .update_resolved(resolve_player(), new_skill.quantity as i64);
-                            post_rank = skill_leaderboard.get_rank_resolved(resolve_player());
+                    if category.is_some_and(|category| category != 0) {
+                        let board = ranking.ensure_skill_leaderboard(i64::from(es.skill_id));
+                        let rank = || board.get_rank_resolved(resolve_player());
+                        let previous = debug_ranks.then(&rank);
+                        board.update_resolved(resolve_player(), i64::from(new_skill.quantity));
+                        let post = std::cell::LazyCell::new(rank);
+                        if let Some(previous) = previous {
+                            tracing::debug!(user_id = id, skill_id = es.skill_id, ?previous, current = ?*post, "Skill EXP rank");
                         }
-
-                        match (prev_rank, post_rank) {
-                            (Some(prev_rank), Some(post_rank)) => {
-                                if prev_rank != post_rank {
-                                    tracing::debug!(
-                                        "Skill EXP rank {skill_name} changed {prev_rank} to {post_rank}"
-                                    );
-                                }
-                            }
-                            (Some(prev_rank), None) => {
-                                tracing::debug!(
-                                    "Skill EXP rank {skill_name} changed {prev_rank} to no post_rank"
-                                );
-                            }
-                            (None, Some(post_rank)) => {
-                                tracing::debug!(
-                                    "Skill EXP rank {skill_name} changed no prev_rank to {post_rank}"
-                                );
-                            }
-                            (None, None) => {
-                                tracing::debug!(
-                                    user_id = id,
-                                    skill_id = es.skill_id,
-                                    "Skill EXP rank not published yet"
-                                );
-                            }
-                        }
-                        let _ =
-                            self.global_app_state
-                                .tx
-                                .send(OutboundWebSocketMessages::Experience {
+                        if let Some(skill_name) = skill_name {
+                            let _ = tx.send_if_interested(BroadcastTopics::experience(id, &skill_name), || {
+                                OutboundWebSocketMessages::Experience {
                                     level: new_level as u64,
                                     experience: new_skill.quantity as u64,
-                                    rank: post_rank.unwrap_or(0) as u64,
+                                    rank: post.unwrap_or(0) as u64,
                                     skill_name,
                                     user_id: id,
-                                });
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -744,33 +713,12 @@ impl ExperienceStateWorker {
                 .xp_per_hour
                 .update_resolved(resolve_player(), xp_per_hour);
 
-            let post_rank = self
-                .global_app_state
-                .ranking_system
-                .global_leaderboard
-                .get_rank_resolved(resolve_player());
-
-            match (prev_rank, post_rank) {
-                (Some(prev_rank), Some(post_rank)) => {
-                    if prev_rank != post_rank {
-                        tracing::debug!("Total EXP rank changed {prev_rank} to {post_rank}")
-                    }
-                }
-                (Some(prev_rank), None) => {
-                    tracing::debug!("Total EXP rank changed {prev_rank} to no post_rank")
-                }
-                (None, Some(post_rank)) => {
-                    tracing::debug!("Total EXP rank changed no prev_rank to {post_rank}")
-                }
-                (None, None) => {
-                    tracing::debug!(user_id = id, "Total EXP rank not published yet")
-                }
+            let post_rank = std::cell::LazyCell::new(|| ranking.global_leaderboard.get_rank_resolved(resolve_player()));
+            if debug_ranks {
+                tracing::debug!(user_id = id, ?prev_rank, current = ?*post_rank, "Total EXP rank");
             }
 
-            let _ = self
-                .global_app_state
-                .tx
-                .send(OutboundWebSocketMessages::TotalExperience {
+            let _ = tx.send_if_interested(BroadcastTopics::total_experience(id), || OutboundWebSocketMessages::TotalExperience {
                     experience: new_total_exp as u64,
                     user_id: id,
                     experience_per_hour: xp_per_hour as u64,
@@ -784,17 +732,11 @@ impl ExperienceStateWorker {
                 .adventure_leaderboard
                 .update_resolved(resolve_player(), new_adventure_exp);
 
-            let post_rank = self
-                .global_app_state
-                .ranking_system
-                .adventure_leaderboard
-                .get_rank_resolved(resolve_player());
-
-            let _ = self.global_app_state.tx.send(
-                OutboundWebSocketMessages::TotalAdventureExperience {
+            let _ = tx.send_if_interested(BroadcastTopics::total_adventure_experience(id),
+                || OutboundWebSocketMessages::TotalAdventureExperience {
                     experience: new_adventure_exp as u64,
                     user_id: id,
-                    rank: post_rank.unwrap_or(0) as u64,
+                    rank: ranking.adventure_leaderboard.get_rank_resolved(resolve_player()).unwrap_or(0) as u64,
                 },
             );
         }
@@ -805,17 +747,11 @@ impl ExperienceStateWorker {
                 .profession_leaderboard
                 .update_resolved(resolve_player(), new_profession_exp);
 
-            let post_rank = self
-                .global_app_state
-                .ranking_system
-                .profession_leaderboard
-                .get_rank_resolved(resolve_player());
-
-            let _ = self.global_app_state.tx.send(
-                OutboundWebSocketMessages::TotalProfessionExperience {
+            let _ = tx.send_if_interested(BroadcastTopics::total_profession_experience(id),
+                || OutboundWebSocketMessages::TotalProfessionExperience {
                     experience: new_profession_exp as u64,
                     user_id: id,
-                    rank: post_rank.unwrap_or(0) as u64,
+                    rank: ranking.profession_leaderboard.get_rank_resolved(resolve_player()).unwrap_or(0) as u64,
                 },
             );
         }

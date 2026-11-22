@@ -45,6 +45,7 @@ rand = "0.10.3"
 
 
 [features]
+default = [ "spacetimedb-tokio-websockets-rustls" ]
 # Use Rust's system allocator so Heaptrack can intercept individual allocations.
 # Keep mimalloc as the default for normal server builds.
 system-allocator = []

@@ -101,17 +101,36 @@ Build the application for production:
 cargo build --release
 ```
 
+#### Database worker batching
+
+Live ingestion workers flush pending database writes after **2 seconds** from
+the first row, or earlier when the worker's batch is full. Configure the
+window in milliseconds with `BITCRAFT_HUB_API__DATABASE__WORKER_FLUSH_MS`.
+Graceful shutdown drains accepted rows and flushes partial batches without
+waiting for that timer. A crash can still lose queued rows. Craft and claim
+event writers expose `worker_db_flush_rows` to measure the resulting SQL batch sizes.
+
 #### Upstream WebSocket TLS
 
-The native SpacetimeDB SDK uses `tokio-websockets`. For `wss://`, the default
-uses native TLS with a 16 KiB TCP read buffer below TLS. The optional Rustls
-connector uses ring and the platform certificate verifier over raw TCP.
+The SpacetimeDB SDK uses `tokio-websockets`. For `wss://`, the API defaults
+to Rustls with ring and the platform certificate verifier over raw TCP.
+Disable the default feature to use native TLS with a 16 KiB TCP read buffer.
 Plain `ws://` connections use raw TCP in either build. From `rust/api-server`:
 
 ```bash
 cargo build --release --locked
-cargo build --release --locked --features spacetimedb-tokio-websockets-rustls
+cargo build --release --locked --no-default-features
 ```
+
+Run only one ingestion process against the benchmark database at a time.
+
+For a BSATN replay fixture, create a private directory (`mkdir -m 700`) and
+set `BITCRAFT_HUB_API__SPACETIMEDB__REGION_CAPTURE_DIR` to its absolute path.
+Each regional connection writes a separate `region-<number>-*.capture` file
+(512 MiB limit); the global connection is excluded. Unset the setting before
+timing the live API, since recording adds decompression and disk writes.
+Files contain decompressed BSATN and can include authentication tokens. Keep
+them private. See `sdks/rust/BSATN_CAPTURE.md` in the SDK fork for the format.
 
 ### WebSocket traffic metrics
 

@@ -132,6 +132,7 @@ fn send_worker_message<T>(
 }
 
 fn connect_to_db(
+    builder: __sdk::DbConnectionBuilder<RemoteModule>,
     global_app_state: AppState,
     token: String,
     db_name: &str,
@@ -144,7 +145,7 @@ fn connect_to_db(
     let tmp_db_name = db_name.to_owned();
     let tmp_disconnect_db_name = tmp_db_name.clone();
 
-    DbConnection::builder()
+    builder
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, identity, _token| {
             timing.connected();
@@ -162,7 +163,6 @@ fn connect_to_db(
                 .connection_state
                 .insert(tmp_db_name.clone(), true);
         })
-        // .with_bsatn_capture("/tmp/bitcraft-capture.capture", 512 * 1024 * 1024 * 10)
         .with_row_deduplication(true)
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
         .on_connect_error(on_connect_error)
@@ -420,7 +420,15 @@ async fn connect_to_db_logic(
         .unwrap()
         .parse::<entity::shared::Region>()?;
 
+    let mut builder = DbConnection::builder();
+    if let Some(dir) = &config.spacetimedb.region_capture_dir {
+        // The SDK requires a fresh file for each connection, including retries.
+        let path = dir.join(format!("region-{region_number}-{:016x}.capture", rand::random::<u64>()));
+        tracing::info!(region = database, path = %path.display(), "Recording regional BSATN messages");
+        builder = builder.with_bsatn_capture(path, 512 * 1024 * 1024);
+    }
     let ctx = connect_to_db(
+        builder,
         global_app_state.clone(),
         config.spacetimedb.password.clone(),
         database,
@@ -1063,6 +1071,7 @@ async fn connect_to_db_logic(
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
+    let db_flush_delay = Duration::from_millis(config.database.worker_flush_ms);
     if !config.spacetimedb.skip_state_tables && !config.spacetimedb.database.trim().is_empty() {
         leaderboard_staff::start(&config, global_app_state.clone());
     }
@@ -1079,31 +1088,31 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let player_state_worker = crate::player_state::bitcraft::PlayerStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let player_username_state_worker =
             crate::player_state::bitcraft::PlayerUsernameStateWorker::new(
                 global_app_state.clone(),
                 3000,
-                Duration::from_millis(200),
+                db_flush_delay,
             );
 
         let experience_state_worker = crate::leaderboard::bitcraft::ExperienceStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let location_state_worker = crate::location_state::bitcraft::LocationStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         let inventory_state_worker = inventory_bitcraft::InventoryStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let (item_desc_tx, item_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
@@ -1118,19 +1127,19 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let claim_state_worker = bitcraft::ClaimStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let claim_local_state_worker = bitcraft::ClaimLocalStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let claim_member_state_worker = bitcraft::ClaimMemberStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         let (skill_desc_tx, skill_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
@@ -1138,12 +1147,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let claim_tech_state_worker = bitcraft::ClaimTechStateWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         let claim_tech_desc_worker = bitcraft::ClaimTechDescWorker::new(
             global_app_state.clone(),
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         let (building_state_tx, building_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (building_desc_tx, building_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
@@ -1170,7 +1179,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (progressive_action_state_tx, progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (public_progressive_action_state_tx, public_progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
-        let craft_activity_tx = crate::crafting::events::start_worker(global_app_state.clone());
+        let craft_activity_tx = crate::crafting::events::start_worker(global_app_state.clone(), db_flush_delay);
         let (passive_craft_state_tx, passive_craft_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let mut remove_desc = false;
@@ -1270,6 +1279,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                     let claim_event_tx = crate::claims::events::start_persistence_worker(
                         tmp_global_app_state.clone(),
                         region,
+                        db_flush_delay,
                     );
 
                     loop {
@@ -1402,25 +1412,25 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             global_app_state.clone(),
             vault_state_collectibles_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_item_desc(
             global_app_state.clone(),
             item_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_cargo_desc(
             global_app_state.clone(),
             cargo_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_deployable_state(
             global_app_state.clone(),
             deployable_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         claim_state_worker.start(&global_app_state.shutdown);
         claim_local_state_worker.start(&global_app_state.shutdown);
@@ -1429,7 +1439,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             global_app_state.clone(),
             skill_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         claim_tech_state_worker.start(&global_app_state.shutdown);
         claim_tech_desc_worker.start(&global_app_state.shutdown);
@@ -1437,77 +1447,77 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             global_app_state.clone(),
             building_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_building_nickname_state(
             global_app_state.clone(),
             building_nickname_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_crafting_recipe_desc(
             global_app_state.clone(),
             crafting_recipe_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_traveler_task_desc(
             global_app_state.clone(),
             traveler_task_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_traveler_task_state(
             global_app_state.clone(),
             traveler_task_state_rx,
             6000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_trade_order_state(
             global_app_state.clone(),
             trade_order_state_rx,
             6000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         start_worker_npc_desc(
             global_app_state.clone(),
             npc_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         start_worker_buy_order_state(
             global_app_state.clone(),
             buy_order_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         start_worker_sell_order_state(
             global_app_state.clone(),
             sell_order_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         start_worker_collectible_desc(
             global_app_state.clone(),
             collectible_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
 
         start_worker_user_state(global_app_state.clone(), user_state_rx);
@@ -1516,57 +1526,57 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             global_app_state.clone(),
             interior_network_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_dimension_description_state(
             global_app_state.clone(),
             dimension_description_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_player_housing_state(
             global_app_state.clone(),
             player_housing_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_permission_state(
             global_app_state.clone(),
             permission_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_portal_state(
             global_app_state.clone(),
             portal_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_resource_desc(
             global_app_state.clone(),
             resource_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_extraction_recipe_desc(
             global_app_state.clone(),
             extraction_recipe_desc_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         start_worker_progressive_action_state(
             global_app_state.clone(),
             progressive_action_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
         crate::crafting::public_progressive_action::start_worker(
             global_app_state.clone(),
             public_progressive_action_state_rx,
             3000,
-            Duration::from_millis(200),
+            db_flush_delay,
         );
-        crate::crafting::passive::start_worker(global_app_state.clone(), passive_craft_state_rx, 3000, Duration::from_millis(200));
+        crate::crafting::passive::start_worker(global_app_state.clone(), passive_craft_state_rx, 3000, db_flush_delay);
     });
 }
 
@@ -1769,6 +1779,25 @@ impl BroadcastTopics {
         Self::new([("player_presence".into(), Some(id))])
     }
 
+    pub(crate) fn experience(id: i64, skill: &str) -> Self {
+        Self::new([
+            (format!("experience:{skill}").into(), Some(id)),
+            ("experience".into(), Some(id)),
+        ])
+    }
+
+    pub(crate) fn total_experience(id: i64) -> Self {
+        Self::new([("total_experience".into(), Some(id))])
+    }
+
+    pub(crate) fn total_profession_experience(id: i64) -> Self {
+        Self::new([("total_profession_experience".into(), Some(id))])
+    }
+
+    pub(crate) fn total_adventure_experience(id: i64) -> Self {
+        Self::new([("total_adventure_experience".into(), Some(id))])
+    }
+
     pub(crate) fn inventory_update(id: i64) -> Self {
         Self::new([("inventory_update".into(), Some(id))])
     }
@@ -1870,10 +1899,7 @@ impl OutboundWebSocketMessages {
                 skill_name,
                 user_id,
                 ..
-            } => Some(BroadcastTopics::new([
-                (format!("experience:{skill_name}").into(), Some(*user_id)),
-                ("experience".into(), Some(*user_id)),
-            ])),
+            } => Some(BroadcastTopics::experience(*user_id, skill_name)),
             OutboundWebSocketMessages::ClaimLocalState(claim_local_state) => {
                 Some(BroadcastTopics::new([(
                     "claim_local_state".into(),
@@ -1955,13 +1981,13 @@ impl OutboundWebSocketMessages {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }
             OutboundWebSocketMessages::TotalExperience { user_id, .. } => Some(
-                BroadcastTopics::new([("total_experience".into(), Some(*user_id))]),
+                BroadcastTopics::total_experience(*user_id),
             ),
             OutboundWebSocketMessages::TotalProfessionExperience { user_id, .. } => Some(
-                BroadcastTopics::new([("total_profession_experience".into(), Some(*user_id))]),
+                BroadcastTopics::total_profession_experience(*user_id),
             ),
             OutboundWebSocketMessages::TotalAdventureExperience { user_id, .. } => Some(
-                BroadcastTopics::new([("total_adventure_experience".into(), Some(*user_id))]),
+                BroadcastTopics::total_adventure_experience(*user_id),
             ),
             OutboundWebSocketMessages::TimePlayed { user_id, .. } => {
                 Some(BroadcastTopics::new([(

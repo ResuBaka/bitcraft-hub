@@ -5,6 +5,53 @@ use std::pin::Pin;
 use tokio::time::Duration;
 use tokio::time::{Instant, Sleep, sleep_until};
 
+/// Event writers consume either a bounded Tokio queue or a shutdown-aware worker queue.
+pub(crate) trait DbBatchInput<T> {
+    fn collect_ready(
+        &mut self,
+        batch: &mut Vec<T>,
+        limit: usize,
+    ) -> impl Future<Output = usize> + Send;
+}
+
+impl<T: Send + 'static> DbBatchInput<T> for UnboundedReceiver<T> {
+    async fn collect_ready(&mut self, batch: &mut Vec<T>, limit: usize) -> usize {
+        self.recv_many(batch, limit).await
+    }
+}
+
+impl<T: Send> DbBatchInput<T> for tokio::sync::mpsc::Receiver<T> {
+    async fn collect_ready(&mut self, batch: &mut Vec<T>, limit: usize) -> usize {
+        self.recv_many(batch, limit).await
+    }
+}
+
+/// Drain ready rows, then collect until the first batch's deadline, size cap,
+/// or end of input. An idle writer has no timer.
+pub(crate) async fn collect_db_batch<T>(
+    rx: &mut impl DbBatchInput<T>,
+    batch: &mut Vec<T>,
+    limit: usize,
+    delay: Duration,
+) -> usize {
+    debug_assert!(batch.is_empty());
+    let count = rx.collect_ready(batch, limit).await;
+    if count == 0 || count == limit || delay.is_zero() {
+        return count;
+    }
+    let timeout = tokio::time::sleep(delay);
+    tokio::pin!(timeout);
+    while batch.len() < limit {
+        let remaining = limit - batch.len();
+        tokio::select! {
+            biased;
+            _ = &mut timeout => break,
+            n = rx.collect_ready(batch, remaining) => if n == 0 { break },
+        }
+    }
+    batch.len()
+}
+
 /// An idle batch has no timer. The first message starts one fixed window;
 /// subsequent messages do not extend it and starve the flush.
 pub(crate) struct BatchTimer {
@@ -123,6 +170,47 @@ where
 mod tests {
     use super::super::worker_channel::{UnboundedReceiver, UnboundedSender, unbounded_channel};
     use super::*;
+
+    #[tokio::test(start_paused = true)]
+    async fn event_batch_deadline_starts_at_first_row_and_does_not_slide() {
+        let (tx, mut rx) = unbounded_channel();
+        let mut batch = Vec::new();
+        let delay = Duration::from_secs(2);
+        {
+            let receive = collect_db_batch(&mut rx, &mut batch, 10, delay);
+            tokio::pin!(receive);
+            assert!(futures::poll!(&mut receive).is_pending());
+            tokio::time::advance(delay * 3).await;
+            tx.send(1).unwrap();
+            assert!(futures::poll!(&mut receive).is_pending());
+            tokio::time::advance(delay / 2).await;
+            tx.send(2).unwrap();
+            assert!(futures::poll!(&mut receive).is_pending());
+            tokio::time::advance(delay / 2).await;
+            assert_eq!(futures::poll!(&mut receive), std::task::Poll::Ready(2));
+        }
+        assert_eq!(batch, [1, 2]);
+    }
+
+    #[tokio::test]
+    async fn full_event_batch_returns_with_sender_still_alive() {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(4);
+        for row in 1..=3 {
+            tx.send(row).await.unwrap();
+        }
+        let mut batch = Vec::new();
+        assert_eq!(
+            futures::poll!(Box::pin(collect_db_batch(
+                &mut rx,
+                &mut batch,
+                2,
+                Duration::from_secs(60)
+            ))),
+            std::task::Poll::Ready(2)
+        );
+        assert_eq!(batch, [1, 2]);
+        assert_eq!(rx.try_recv().unwrap(), 3);
+    }
 
     struct TestWorker {
         rx: UnboundedReceiver<SpacetimeUpdateMessages<u8>>,
