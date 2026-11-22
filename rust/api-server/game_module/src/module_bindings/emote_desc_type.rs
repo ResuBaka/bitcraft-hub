@@ -70,6 +70,7 @@ impl __sdk::__query_builder::HasCols for EmoteDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct EmoteDescIxCols {
+    pub enabled_by_collectible_id: __sdk::__query_builder::IxCol<EmoteDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<EmoteDesc, i32>,
 }
 
@@ -77,6 +78,10 @@ impl __sdk::__query_builder::HasIxCols for EmoteDesc {
     type IxCols = EmoteDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         EmoteDescIxCols {
+            enabled_by_collectible_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "enabled_by_collectible_id",
+            ),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
         }
     }
