@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::{BatchTimer, BatchedWorker};
 use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
-use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
+use crate::websocket::{BroadcastTopics, OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
@@ -180,9 +180,7 @@ impl PlayerStateWorker {
                         if model.sign_in_timestamp == 0 {
                             model.sign_in_timestamp = existing_model.sign_in_timestamp;
                         }
-                        self.global_app_state
-                            .player_state
-                            .insert(model.entity_id, model.clone());
+                        self.cache_player_and_publish_presence(&model, existing_model.signed_in);
                         self.global_app_state
                             .ranking_system
                             .time_played
@@ -196,9 +194,7 @@ impl PlayerStateWorker {
                     entry.remove();
                 }
                 Entry::Vacant(_entry) => {
-                    self.global_app_state
-                        .player_state
-                        .insert(model.entity_id, model.clone());
+                    self.cache_player_and_publish_presence(&model, false);
                     self.global_app_state
                         .ranking_system
                         .time_played
@@ -282,9 +278,7 @@ impl PlayerStateWorker {
             self.messages.remove(index);
         }
 
-        self.global_app_state
-            .player_state
-            .insert(model.entity_id, model.clone());
+        self.cache_player_and_publish_presence(&model, false);
         self.ids.push(model.entity_id);
         self.messages.push(model.into_active_model());
     }
@@ -378,14 +372,35 @@ impl PlayerStateWorker {
 
         self.ids.push(model.entity_id);
 
-        self.global_app_state
-            .player_state
-            .insert(model.entity_id, model.clone());
-        let _ = self
-            .global_app_state
-            .tx
-            .send(OutboundWebSocketMessages::PlayerState(model.clone()));
+        self.cache_player_and_publish_presence(&model, old.signed_in);
+        // Keep the old feed for older clients without cloning a full state
+        // model when everyone is subscribed to presence instead.
+        let _ = self.global_app_state.tx.send_if_interested(
+            BroadcastTopics::new([("player_state".into(), Some(model.entity_id))]),
+            || OutboundWebSocketMessages::PlayerState(model.clone()),
+        );
         self.messages.push(model.into_active_model());
+    }
+
+    fn cache_player_and_publish_presence(
+        &self,
+        model: &::entity::player_state::Model,
+        previous_if_uncached: bool,
+    ) {
+        let previous = self
+            .global_app_state
+            .player_state
+            .insert(model.entity_id, model.clone())
+            .map_or(previous_if_uncached, |player| player.signed_in);
+        if previous != model.signed_in {
+            let _ = self.global_app_state.tx.send_if_interested(
+                BroadcastTopics::player_presence(model.entity_id),
+                || OutboundWebSocketMessages::PlayerPresenceChanged {
+                    player_id: model.entity_id.to_string(),
+                    signed_in: model.signed_in,
+                },
+            );
+        }
     }
 
     async fn handle_remove(&mut self, delete: PlayerState, database_name: entity::shared::Region) {
@@ -1281,7 +1296,18 @@ mod tests {
         PlayerStateWorker,
         tokio::sync::mpsc::Receiver<PlayerStateDbOperation>,
     ) {
-        let (outbound, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let (worker, db_rx, _) = worker_with_outbound(db);
+        (worker, db_rx)
+    }
+
+    fn worker_with_outbound(
+        db: sea_orm::DatabaseConnection,
+    ) -> (
+        PlayerStateWorker,
+        tokio::sync::mpsc::Receiver<PlayerStateDbOperation>,
+        tokio::sync::mpsc::UnboundedReceiver<OutboundWebSocketMessages>,
+    ) {
+        let (outbound, outbound_rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db, outbound, Default::default());
         let (tx, rx) = crate::websocket::worker_channel::shutdown_channel(&state.shutdown);
         let (db_tx, db_rx) = channel(20);
@@ -1298,6 +1324,7 @@ mod tests {
                 pending_deletes: HashMap::new(),
             },
             db_rx,
+            outbound_rx,
         )
     }
 
@@ -1309,6 +1336,49 @@ mod tests {
         for delete in worker.pending_deletes.values_mut() {
             delete.deadline = Instant::now();
         }
+    }
+
+    #[tokio::test]
+    async fn presence_reports_transitions_but_not_playtime_or_online_region_transfers() {
+        let (mut worker, _db_rx, mut outbound) = worker_with_outbound(empty_db());
+        let id = 9_007_199_254_740_993;
+        let clients = &worker.global_app_state.clients_state;
+        let (tx, _rx) = kanal::bounded_async(10);
+        let client = "presence".to_string();
+        clients
+            .add_client(client.clone(), tx, crate::WebsocketEncoding::MessagePack)
+            .await;
+        clients
+            .add_topic_to_client(&client, "player_presence", Some(id as i64))
+            .await;
+
+        let mut offline = player(id);
+        offline.signed_in = false;
+        worker.handle_insert(offline.clone(), 1).await;
+        assert!(outbound.try_recv().is_err());
+
+        let online = player(id);
+        worker.handle_update(online.clone(), 1, offline.clone()).await;
+        assert_eq!(
+            serde_json::to_value(outbound.try_recv().unwrap()).unwrap(),
+            serde_json::json!({"t": "PlayerPresenceChanged", "c": {"player_id": id.to_string(), "signed_in": true}}),
+        );
+
+        let mut played = online.clone();
+        played.time_played += 1;
+        played.time_signed_in += 1;
+        worker.handle_update(played.clone(), 1, online).await;
+        worker.handle_remove(played.clone(), 1).await;
+        worker.handle_insert(played.clone(), 2).await;
+        assert!(outbound.try_recv().is_err());
+
+        worker.handle_update(offline, 2, played).await;
+        assert!(matches!(
+            outbound.try_recv().unwrap(),
+            OutboundWebSocketMessages::PlayerPresenceChanged { player_id, signed_in: false }
+                if player_id == id.to_string()
+        ));
+        assert!(outbound.try_recv().is_err());
     }
 
     #[tokio::test]

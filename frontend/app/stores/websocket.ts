@@ -28,7 +28,9 @@ export const useWebsocketStore = defineStore("websocket", () => {
         onFailed() {},
       },
       immediate: false,
-      onConnected: () => {
+      onConnected: (ws) => {
+        // Decode binary frames synchronously so ordered deltas stay ordered.
+        ws.binaryType = "arraybuffer";
         sendMessage({ t: "Subscribe", c: { topics: topics_currently_subscribed.value } });
         sendMessage({ t: "ListSubscribedTopics" });
       },
@@ -49,7 +51,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
     );
   });
 
-  async function handleMessage(_ws: WebSocket, event: MessageEvent) {
+  function handleMessage(_ws: WebSocket, event: MessageEvent) {
     let message: OutboundWebSocketMessages | undefined;
     if (typeof event.data === "string") {
       if (event.data.startsWith("{")) {
@@ -59,8 +61,8 @@ export const useWebsocketStore = defineStore("websocket", () => {
       } else if (event.data.startsWith("t =")) {
         console.warn("toml", event.data);
       }
-    } else if (event.data instanceof Blob) {
-      message = unpack(await event.data.arrayBuffer(), {
+    } else if (event.data instanceof ArrayBuffer) {
+      message = unpack(event.data, {
         // @ts-expect-error
         int64AsType: "auto",
       });

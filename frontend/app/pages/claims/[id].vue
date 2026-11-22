@@ -250,7 +250,7 @@ const members = computed(() => (claimFetch.value?.members ?? {}) as ClaimMembers
 const memberPresenceRevision = ref(0);
 const memberCount = computed(() => Object.keys(members.value).length);
 const topicsPlayer = computed(() =>
-  Object.keys(claimFetch.value?.members ?? {}).map((id) => `player_state.${id}`),
+  Object.keys(claimFetch.value?.members ?? {}).map((id) => `player_presence.${id}`),
 );
 const claimLocal = shallowRef<{ num_tiles: number; supplies: number; treasury: number }>();
 
@@ -268,8 +268,8 @@ registerWebsocketMessageHandler(
   },
 );
 
-registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  const member = members.value[String(message.entity_id)];
+registerWebsocketMessageHandler("PlayerPresenceChanged", topicsPlayer, (message) => {
+  const member = members.value[message.player_id];
   const onlineState = message.signed_in ? "Online" : "Offline";
   if (!member || member.online_state === onlineState) return;
 

@@ -1,4 +1,5 @@
 pub(crate) mod bitcraft;
+pub(crate) mod live;
 pub(crate) mod snapshots;
 
 use crate::{AppRouter, AppState, leaderboard};
@@ -153,6 +154,14 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/leaderboard/rank-snapshots",
             axum_codec::routing::get(leaderboard_rank_snapshots).into(),
+        )
+        .route(
+            "/leaderboard/boards",
+            axum_codec::routing::get(live::list_boards).into(),
+        )
+        .route(
+            "/leaderboard/boards/{id}",
+            axum_codec::routing::get(live::get_board).into(),
         )
         .route(
             "/experience/{player_id}",
@@ -1580,6 +1589,7 @@ pub(crate) async fn get_top_100(
 /// Publish the same consistent, named rows as the HTTP endpoint after ranking
 /// publication. Coalesce busy periods and do no database work without viewers.
 pub(crate) fn start_live_updates(state: AppState) {
+    live::start(state.clone());
     let mut publications = state.ranking_system.subscribe_publications();
     let shutdown = state.shutdown.clone();
     shutdown.spawn_worker(async move {

@@ -103,10 +103,10 @@ registerWebsocketMessageHandler(
 );
 let lastSignedIn: boolean | undefined;
 registerWebsocketMessageHandler(
-  "PlayerState",
-  () => [`player_state.${props.playerId}`],
+  "PlayerPresenceChanged",
+  () => [`player_presence.${props.playerId}`],
   (player) => {
-    if (String(player.entity_id) !== props.playerId) return;
+    if (player.player_id !== props.playerId) return;
     if (lastSignedIn !== player.signed_in) {
       lastSignedIn = player.signed_in;
       revisions.invalidate();

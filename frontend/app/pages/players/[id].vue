@@ -141,29 +141,18 @@ registerWebsocketMessageHandler(
   },
 );
 
-const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
+const topicsPlayer = computed(() => [`player_presence.${route.params.id}`]);
 
-registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  if (playerData.value) {
-    if (playerData.value.signed_in !== message.signed_in) {
-      if (message.signed_in) {
-        toast.add({
-          title: `${playerData.value?.username} signed in`,
-        });
-      } else {
-        toast.add({
-          title: `${playerData.value?.username} signed out`,
-        });
-      }
-    }
+registerWebsocketMessageHandler("PlayerPresenceChanged", topicsPlayer, (message) => {
+  const player = playerData.value;
+  if (
+    !player ||
+    message.player_id !== String(route.params.id) ||
+    player.signed_in === message.signed_in
+  ) return;
 
-    playerData.value = {
-      ...playerData.value,
-      signed_in: message.signed_in,
-      time_signed_in: message.time_signed_in,
-      time_played: message.time_played,
-    };
-  }
+  toast.add({ title: `${player.username} signed ${message.signed_in ? "in" : "out"}` });
+  playerData.value = { ...player, signed_in: message.signed_in };
 });
 
 if (tmpPage) {

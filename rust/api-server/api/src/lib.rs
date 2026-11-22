@@ -712,6 +712,19 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                             .send(OutboundWebSocketMessages::SubscribedTopics(topics))
                             .await;
                     }
+                    InboundWebSocketMessages::SyncLeaderboardBoard { board_id, epoch, revision } => {
+                        if inner_state.clients_state.has_keyed_topic(
+                            &inner_id,
+                            leaderboard::live::DELTA_TOPIC,
+                            i64::from(board_id),
+                        ).await
+                            && let Some(frame) = inner_state.live_leaderboards.sync(
+                                board_id, epoch.as_deref(), revision,
+                            )
+                        {
+                            let _ = tx.send(frame).await;
+                        }
+                    }
                 },
                 Err(error) => {
                     tracing::error!("Error handling websocket message from client: {error}");
@@ -1266,6 +1279,7 @@ struct AppState {
     npc_desc: Arc<dashmap::DashMap<i32, entity::npc_desc::Model>>,
     metrics_registry: prometheus::Registry,
     ranking_system: Arc<RankingSystem>,
+    live_leaderboards: Arc<leaderboard::live::LiveBoards>,
 }
 
 impl AppState {
@@ -1350,6 +1364,7 @@ impl AppState {
             deployable_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
             ranking_system: Arc::new(RankingSystem::with_bucket_config(leaderboard_config)),
+            live_leaderboards: Arc::new(leaderboard::live::LiveBoards::default()),
         }
     }
 
@@ -1680,6 +1695,13 @@ impl ClientsState {
         id: &String,
     ) -> Option<WebsocketEncoding> {
         self.clients.read().await.get(id).map(|client| client.2)
+    }
+
+    async fn has_keyed_topic(&self, id: &str, topic: &str, key: i64) -> bool {
+        self.clients.read().await
+            .get(id)
+            .and_then(|client| client.1.get(topic))
+            .is_some_and(|keys| keys.contains(&key))
     }
 
     pub(crate) async fn get_topics_for_client(&self, id: &String) -> Option<Vec<String>> {

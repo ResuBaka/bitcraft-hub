@@ -1,50 +1,43 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
-import type { GetTop100Response } from "~/types/GetTop100Response";
+import type { LeaderboardBoard } from "~/types/LeaderboardBoard";
+import type { LeaderboardBoardRow } from "~/types/LeaderboardBoardRow";
+import type { LeaderboardBoardSnapshot } from "~/types/LeaderboardBoardSnapshot";
+import type { LeaderboardBoardUpdate } from "~/types/LeaderboardBoardUpdate";
+import { acceptsLeaderboardSnapshot, applyLeaderboardDelta } from "~/utils/leaderboardLive";
 import { watch } from "vue";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 
-const { data: leaderboard, pending, refresh } = await useLazyFetchMsPack<GetTop100Response>(
-  () => {
-    return `/leaderboard`;
-  },
-  {
-    deep: true,
-  },
-);
+const { data: boards } = await useFetchMsPack<LeaderboardBoard[]>("/leaderboard/boards");
 
 const route = useRoute();
 const router = useRouter();
 
-const skills = computed(() => {
-  if (!leaderboard.value?.leaderboard) {
-    return [];
-  }
+const summaryBoards = new Set(["Experience", "Level", "Experience Per Hour", "Skills", "Professions"]);
+const skills = computed(() =>
+  (boards.value ?? []).map((board) => board.name).filter((name) => !summaryBoards.has(name)),
+);
 
-  return Object.keys(leaderboard.value?.leaderboard).filter((name) => {
-    return (
-      name !== "Experience" &&
-      name !== "Level" &&
-      name !== "Experience Per Hour" &&
-      name !== "Skills" &&
-      name !== "Professions"
-    );
-  });
+const selectedSkills = ref(typeof route.query.skill === "string" ? route.query.skill : "Professions");
+const selectedBoardId = computed(() => boards.value?.find((board) => board.name === selectedSkills.value)?.id ?? -1);
+const boardTopic = computed(() => `leaderboard_delta.${selectedBoardId.value}`);
+const { data: snapshot, pending } = await useLazyFetchMsPack<LeaderboardBoardSnapshot>(
+  () => `/leaderboard/boards/${selectedBoardId.value}`,
+);
+const liveBoard = shallowRef<LeaderboardBoardUpdate>();
+const rows = computed(() => {
+  const id = selectedBoardId.value;
+  if (liveBoard.value?.board_id === id) return liveBoard.value.rows;
+  return snapshot.value?.board_id === id ? snapshot.value.rows : [];
 });
-
-let selectedSkills = ref("Professions");
-if (route.query.skill) {
-  selectedSkills.value = route.query.skill as string;
-}
 
 type LeaderboardSnapshots = {
   board: string;
   entries: { player_id: number | bigint; rank: number | bigint; captured_at: string }[];
 };
 const snapshotPlayerIds = computed(() =>
-  (leaderboard.value?.leaderboard?.[selectedSkills.value] ?? [])
-    .map((entry) => String(entry.player_id)).sort().join(","),
+  rows.value.map((entry) => entry.player_id).sort().join(","),
 );
 const { data: snapshots, refresh: refreshSnapshots } = useLazyFetchMsPack<LeaderboardSnapshots>(
   () => `/leaderboard/rank-snapshots?board=${encodeURIComponent(selectedSkills.value)}&players=${snapshotPlayerIds.value}`,
@@ -55,11 +48,11 @@ const snapshotsByPlayer = computed(() => new Map(
     ? snapshots.value.entries.map((entry) => [String(entry.player_id), entry])
     : [],
 ));
-function rankChange(playerId: number | bigint, rank: number) {
+function rankChange(playerId: string, rank: number) {
   const snapshot = snapshotsByPlayer.value.get(String(playerId));
   return snapshot ? Number(snapshot.rank) - rank : null;
 }
-function snapshotTitle(playerId: number | bigint) {
+function snapshotTitle(playerId: string) {
   const snapshot = snapshotsByPlayer.value.get(String(playerId));
   if (!snapshot) return undefined;
   const date = new Date(snapshot.captured_at);
@@ -82,39 +75,58 @@ watch(selectedSkills, async () => {
   animateNumbers.value = true;
 });
 
-// Published rankings include entrants and ordering from every board. The initial
-// HTTP request remains the fallback when live updates are disabled.
-let latestLiveBoard: GetTop100Response | undefined;
-let resynchronizing = false;
-function applyLiveBoard() {
-  if (!pending.value && !resynchronizing && latestLiveBoard) {
-    leaderboard.value = latestLiveBoard;
-    latestLiveBoard = undefined;
-  }
+const websocket = useWebsocketStore();
+let needsSync = true;
+let lastGapSyncAt = 0;
+
+function requestBoardSync() {
+  const boardId = selectedBoardId.value;
+  const current = liveBoard.value?.board_id === boardId ? liveBoard.value : undefined;
+  websocket.sendMessage({
+    t: "SyncLeaderboardBoard",
+    c: { board_id: boardId, epoch: current?.epoch ?? null, revision: current?.revision ?? null },
+  });
 }
-watch(pending, applyLiveBoard);
-registerWebsocketMessageHandler("LeaderboardUpdated", "leaderboard", (message) => {
-  latestLiveBoard = message;
-  applyLiveBoard();
+
+// The delta handler owns the topic. Reset frames use the same subscription.
+registerWebsocketMessageHandler("LeaderboardBoardReset", [], (message) => {
+  if (!acceptsLeaderboardSnapshot(selectedBoardId.value, liveBoard.value, message)) return;
+  liveBoard.value = message;
+  lastGapSyncAt = 0;
+});
+registerWebsocketMessageHandler("LeaderboardBoardDelta", boardTopic, (message) => {
+  const result = applyLeaderboardDelta(selectedBoardId.value, liveBoard.value, message);
+  if (result.status === "applied") {
+    liveBoard.value = result.board;
+    lastGapSyncAt = 0;
+  } else if (result.status === "resync" && Date.now() - lastGapSyncAt >= 500) {
+    lastGapSyncAt = Date.now();
+    requestBoardSync();
+  }
 });
 
-// Resynchronize after subscribing (including reconnects), covering updates that
-// occurred between the initial HTTP request and the WebSocket subscription.
-registerWebsocketMessageHandler("SubscribedTopics", [], async (topics) => {
-  if (topics.includes("leaderboard") && !resynchronizing) {
-    resynchronizing = true;
-    try {
-      await refresh({ dedupe: "defer" });
-    } finally {
-      resynchronizing = false;
-      applyLiveBoard();
-    }
+registerWebsocketMessageHandler("SubscribedTopics", [], (topics) => {
+  if (!needsSync || !topics.includes(boardTopic.value)) return;
+  needsSync = false;
+  requestBoardSync();
+});
+watch(() => websocket.isConnected, (connected) => {
+  if (!connected) {
+    // Keep the last revision for a cheap resume on reconnect.
+    needsSync = true;
+    lastGapSyncAt = 0;
   }
 });
-onMounted(() => {
-  const websocket = useWebsocketStore();
+function requestSubscriptionStatus() {
   if (websocket.isConnected) websocket.sendMessage({ t: "ListSubscribedTopics" });
+}
+watch(boardTopic, () => {
+  liveBoard.value = undefined;
+  needsSync = true;
+  lastGapSyncAt = 0;
+  requestSubscriptionStatus();
 });
+onMounted(requestSubscriptionStatus);
 
 // Rank comparison snapshots change once per UTC day, not every 30 seconds.
 let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
@@ -128,24 +140,6 @@ function scheduleSnapshotRefresh() {
 }
 onMounted(scheduleSnapshotRefresh);
 onUnmounted(() => { if (snapshotTimer) clearTimeout(snapshotTimer); });
-
-const playerStateTopics = computed(() => {
-  if (!leaderboard.value?.leaderboard) {
-    return [];
-  }
-
-  let topicsSet = new Set<string>();
-
-  for (const player of Object.values(leaderboard.value.player_map)) {
-    topicsSet.add(`player_state.${player.entity_id.toString()}`);
-  }
-
-  return Array.from(topicsSet);
-});
-
-registerWebsocketMessageHandler("PlayerState", playerStateTopics, (message) => {
-  leaderboard.value.player_map[message.entity_id] = message;
-});
 
 const icons = {
   Fishing: { icon: "i-mdi-fish", class: "text-blue-500" },
@@ -172,32 +166,10 @@ const icons = {
   Level: { icon: "i-mdi-chart-line", class: "text-emerald-600" },
 };
 
-const totelExperiencePerHourAverage = computed(() => {
-  if (!leaderboard.value?.leaderboard) {
-    return 0;
-  }
-
-  let totalExperience = 0;
-
-  totalExperience += leaderboard.value.leaderboard["Experience"].reduce((acc, curr) => {
-    return acc + curr.experience_per_hour;
-  }, 0);
-
-  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience"].length);
-});
-
 const experiencePerHourAverage = computed(() => {
-  if (!leaderboard.value?.leaderboard) {
-    return 0;
-  }
-
-  let totalExperience = 0;
-
-  totalExperience += leaderboard.value.leaderboard["Experience Per Hour"].reduce((acc, curr) => {
-    return acc + curr.experience;
-  }, 0);
-
-  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience Per Hour"].length);
+  if (!rows.value.length) return 0;
+  const total = rows.value.reduce((sum, row) => sum + Number(row.experience ?? 0), 0);
+  return Math.ceil(total / rows.value.length);
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
@@ -387,11 +359,10 @@ const defaultColumns = computed(() => [
   },
 ]);
 
-const playerLinkClass = (playerId: number) => {
-  const signedIn = leaderboard.value?.player_map?.[playerId]?.signed_in;
+const playerLinkClass = (row: LeaderboardBoardRow) => {
   return [
     "font-semibold hover:underline",
-    signedIn ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-gray-100",
+    row.signed_in ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-gray-100",
   ].join(" ");
 };
 
@@ -452,8 +423,8 @@ const columnsForSkill = (skill: string) => {
               <UTable
                 :key="selectedSkills"
                 :columns="columnsForSkill(selectedSkills)"
-                :data="leaderboard?.leaderboard?.[selectedSkills] || []"
-                :loading="pending"
+                :data="rows"
+                :loading="pending && rows.length === 0"
                 :watch-options="{ deep: false }"
                 loading-color="neutral"
                 loading-animation="carousel"
@@ -478,17 +449,14 @@ const columnsForSkill = (skill: string) => {
                 <template #player-cell="{ row }">
                   <NuxtLink
                     :to="{ path: 'players/' + row.original.player_id }"
-                    :class="playerLinkClass(row.original.player_id)"
+                    :class="playerLinkClass(row.original)"
                   >
                     <BitcraftPlayerName :player-id="row.original.player_id">{{ row.original.player_name }}</BitcraftPlayerName>
                   </NuxtLink>
                 </template>
-                <template #experiencePerHour-cell="{ row }">
-                  {{ numberFormat.format(row.original.experience_per_hour) }}
-                </template>
                 <template #experience-cell="{ row }">
                   <bitcraft-animated-number
-                    :value="row.original.experience"
+                    :value="Number(row.original.experience ?? 0)"
                     :speed="8"
                     :formater="numberFormat.format"
                     color
@@ -496,13 +464,13 @@ const columnsForSkill = (skill: string) => {
                   />
                 </template>
                 <template #experienceValue-cell="{ row }">
-                  {{ numberFormat.format(row.original.experience) }}
+                  {{ numberFormat.format(row.original.experience ?? 0) }}
                 </template>
                 <template #level-cell="{ row }">
-                  {{ numberFormat.format(row.original.level) }}
+                  {{ numberFormat.format(row.original.level ?? 0) }}
                 </template>
                 <template #time-cell="{ row }">
-                  {{ secondsToDaysMinutesSecondsFormat(row.original.time_played) }}
+                  {{ secondsToDaysMinutesSecondsFormat(Number(row.original.time_played ?? 0)) }}
                 </template>
               </UTable>
             </div>

@@ -112,3 +112,22 @@ Plain `ws://` connections use raw TCP in either build. From `rust/api-server`:
 cargo build --release --locked
 cargo build --release --locked --features spacetimedb-tokio-websockets-rustls
 ```
+
+### Live leaderboards
+
+The leaderboard page loads the menu from `/leaderboard/boards` and requests
+only the selected board from `/leaderboard/boards/{id}`. Its WebSocket
+subscription is `leaderboard_delta.<id>`. `LeaderboardBoardDelta` carries only
+changed rows, plus the new order if ranks or membership change. The client
+checks the epoch and base revision before applying it. `SyncLeaderboardBoard`
+requests a catch-up delta using a short, bounded history or a full
+`LeaderboardBoardReset` snapshot when the base is missing or a snapshot is
+smaller. The legacy `/leaderboard` endpoint and the `leaderboard` and
+`leaderboard_board.<id>` WebSocket topics remain available for older clients.
+
+### Live player presence
+
+The claim, player, and account overview pages use `player_presence.<player-id>`
+for live sign-in changes. `PlayerPresenceChanged` contains just the player ID
+and online status. Playtime is read from the HTTP snapshot, and the legacy
+`player_state` topic remains available for older clients.

@@ -1613,6 +1613,7 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
 pub(crate) enum InboundWebSocketMessages {
     Subscribe { topics: Vec<String> },
     ListSubscribedTopics,
+    SyncLeaderboardBoard { board_id: i32, epoch: Option<String>, revision: Option<u32> },
     Unsubscribe { topic: String },
 }
 
@@ -1622,6 +1623,9 @@ pub(crate) enum InboundWebSocketMessages {
 pub(crate) enum OutboundWebSocketMessages {
     SubscribedTopics(Vec<String>),
     LeaderboardUpdated(crate::leaderboard::GetTop100Response),
+    LeaderboardBoardUpdated(crate::leaderboard::live::LeaderboardBoardUpdate),
+    LeaderboardBoardDelta(crate::leaderboard::live::LeaderboardBoardDelta),
+    LeaderboardBoardReset(crate::leaderboard::live::LeaderboardBoardUpdate),
     MobileEntityState(entity::mobile_entity_state::Model),
     PlayerLocation(crate::player_state::PlayerLocationUpdate),
     ExperienceHistoryChanged { user_id: i64 },
@@ -1693,6 +1697,7 @@ pub(crate) enum OutboundWebSocketMessages {
         skill_name: String,
     },
     PlayerState(entity::player_state::Model),
+    PlayerPresenceChanged { player_id: String, signed_in: bool },
     TravelerTaskState(entity::traveler_task_state::Model),
     TravelerTaskStateDelete(entity::traveler_task_state::Model),
     // ClaimDescriptionState(entity::claim_description_state::Model),
@@ -1744,6 +1749,10 @@ impl BroadcastTopics {
         Self::new([("mobile_entity_state".into(), Some(id as i64))])
     }
 
+    pub(crate) fn player_presence(id: i64) -> Self {
+        Self::new([("player_presence".into(), Some(id))])
+    }
+
     pub(crate) fn inventory_update(id: i64) -> Self {
         Self::new([("inventory_update".into(), Some(id))])
     }
@@ -1780,6 +1789,15 @@ impl OutboundWebSocketMessages {
             OutboundWebSocketMessages::LeaderboardUpdated(_) => Some(
                 BroadcastTopics::new([("leaderboard".into(), None)]),
             ),
+            OutboundWebSocketMessages::LeaderboardBoardUpdated(board) => {
+                Some(crate::leaderboard::live::topic(board.board_id))
+            }
+            OutboundWebSocketMessages::LeaderboardBoardDelta(board) => {
+                Some(crate::leaderboard::live::delta_topic(board.board_id))
+            }
+            OutboundWebSocketMessages::LeaderboardBoardReset(board) => {
+                Some(crate::leaderboard::live::delta_topic(board.board_id))
+            }
             OutboundWebSocketMessages::Experience {
                 skill_name,
                 user_id,
@@ -1818,6 +1836,9 @@ impl OutboundWebSocketMessages {
                 "player_state".into(),
                 Some(player.entity_id),
             )])),
+            OutboundWebSocketMessages::PlayerPresenceChanged { player_id, .. } => {
+                Some(BroadcastTopics::player_presence(player_id.parse().ok()?))
+            }
             OutboundWebSocketMessages::PlayerUsername { entity_id, .. } => Some(
                 BroadcastTopics::new([("player_username".into(), Some(*entity_id))]),
             ),

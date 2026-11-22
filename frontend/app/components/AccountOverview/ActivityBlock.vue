@@ -117,10 +117,10 @@ registerWebsocketMessageHandler(
 );
 let lastSignedIn: boolean | undefined;
 registerWebsocketMessageHandler(
-  "PlayerState",
-  () => [`player_state.${props.playerId}`],
+  "PlayerPresenceChanged",
+  () => [`player_presence.${props.playerId}`],
   (player) => {
-    if (String(player.entity_id) !== props.playerId || lastSignedIn === player.signed_in) return;
+    if (player.player_id !== props.playerId || lastSignedIn === player.signed_in) return;
     lastSignedIn = player.signed_in;
     revisions.invalidate();
     if (snapshot.value) snapshot.value = { ...snapshot.value, signed_in: player.signed_in };

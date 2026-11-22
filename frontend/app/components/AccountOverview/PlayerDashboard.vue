@@ -88,17 +88,17 @@ watch(
   { immediate: true },
 );
 registerWebsocketMessageHandler(
-  "PlayerState",
-  () => [`player_state.${props.player.id}`],
+  "PlayerPresenceChanged",
+  () => [`player_presence.${props.player.id}`],
   (player) => {
-    if (String(player.entity_id) !== props.player.id) return;
+    if (player.player_id !== props.player.id) return;
     liveRevision++;
     signedIn.value = player.signed_in;
   },
 );
 let awaitingAck = true;
 registerWebsocketMessageHandler("SubscribedTopics", [], (topics) => {
-  if (awaitingAck && hasSubscribedTopic(topics, "player_state", props.player.id)) {
+  if (awaitingAck && hasSubscribedTopic(topics, "player_presence", props.player.id)) {
     awaitingAck = false;
     void refresh();
   }
