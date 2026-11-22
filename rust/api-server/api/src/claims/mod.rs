@@ -397,12 +397,17 @@ pub(crate) async fn get_claim_tiles(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<entity::claim_tile_state::Model>>, (StatusCode, &'static str)> {
-    let claim_tiles = state
+    let mut claim_tiles = Vec::new();
+    let mut seen = HashSet::new();
+    state
         .claim_tile_state
-        .iter()
-        .filter(|a| a.claim_id == id)
-        .map(|tile| tile.value().clone())
-        .collect::<Vec<_>>();
+        .iter_async(|key, tile| {
+            if tile.claim_id == id && seen.insert(*key) {
+                claim_tiles.push(tile.clone());
+            }
+            true
+        })
+        .await;
 
     Ok(axum_codec::Codec(claim_tiles))
 }
@@ -411,19 +416,8 @@ pub(crate) async fn get_claim_auction_listings(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<ClaimAuctionListingsResponse>, (StatusCode, &'static str)> {
-    let buy_orders = state
-        .buy_order_state
-        .iter()
-        .filter(|order| order.claim_entity_id == id)
-        .map(|order| order.value().clone())
-        .collect();
-
-    let sell_orders = state
-        .sell_order_state
-        .iter()
-        .filter(|order| order.claim_entity_id == id)
-        .map(|order| order.value().clone())
-        .collect();
+    let buy_orders = crate::auction_listing_state::orders_in_claim(&state.buy_order_state, id).await;
+    let sell_orders = crate::auction_listing_state::orders_in_claim(&state.sell_order_state, id).await;
 
     Ok(axum_codec::Codec(ClaimAuctionListingsResponse {
         buy_orders,

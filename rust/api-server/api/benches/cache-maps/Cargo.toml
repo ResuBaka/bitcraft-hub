@@ -1,0 +1,22 @@
+[package]
+name = "cache-map-profile"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Keep the experiment and its dependencies out of the API workspace.
+[workspace]
+
+[features]
+dashmap-inline-more = ["dashmap/inline"]
+clashmap-inline = ["clashmap/inline"]
+
+[dependencies]
+clashmap = "=1.3.0"
+dashmap = "=6.2.1"
+papaya = "=0.2.5"
+scc = "=3.9.1"
+
+[profile.release]
+debug = 2
+strip = "none"

@@ -43,7 +43,7 @@ pub(crate) fn start_worker_trade_order_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {
                                     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name).build();
-                                    global_app_state.trade_order_state.insert(model.entity_id, model);
+                                    global_app_state.trade_order_state.upsert_sync(model.entity_id, model);
                                 });
 
                                 // let mut local_messages = vec![];
@@ -93,7 +93,7 @@ pub(crate) fn start_worker_trade_order_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(new).with_region(database_name).build();
 
-                                global_app_state.trade_order_state.insert(model.entity_id, model);
+                                global_app_state.trade_order_state.upsert_async(model.entity_id, model).await;
 
                                 // if ids.contains(&model.entity_id) {
                                 //     if let Some(index) = messages.iter().position(|value: &::entity::trade_order::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
@@ -110,7 +110,7 @@ pub(crate) fn start_worker_trade_order_state(
                             SpacetimeUpdateMessages::Update { new, database_name,  .. } => {
                                 let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(new).with_region(database_name).build();
 
-                                global_app_state.trade_order_state.insert(model.entity_id, model);
+                                global_app_state.trade_order_state.upsert_async(model.entity_id, model).await;
                                 // if ids.contains(&model.entity_id) {
                                 //     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                 //         messages.remove(index);
@@ -128,7 +128,7 @@ pub(crate) fn start_worker_trade_order_state(
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(delete).with_region(database_name).build();
-                                global_app_state.trade_order_state.remove(&model.entity_id);
+                                global_app_state.trade_order_state.remove_async(&model.entity_id).await;
 
                                 // let id = model.entity_id;
                                 //

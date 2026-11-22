@@ -7,6 +7,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use entity::inventory::ExpendedRefrence;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -19,13 +20,18 @@ pub(crate) fn get_routes() -> AppRouter {
 async fn get_trade_orders(
     state: State<AppState>,
 ) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
-    // Resolve item/cargo caches only after releasing the order-map iterator.
-    let orders = state
+    // Resolve item/cargo caches after the scan, outside the order-map locks.
+    let mut orders = Vec::new();
+    let mut seen = HashSet::new();
+    state
         .trade_order_state
-        .iter()
-        .filter(|order| order.traveler_trade_order_id.is_none())
-        .map(|order| order.value().clone())
-        .collect::<Vec<_>>();
+        .iter_async(|key, order| {
+            if seen.insert(*key) && order.traveler_trade_order_id.is_none() {
+                orders.push(order.clone());
+            }
+            true
+        })
+        .await;
     Ok(axum_codec::Codec(TradeOrdersResponse {
         trade_orders: orders
             .into_iter()
@@ -63,7 +69,8 @@ async fn get_trade_orders(
                 })
             })
             .collect::<Result<_, _>>()?,
-        total: state.trade_order_state.len() as u64,
+        // Keep the total inclusive of traveler orders without a second SCC scan.
+        total: seen.len() as u64,
         page: 1,
         per_page: 50,
     }))

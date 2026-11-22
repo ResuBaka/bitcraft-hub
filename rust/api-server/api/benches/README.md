@@ -1,5 +1,8 @@
 # Ranking benchmarks
 
+For the standalone DashMap, ClashMap, Papaya, and SCC Heaptrack comparison, see
+[cache-map profiling](cache-maps/README.md).
+
 ## Heaptrack allocation profiling
 
 ### Repeatable six-minute captures and graceful stop
