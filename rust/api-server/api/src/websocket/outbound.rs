@@ -8,6 +8,22 @@ const MESSAGES_SENT: &str = "websocket_outbound_messages_total";
 const PAYLOAD_BYTES_SENT: &str = "websocket_outbound_payload_bytes_total";
 
 pub(crate) fn describe_metrics() {
+    metrics::describe_gauge!(
+        "websocket_broadcast_queue_after_receive_messages",
+        "Messages remaining in the shared broadcast queue at the last dequeue."
+    );
+    metrics::describe_gauge!(
+        "websocket_client_queue_messages",
+        "Messages queued across connected client writers at scrape time."
+    );
+    metrics::describe_gauge!(
+        "websocket_largest_client_queue_messages",
+        "Messages queued for the most backlogged connected client at scrape time."
+    );
+    metrics::describe_gauge!(
+        "websocket_client_subscriptions",
+        "Active topic memberships summed across connected clients."
+    );
     metrics::describe_counter!(
         MESSAGES_SENT,
         "Application messages successfully written to client WebSockets."

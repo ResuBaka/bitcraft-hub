@@ -784,6 +784,8 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
 async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWebSocketMessages>) {
     let mut buffer = Vec::with_capacity(500);
+    let remaining = metrics::gauge!("websocket_broadcast_queue_after_receive_messages");
+    remaining.set(0.0);
 
     loop {
         buffer.shrink_to(500);
@@ -791,6 +793,7 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWe
             _ = state.shutdown.broadcast_stop.cancelled(), if !rx.is_closed() => { rx.close(); continue; },
             count = rx.recv_many(&mut buffer, 500) => count,
         };
+        remaining.set(rx.len() as f64);
         if count == 0 {
             break;
         }
@@ -1176,6 +1179,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                     .set(app_state.conn.get_postgres_connection_pool().size() as f64);
 
                 record_app_state_metrics(&app_state);
+                app_state.clients_state.record_queue_metrics().await;
 
                 let metric_families = app_state.metrics_registry.gather();
                 let prometheus_body = encoder.encode_to_string(&metric_families);
@@ -1788,6 +1792,22 @@ struct ClientsState {
 }
 
 impl ClientsState {
+    async fn record_queue_metrics(&self) {
+        let (mut queued, mut largest, mut subscriptions) = (0_usize, 0_usize, 0_usize);
+        {
+            let clients = self.clients.read().await;
+            for (sender, keyed, _, global) in clients.values() {
+                let depth = sender.len();
+                queued += depth;
+                largest = largest.max(depth);
+                subscriptions += global.len() + keyed.values().map(HashSet::len).sum::<usize>();
+            }
+        }
+        metrics::gauge!("websocket_client_queue_messages").set(queued as f64);
+        metrics::gauge!("websocket_largest_client_queue_messages").set(largest as f64);
+        metrics::gauge!("websocket_client_subscriptions").set(subscriptions as f64);
+    }
+
     fn new() -> Self {
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),

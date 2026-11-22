@@ -57,6 +57,7 @@ pub(crate) mod player_stats;
 mod player_activity;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
 mod overworld;
+// Only register the dimension listener together with its queue consumer.
 #[expect(dead_code, reason = "Portal dimension subscriptions are currently disabled")]
 mod portal_locations;
 mod startup;
@@ -1017,8 +1018,6 @@ async fn connect_to_db_logic(
     }
     // Do not send an empty subscription request: keep the connection running
     // without subscriptions when isolating connection/worker RSS.
-    let _portal_dimensions = (!config.spacetimedb.skip_state_tables)
-        .then(|| portal_locations::listen(&ctx));
     let has_subscription = !queries.is_empty();
     if has_subscription {
         subscription_builder.subscribe(queries);
@@ -1044,12 +1043,6 @@ async fn connect_to_db_logic(
             if let Some(done) = startup_done.take() {
                 let _ = done.send(());
             }
-            // if let Some(dimensions) = _portal_dimensions {
-            //     tokio::try_join!(
-            //         overworld::subscribe(&ctx),
-            //         // portal_locations::subscribe(&ctx, dimensions),
-            //     )?;
-            // }
             Ok::<(), anyhow::Error>(())
         },
         &connection_stop,
