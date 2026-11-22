@@ -303,7 +303,8 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                 }
                 None => None,
             },
-        };
+        }
+        .or_else(|| bank_inventory_name(&inventory).map(str::to_owned));
 
         if nickname.is_none() {
             let building_state =
@@ -358,6 +359,12 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         page: 1,
         per_page: 24,
     }))
+}
+
+fn bank_inventory_name(inventory: &inventory::Model) -> Option<&'static str> {
+    // Starter-town bank storage belongs to the player, not to a specific bank building.
+    (inventory.owner_entity_id == 0 && inventory.player_owner_entity_id != 0)
+        .then_some("Starter Town Bank")
 }
 
 // Owner and player-owner queries can return the same inventory (including
@@ -651,6 +658,27 @@ pub(crate) fn resolve_pockets_for_sync(
 #[cfg(test)]
 mod resolution_tests {
     use super::*;
+
+    #[test]
+    fn bank_name_requires_a_player_owner_and_no_entity_owner() {
+        let mut inventory = inventory::Model {
+            entity_id: 1_008_806_316_831_171_667,
+            pockets: vec![],
+            inventory_index: 0,
+            cargo_index: 64,
+            owner_entity_id: 0,
+            player_owner_entity_id: 100,
+            region: 14,
+        };
+        assert_eq!(bank_inventory_name(&inventory), Some("Starter Town Bank"));
+
+        inventory.owner_entity_id = 200;
+        assert_eq!(bank_inventory_name(&inventory), None);
+
+        inventory.owner_entity_id = 0;
+        inventory.player_owner_entity_id = 0;
+        assert_eq!(bank_inventory_name(&inventory), None);
+    }
 
     #[test]
     fn overlapping_ownership_results_return_each_inventory_once() {

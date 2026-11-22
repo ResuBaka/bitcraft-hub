@@ -293,7 +293,7 @@ impl InventoryStateWorker {
         }
 
         let mut player_owner_id = model.player_owner_entity_id;
-        let mut nickname = None;
+        let mut nickname = super::bank_inventory_name(&model).map(str::to_owned);
 
         if model.player_owner_entity_id == 0
             && let Some(deployable_state) = self
