@@ -47,10 +47,7 @@ use crate::leaderboard::{
     EXCLUDED_USERS_FROM_LEADERBOARD, Leaderboard, RankingSystem, experience_to_level,
 };
 use crate::websocket::{InboundWebSocketMessages, OutboundWebSocketMessages};
-use axum::extract::{
-    MatchedPath, Query, Request, State,
-    ws::{Message, WebSocket, WebSocketUpgrade},
-};
+use axum::extract::{MatchedPath, Query, Request, State};
 use axum::http::{HeaderValue, Version};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
@@ -67,6 +64,11 @@ use sea_orm::{ColumnTrait, ConnectOptions, EntityTrait, PaginatorTrait, QueryFil
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
+use sockudo_ws::{
+    Config as WebSocketConfig, Message,
+    axum_integration::{WebSocket, WebSocketUpgrade},
+    deflate::DeflateConfig,
+};
 use spacetimedb_sdk::Identity;
 use spacetimedb_sdk::unstable::CLIENT_METRICS;
 use std::collections::{HashMap, HashSet};
@@ -530,7 +532,17 @@ async fn websocket_handler(
 ) -> impl IntoResponse {
     tracing::debug!("Websocket upgraded with version: {version:?}");
     let clients = state.shutdown.clients.clone();
-    ws.on_upgrade(move |socket| clients.track_future(websocket(socket, state, websocket_options)))
+    let config = WebSocketConfig::builder()
+        .deflate_config(DeflateConfig {
+            compression_level: 1,
+            ..Default::default()
+        })
+        // Keep the existing lifetime semantics for quiet subscriptions.
+        .idle_timeout(0)
+        .auto_ping(false)
+        .build();
+    ws.config(config)
+        .on_upgrade(move |socket| clients.track_future(websocket(socket, state, websocket_options)))
 }
 
 #[allow(dead_code)]
@@ -551,7 +563,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     let stop = state.shutdown.stop.clone();
 
     // By splitting, we can send and receive at the same time.
-    let (mut sender, mut receiver) = stream.split();
+    let (mut sender, mut receiver) = StreamExt::split(stream);
 
     let id = nanoid::nanoid!();
 
@@ -599,19 +611,14 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
             let encoding = encoding.unwrap();
 
-            let message = if encoding == WebsocketEncoding::Json {
-                Message::Text(serde_json::to_string(&msg).unwrap().into())
-            } else if encoding == WebsocketEncoding::MessagePack {
-                Message::Binary(axum_codec::Codec(&msg).to_msgpack().unwrap().into())
-            } else {
-                tracing::warn!("Unsupported encoding {encoding}");
-                continue;
-            };
-
-            let send_result =
-                tokio::time::timeout(WEBSOCKET_CLIENT_WRITE_TIMEOUT, sender.send(message)).await;
-
-            match send_result {
+            match websocket::outbound::send(
+                &mut sender,
+                &msg,
+                encoding,
+                WEBSOCKET_CLIENT_WRITE_TIMEOUT,
+            )
+            .await
+            {
                 Ok(Ok(())) => {}
                 Ok(Err(error)) => {
                     tracing::error!("Error sending message to client: {error}");
@@ -632,8 +639,13 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     let inner_state = state.clone();
     let recv_state = state.clone();
     let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            match serde_json::from_str::<InboundWebSocketMessages>(&text) {
+        while let Some(Ok(message)) = receiver.next().await {
+            let text = match message {
+                Message::Text(text) => text,
+                Message::Ping(_) | Message::Pong(_) => continue,
+                Message::Close(_) | Message::Binary(_) => break,
+            };
+            match serde_json::from_slice::<InboundWebSocketMessages>(&text) {
                 Ok(message) => match message {
                     InboundWebSocketMessages::Subscribe { topics } => {
                         for topic in topics {
@@ -809,6 +821,123 @@ fn broadcast_to_clients(
 #[cfg(test)]
 mod websocket_broadcast_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn websocket_upgrade_supports_deflate_and_plain_clients() {
+        use sockudo_ws::{CompressedWebSocketStream, WebSocketStream};
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::{TcpListener, TcpStream};
+
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let conn = sea_orm::MockDatabase::new(sea_orm::DatabaseBackend::Postgres).into_connection();
+        let state = AppState::new(conn, tx, Default::default());
+        let app = Router::new()
+            .route("/websocket", any(websocket_handler))
+            .with_state(state);
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+
+        tokio::time::timeout(Duration::from_secs(5), async {
+            for compressed in [false, true] {
+                let (target, offer) = if compressed {
+                    (
+                        "/websocket?encoding=MessagePack",
+                        "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n",
+                    )
+                } else {
+                    ("/websocket", "")
+                };
+                let mut stream = BufReader::new(TcpStream::connect(addr).await.unwrap());
+                stream
+                    .write_all(
+                        format!(
+                            "GET {target} HTTP/1.1\r\nHost: {addr}\r\n\
+                             Connection: Upgrade\r\nUpgrade: websocket\r\n\
+                             Sec-WebSocket-Version: 13\r\n\
+                             Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n{offer}\r\n"
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+
+                let mut line = String::new();
+                stream.read_line(&mut line).await.unwrap();
+                assert!(line.starts_with("HTTP/1.1 101 "), "{line}");
+                let mut extension = None;
+                loop {
+                    line.clear();
+                    assert_ne!(stream.read_line(&mut line).await.unwrap(), 0);
+                    if line == "\r\n" {
+                        break;
+                    }
+                    if let Some((name, value)) = line.split_once(':')
+                        && name.eq_ignore_ascii_case("sec-websocket-extensions")
+                    {
+                        extension = Some(value.trim().to_owned());
+                    }
+                }
+
+                if compressed {
+                    let offer = extension.expect("compression should be negotiated");
+                    let params = sockudo_ws::deflate::parse_deflate_offer(&offer).unwrap();
+                    let deflate = DeflateConfig::from_params(&params).unwrap();
+                    let socket =
+                        CompressedWebSocketStream::client(stream, Default::default(), deflate);
+                    check_round_trip(socket, WebsocketEncoding::MessagePack).await;
+                } else {
+                    assert!(extension.is_none());
+                    let socket = WebSocketStream::client(stream, Default::default());
+                    check_round_trip(socket, WebsocketEncoding::Json).await;
+                }
+            }
+        })
+        .await
+        .expect("WebSocket round trips did not finish");
+        server.abort();
+    }
+
+    async fn check_round_trip<T>(mut socket: T, encoding: WebsocketEncoding)
+    where
+        T: futures::Stream<Item = sockudo_ws::Result<Message>>
+            + futures::Sink<Message, Error = sockudo_ws::Error>
+            + Unpin,
+    {
+        let decode = |frame| match (frame, encoding) {
+            (Message::Text(payload), WebsocketEncoding::Json) => {
+                serde_json::from_slice(&payload).unwrap()
+            }
+            (Message::Binary(payload), WebsocketEncoding::MessagePack) => {
+                axum_codec::Codec::from_msgpack(&payload).unwrap().0
+            }
+            _ => panic!("unexpected frame for the requested encoding"),
+        };
+        assert!(matches!(
+            decode(socket.next().await.unwrap().unwrap()),
+            OutboundWebSocketMessages::Message(_)
+        ));
+
+        // A compressible, scoped topic exercises a compressed request and reply.
+        let topic = format!("{}.42", "test".repeat(200));
+        socket
+            .send(Message::text(
+                serde_json::json!({
+                    "t": "Subscribe", "c": { "topics": [&topic] }
+                })
+                .to_string(),
+            ))
+            .await
+            .unwrap();
+        socket
+            .send(Message::text(r#"{"t":"ListSubscribedTopics"}"#))
+            .await
+            .unwrap();
+        assert!(matches!(
+            decode(socket.next().await.unwrap().unwrap()),
+            OutboundWebSocketMessages::SubscribedTopics(topics) if topics == [topic]
+        ));
+    }
 
     #[tokio::test]
     async fn routing_preserves_overlap_order_global_topics_and_unsubscribe() {
@@ -1624,15 +1753,11 @@ enum WebsocketEncoding {
     MessagePack,
 }
 
-impl Display for WebsocketEncoding {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl WebsocketEncoding {
+    fn as_str(self) -> &'static str {
         match self {
-            WebsocketEncoding::Json => {
-                write!(f, "json")
-            }
-            WebsocketEncoding::MessagePack => {
-                write!(f, "messagepack")
-            }
+            Self::Json => "json",
+            Self::MessagePack => "messagepack",
         }
     }
 }
@@ -1817,7 +1942,7 @@ fn setup_metrics_recorder() -> PrometheusHandle {
         "This shows how many events a worker got"
     );
 
-    PrometheusBuilder::new()
+    let handle = PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),
             EXPONENTIAL_SECONDS,
@@ -1841,7 +1966,9 @@ fn setup_metrics_recorder() -> PrometheusHandle {
         )
         .unwrap()
         .install_recorder()
-        .unwrap()
+        .unwrap();
+    websocket::outbound::describe_metrics();
+    handle
 }
 
 async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {

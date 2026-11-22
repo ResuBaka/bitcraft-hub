@@ -113,6 +113,40 @@ cargo build --release --locked
 cargo build --release --locked --features spacetimedb-tokio-websockets-rustls
 ```
 
+### WebSocket traffic metrics
+
+The client-facing `/websocket` negotiates `permessage-deflate` with clients
+that offer it. Both JSON and MessagePack are supported, with no change to the
+application message format. Clients without compression support can still
+connect. Reverse proxies should use an HTTP/1.1 upgrade to the API for this
+route.
+
+The API's `/metrics` endpoint exposes `websocket_outbound_messages_total` and
+`websocket_outbound_payload_bytes_total` for the client-facing `/websocket`.
+Both are labeled by `message_type` (the protocol's `t` tag) and `encoding`
+(`json` or `messagepack`). Metrics count each successful write once per
+recipient, including direct replies. A series appears once a message of that
+type and encoding has been written. Byte counts cover the serialized application
+payload **before compression**, not WebSocket framing, control frames, TLS, or
+TCP overhead. Use network counters to measure wire savings. The upstream
+SpacetimeDB connection is not included.
+
+In Prometheus, rank message types by payload bytes per second to find the
+largest contributors:
+
+```promql
+topk(10, sum by (message_type) (rate(websocket_outbound_payload_bytes_total[5m])))
+```
+
+To tell large payloads apart from frequent messages, compare that with average
+bytes per message by type and encoding:
+
+```promql
+sum by (message_type, encoding) (rate(websocket_outbound_payload_bytes_total[5m]))
+/
+sum by (message_type, encoding) (rate(websocket_outbound_messages_total[5m]))
+```
+
 ### Live leaderboards
 
 The leaderboard page loads the menu from `/leaderboard/boards` and requests

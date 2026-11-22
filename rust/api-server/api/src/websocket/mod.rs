@@ -50,6 +50,7 @@ pub(crate) mod batched_worker;
 pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
 mod metric_handles;
+pub(super) mod outbound;
 mod claim_locations;
 mod leaderboard_staff;
 pub(crate) mod player_stats;
@@ -1799,6 +1800,58 @@ impl IntoIterator for BroadcastTopics {
 }
 
 impl OutboundWebSocketMessages {
+    /// The protocol's `t` tag, without inspecting or serializing the payload.
+    fn message_type(&self) -> &'static str {
+        match self {
+            Self::SubscribedTopics(..) => "SubscribedTopics",
+            Self::LeaderboardUpdated(..) => "LeaderboardUpdated",
+            Self::LeaderboardBoardUpdated(..) => "LeaderboardBoardUpdated",
+            Self::LeaderboardBoardDelta(..) => "LeaderboardBoardDelta",
+            Self::LeaderboardBoardReset(..) => "LeaderboardBoardReset",
+            Self::MobileEntityState(..) => "MobileEntityState",
+            Self::PlayerLocation(..) => "PlayerLocation",
+            Self::ExperienceHistoryChanged { .. } => "ExperienceHistoryChanged",
+            Self::ClaimExperienceHistoryChanged { .. } => "ClaimExperienceHistoryChanged",
+            Self::ClaimCraftingChanged { .. } => "ClaimCraftingChanged",
+            Self::PlayerCraftingChanged { .. } => "PlayerCraftingChanged",
+            Self::PlayerStatsChanged { .. } => "PlayerStatsChanged",
+            Self::PlayerCharacterStatsChanged { .. } => "PlayerCharacterStatsChanged",
+            Self::PlayerActivityChanged { .. } => "PlayerActivityChanged",
+            Self::CraftProgressChanged { .. } => "CraftProgressChanged",
+            Self::PassiveCraftChanged { .. } => "PassiveCraftChanged",
+            Self::Experience { .. } => "Experience",
+            Self::TotalExperience { .. } => "TotalExperience",
+            Self::TotalProfessionExperience { .. } => "TotalProfessionExperience",
+            Self::TotalAdventureExperience { .. } => "TotalAdventureExperience",
+            Self::TimePlayed { .. } => "TimePlayed",
+            Self::TimeSignedIn { .. } => "TimeSignedIn",
+            Self::MovedOutOfClaim { .. } => "MovedOutOfClaim",
+            Self::MovedIntoClaim { .. } => "MovedIntoClaim",
+            Self::PlayerMovedIntoClaim { .. } => "PlayerMovedIntoClaim",
+            Self::PlayerMovedOutOfClaim { .. } => "PlayerMovedOutOfClaim",
+            Self::PlayerActionState(..) => "PlayerActionState",
+            Self::PlayerActionStateChangeName(..) => "PlayerActionStateChangeName",
+            Self::Level { .. } => "Level",
+            Self::PlayerState(..) => "PlayerState",
+            Self::PlayerPresenceChanged { .. } => "PlayerPresenceChanged",
+            Self::TravelerTaskState(..) => "TravelerTaskState",
+            Self::TravelerTaskStateDelete(..) => "TravelerTaskStateDelete",
+            Self::ClaimLocalState(..) => "ClaimLocalState",
+            Self::Message(..) => "Message",
+            Self::ActionState(..) => "ActionState",
+            Self::InsertSellOrder(..) => "InsertSellOrder",
+            Self::UpdateSellOrder(..) => "UpdateSellOrder",
+            Self::RemoveSellOrder(..) => "RemoveSellOrder",
+            Self::InsertBuyOrder(..) => "InsertBuyOrder",
+            Self::UpdateBuyOrder(..) => "UpdateBuyOrder",
+            Self::RemoveBuyOrder(..) => "RemoveBuyOrder",
+            Self::InventoryUpdate { .. } => "InventoryUpdate",
+            Self::InventoryRemove { .. } => "InventoryRemove",
+            Self::InventoryInsert { .. } => "InventoryInsert",
+            Self::PlayerUsername { .. } => "PlayerUsername",
+        }
+    }
+
     pub fn topics(&self) -> Option<BroadcastTopics> {
         match self {
             OutboundWebSocketMessages::LeaderboardUpdated(_) => Some(
