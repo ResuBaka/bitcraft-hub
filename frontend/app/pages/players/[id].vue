@@ -16,13 +16,34 @@ import { useDelayedPending } from "~/utils";
 import HouseDetails from "~/components/Bitcraft/HouseDetails.vue";
 import ClaimTabCrafting from "~/components/Bitcraft/Claim/ClaimTabCrafting.vue";
 import { inventoryMatchesSearch } from "~/utils/inventorySearch";
+import { groupProfessionEquipment } from "~/utils/playerEquipment";
 import { socialUrls } from "~/utils/socialMetadata";
+
+definePageMeta({
+  path: "/players/:id/:section(equipment)?",
+  key: (route) => String(route.params.id),
+});
 
 const toast = useToast();
 
 const page = ref(1);
 const route = useRoute();
-const selectedSection = ref("overview");
+const localSection = ref("overview");
+const selectedSection = computed({
+  get: () => route.params.section === "equipment" ? "equipment" : localSection.value,
+  set: (section: string) => {
+    const onEquipmentRoute = route.params.section === "equipment";
+    const playerPath = `/players/${route.params.id}`;
+    if (section === "equipment") {
+      if (!onEquipmentRoute) void navigateTo({ path: `${playerPath}/equipment` });
+    } else {
+      localSection.value = section;
+      if (onEquipmentRoute) void navigateTo({ path: playerPath });
+    }
+  },
+});
+const skillsActive = () => selectedSection.value === "skills";
+const equipmentActive = () => skillsActive() || selectedSection.value === "equipment";
 const sectionsOpen = ref(false);
 const desktopSidebarOpen = ref(true);
 const numberFormat = new Intl.NumberFormat(undefined);
@@ -152,6 +173,12 @@ if (tmpPage) {
 const { data: playerData, pending: playerPending } = useFetchMsPack<FindPlayerByIdResponse>(() => {
   return `/api/bitcraft/players/${route.params.id}`;
 });
+
+const {
+  equipment: { data: equipment, status: equipmentStatus, refresh: refreshEquipment },
+  toolPowers: skillToolPowers,
+} = usePlayerEquipment(() => String(route.params.id), equipmentActive, skillsActive);
+const professionEquipment = computed(() => groupProfessionEquipment(equipment.value?.slots ?? []));
 
 // Refresh claim resolution after subscriptions warm up and when claims change
 // without a movement event. Never let an older HTTP response undo a WS update.
@@ -718,6 +745,14 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </UCard>
 
+        <BitcraftPlayerEquipment
+          v-if="selectedSection === 'equipment'"
+          :key="String(route.params.id)"
+          :equipment="equipment"
+          :status="equipmentStatus"
+          @refresh="refreshEquipment({ dedupe: 'defer' })"
+        />
+
         <div v-show="selectedSection === 'deployables'">
         <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
@@ -762,6 +797,9 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         <UCard v-if="expeirence" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
+            <p v-if="equipmentStatus === 'error'" class="text-xs text-muted">
+              Equipped charms and instruments are unavailable.
+            </p>
             <div class="grid gap-2 lg:grid-cols-3 xl:grid-cols-4">
               <bitcraft-player-skill
                 v-for="[skill, xp_info] of Object.entries(expeirence)"
@@ -769,6 +807,8 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :xp_info="xp_info"
                 :skill="skill"
                 :tools="tools"
+                :equipment-slots="professionEquipment.get(skill)"
+                :tool-powers="skillToolPowers"
                 :previous-rank="rankSnapshotsByLabel.get(skill)?.previous_rank"
                 :snapshot-rank="rankSnapshotsByLabel.get(skill)?.current_rank"
               />

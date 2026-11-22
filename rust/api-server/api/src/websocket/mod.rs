@@ -170,6 +170,7 @@ fn connect_to_db(
             if let Some(region_number) = region_number {
                 tmp_disconnect_global_app_state.claim_locations.invalidate(region_number);
                 tmp_disconnect_global_app_state.player_stats.invalidate(region_number);
+                tmp_disconnect_global_app_state.player_equipment.invalidate(region_number);
                 tmp_disconnect_global_app_state.player_activity.invalidate(region_number);
                 player_activity::changed(&tmp_disconnect_global_app_state, None);
                 tmp_disconnect_global_app_state.player_stats.invalidate_food(region_number);
@@ -443,6 +444,16 @@ async fn connect_to_db_logic(
         global_app_state.player_stats.begin_food(region_number);
     }
     player_stats::listen(&ctx, region_number, global_app_state.clone());
+    if !config.spacetimedb.skip_state_tables {
+        crate::player_state::equipment::listen(&ctx, region_number, &global_app_state);
+        if !*remove_desc {
+            ctx.subscription_builder()
+                .on_error(move |_: &ErrorContext, err: Error| {
+                    tracing::warn!(region = region_number, "Tool descriptions subscription failed: {err}");
+                })
+                .subscribe(["SELECT * FROM tool_desc"]);
+        }
+    }
 
     crate::claims::events::register_listeners(
         &ctx,
@@ -883,11 +894,14 @@ async fn connect_to_db_logic(
     let claim_locations = global_app_state.claim_locations.clone();
     let claim_locations_on_error = global_app_state.claim_locations.clone();
     let claim_locations_enabled = !config.spacetimedb.skip_state_tables;
+    let equipment_on_applied = global_app_state.player_equipment.clone();
+    let equipment_on_error = global_app_state.player_equipment.clone();
     let subscription_builder = ctx
         .subscription_builder()
         .on_applied(move |_ctx: &SubscriptionEventContext| {
             if claim_locations_enabled {
                 claim_locations.finish_initial(region_number);
+                equipment_on_applied.ready(region_number);
             }
             if let Some(tx) = initial_completion.lock().unwrap().take() {
                 let _ = tx.send(Ok(()));
@@ -895,6 +909,7 @@ async fn connect_to_db_logic(
         })
         .on_error(move |ctx: &ErrorContext, err: Error| {
             claim_locations_on_error.invalidate(region_number);
+            equipment_on_error.invalidate(region_number);
             tracing::warn!(
                 region = region_number,
                 "Subscription failed: {} {:?}",
@@ -912,6 +927,7 @@ async fn connect_to_db_logic(
         config.spacetimedb.skip_state_tables,
     );
     if !config.spacetimedb.skip_state_tables {
+        crate::player_state::equipment::subscribe_presets(&ctx, region_number, &global_app_state);
         let activity_on_applied = global_app_state.clone();
         let activity_on_error = global_app_state.clone();
         ctx.subscription_builder()
@@ -1017,6 +1033,7 @@ async fn connect_to_db_logic(
     )
     .await;
 
+    global_app_state.player_equipment.invalidate(region_number);
     metrics::gauge!(
         "bitcraft_database_connected",
         &[("region", tmp_disconnect_db_name.clone())]

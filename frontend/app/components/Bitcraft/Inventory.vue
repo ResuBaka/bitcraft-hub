@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
+import ItemHint from "./ItemHint.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
@@ -160,31 +161,28 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
       <div>
         <div class="inventory-grid">
           <div v-for="(pocket, index) in visiblePockets" :key="index" class="inventory-slot">
-            <UTooltip
-              :ui="{
-                content: 'h-full',
-              }"
-              :delay-duration="250"
-            >
-              <template #content>
-                <div class="inventory-tooltip">
-                  <div class="inventory-tooltip-title">
-                    {{ pocket.contents.item.name }}
+            <ItemHint :label="pocket.contents.item_type" :item="pocket.contents.item">
+              <template #details>
+                <dl>
+                  <div class="flex justify-between gap-4">
+                    <dt class="text-muted">Volume</dt>
+                    <dd class="font-semibold tabular-nums">
+                      {{ pocket.contents.quantity }}/{{
+                        numberFormat.format(
+                          pocket.volume /
+                            (pocket.contents.item.volume === 0 ? 1 : pocket.contents.item.volume),
+                        )
+                      }}
+                    </dd>
                   </div>
-                  <div class="inventory-tooltip-sub">Rarity: {{ pocket.contents.item.rarity }}</div>
-                  <div class="inventory-tooltip-sub">
-                    Volume: {{ pocket.contents.quantity }}/{{
-                      numberFormat.format(
-                        pocket.volume /
-                          (pocket.contents.item.volume === 0 ? 1 : pocket.contents.item.volume),
-                      )
-                    }}
-                  </div>
-                </div>
+                </dl>
               </template>
               <div
                 class="inventory-slot-box"
                 :class="`background-color-tier-${pocket.contents.item.tier} ${rarityToBorderClass(pocket.contents.item.rarity)}`"
+                role="img"
+                :aria-label="pocket.contents.item.name"
+                tabindex="0"
               >
                 <div class="tier-label">T{{ pocket.contents.item.tier }}</div>
                 <div class="item-icon">
@@ -203,7 +201,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
                   {{ numberFormat.format(pocket.contents.quantity) }}
                 </div>
               </div>
-            </UTooltip>
+            </ItemHint>
           </div>
         </div>
       </div>
@@ -374,22 +372,6 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
   /* Optional: gives it a slight shadow to pop against dark icons */
   color: rgba(226, 232, 240, 0.95);
   text-shadow: 0px 0px 2px rgba(15, 23, 42, 0.6);
-}
-
-.inventory-tooltip {
-  text-align: center;
-  padding: 6px 8px;
-}
-
-.inventory-tooltip-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.inventory-tooltip-sub {
-  font-size: 0.75rem;
-  color: rgba(148, 163, 184, 0.85);
 }
 
 .inventory-changelog {

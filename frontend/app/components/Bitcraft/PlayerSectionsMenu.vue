@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getFavoritePlayerSections, insertPlayerSectionFavorite, movePlayerSectionFavorite, togglePlayerSectionFavorite } from "~/utils/playerSections";
+import { equipmentPlayerSection, getFavoritePlayerSections, insertPlayerSectionFavorite, movePlayerSectionFavorite, togglePlayerSectionFavorite } from "~/utils/playerSections";
 
 const selected = defineModel<string>({ required: true });
 defineProps<{ collapsed?: boolean }>();
@@ -9,6 +9,7 @@ const dragged = ref<string | null>(null);
 const dropPreview = ref<{ target: string; position: "before" | "after" } | null>(null);
 const sections = [
   { value: "overview", label: "Overview", icon: "i-lucide-user" },
+  equipmentPlayerSection,
   { value: "deployables", label: "Deployables", icon: "i-lucide-box" },
   { value: "crafting", label: "Crafting projects", icon: "i-lucide-hammer" },
   { value: "xp_history", label: "XP history", icon: "i-lucide-chart-no-axes-combined" },

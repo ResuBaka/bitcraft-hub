@@ -1,5 +1,6 @@
 pub(crate) mod bitcraft;
 pub(crate) mod activity;
+pub(crate) mod equipment;
 pub(crate) mod stats;
 
 use crate::{AppRouter, AppState};
@@ -37,6 +38,14 @@ pub(crate) fn get_routes() -> AppRouter {
         )
         .route("/api/bitcraft/players/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::player_crafts).into())
         .route("/api/bitcraft/players/{id}/stats", axum_codec::routing::get(player_stats).into())
+        .route(
+            "/api/bitcraft/players/{id}/equipment",
+            axum_codec::routing::get(equipment::player_equipment).into(),
+        )
+        .route(
+            "/api/bitcraft/equipment-tool-powers",
+            axum_codec::routing::get(equipment::tool_powers).into(),
+        )
         .route("/api/bitcraft/players/{id}/activity", axum_codec::routing::get(player_activity).into())
         .route("/api/bitcraft/activity/recipe/{kind}/{id}", axum_codec::routing::get(activity_recipe).into())
         .route(

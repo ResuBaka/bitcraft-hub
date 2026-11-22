@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import InventoryImg from "./InventoryImg.vue";
+import ItemHint from "./ItemHint.vue";
+import { tierToBorderClassByLevel } from "~/utils";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
 import type { LeaderboardSkill } from "~/types/LeaderboardSkill";
+import type { PlayerEquipmentSlot } from "~/types/PlayerEquipmentSlot";
+import type { PlayerEquipmentStat } from "~/types/PlayerEquipmentStat";
 import { levelMap } from "~/consts/exp.ts";
 
 const skillToToolIndex = {
@@ -27,28 +31,53 @@ const skillToToolIndex = {
 const props = defineProps<{
   xp_info: LeaderboardSkill;
   skill: keyof typeof skillToToolIndex;
-  tools: ResolvedInventory;
+  tools?: ResolvedInventory;
+  equipmentSlots?: PlayerEquipmentSlot[];
+  toolPowers?: Record<number, number | undefined>;
   previousRank?: number | bigint;
   snapshotRank?: number | bigint | null;
 }>();
 const numberFormat = new Intl.NumberFormat(undefined);
-const tierColor = useTierColor();
+const bonusFormat = new Intl.NumberFormat(undefined, { signDisplay: "exceptZero", maximumFractionDigits: 2 });
+const NuxtLink = resolveComponent("NuxtLink");
 const currentRank = computed(() => Number(props.snapshotRank ?? props.xp_info.rank));
 const rankChange = computed(() => props.previousRank == null || currentRank.value <= 0
   ? null
   : Number(props.previousRank) - currentRank.value);
 
-const itemForSkill = computed(() => {
-  const index = skillToToolIndex[props.skill as keyof typeof skillToToolIndex];
-
-  if (index === undefined || index === null) return null;
-  return props.tools?.pockets?.[index]?.contents?.item ?? null;
-});
-
-const itemIcon = computed(() => {
-  if (!itemForSkill.value?.icon_asset_name) return null;
-  const icon = iconAssetUrlNameRandom(itemForSkill.value.icon_asset_name);
-  return icon.show ? icon.url : null;
+const gearTiles = computed(() => {
+  const toolIndex = skillToToolIndex[props.skill];
+  if (toolIndex === undefined && !props.equipmentSlots?.length) return [];
+  const tool = toolIndex === undefined ? null : props.tools?.pockets[toolIndex]?.contents;
+  const professionItem = (type: "Charm" | "Instrument") =>
+    props.equipmentSlots?.find((slot) => slot.slot_type.endsWith(type))?.item;
+  const charm = professionItem("Charm");
+  const instrument = professionItem("Instrument");
+  const power = tool?.item_type === "Item" ? props.toolPowers?.[tool.item_id] : undefined;
+  const bonus = (entry: PlayerEquipmentStat) => ({
+    label: entry.stat.replace(/([a-z0-9])([A-Z])/g, "$1 $2"),
+    value: entry.is_pct ? `${bonusFormat.format(entry.value * 100)}%` : bonusFormat.format(entry.value),
+  });
+  return [
+    { label: "Tool", icon: "i-lucide-wrench", item: tool?.item, id: tool?.item_id, type: tool?.item_type, stats: power == null ? [] : [{ label: "Tool Power", value: numberFormat.format(power) }] },
+    { label: "Charm", icon: "i-lucide-gem", item: charm, id: charm?.item_id, type: charm?.item_type, stats: charm?.stats?.map(bonus) ?? [] },
+    { label: "Instrument", icon: "i-lucide-music", item: instrument, id: instrument?.item_id, type: instrument?.item_type, stats: instrument?.stats?.map(bonus) ?? [] },
+  ].map(({ label, icon, item, id, type, stats }) => ({
+    label,
+    icon,
+    item,
+    stats,
+    description: `${label}: ${item?.name || (item ? `Unknown item (${id})` : "Empty")}`,
+    colors: {
+      "--gear-tier": item?.tier != null ? `rgb(var(--tier-${item.tier}, var(--tier-0)))` : undefined,
+      "--gear-rarity": item?.rarity && item.rarity !== "Default"
+        ? `rgb(var(--rarity-${item.rarity.toLowerCase()}))`
+        : undefined,
+    },
+    to: item?.name && id != null && type
+      ? { name: "items-type-id", params: { id, type } }
+      : undefined,
+  }));
 });
 
 const expUntilNextLevel = (skill: LeaderboardSkill) => {
@@ -120,42 +149,52 @@ const expUntilNextTenLevel = computed(() => {
           Level: {{ numberFormat.format(xp_info.level ?? 0) }}
         </p>
       </div>
-      <div v-if="itemForSkill" class="flex items-center gap-3 rounded-md px-2 py-1 text-right">
-        <div class="flex h-13 w-13 items-center justify-center rounded bg-white dark:bg-gray-950">
-          <picture v-if="itemIcon">
-            <source :srcset="`${itemIcon}.jxl`" type="image/jxl" />
-            <source :srcset="`${itemIcon}.avif`" type="image/avif" />
-            <img
-              :src="`${itemIcon}.webp`"
-              :alt="itemForSkill!.name"
-              class="h-10 w-10 object-contain"
-              loading="lazy"
-            />
-          </picture>
-          <UIcon v-else name="i-lucide-wrench" class="h-6 w-6 text-gray-400" />
-        </div>
-        <div class="flex flex-col items-end gap-1">
-          <div class="flex items-center gap-2">
-            <UBadge color="neutral" variant="soft">Tool</UBadge>
-            <span
-              v-if="itemForSkill?.tier"
-              class="text-xs font-semibold leading-none"
-              :class="tierColor[itemForSkill!.tier]"
-            >
-              T{{ itemForSkill!.tier }}
-            </span>
-          </div>
-          <p
-            class="text-xs dark:text-gray-300"
-            :class="rarityToTextClass(itemForSkill.rarity ?? null)"
+      <div v-if="gearTiles.length" class="flex gap-1.5" role="group" :aria-label="`${skill} equipment`">
+        <ItemHint
+          v-for="tile in gearTiles"
+          :key="tile.label"
+          :label="tile.label"
+          :item="tile.item"
+          :stats="tile.stats"
+        >
+          <component
+            :is="tile.to ? NuxtLink : 'div'"
+            :to="tile.to"
+            :aria-label="tile.description"
+            :role="tile.to ? undefined : 'img'"
+            :tabindex="tile.to ? undefined : 0"
+            class="gear-tile grid size-11 shrink-0 place-items-center rounded-md border-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            :style="tile.colors"
           >
-            {{ itemForSkill?.name }}
-          </p>
-          <p v-if="itemForSkill.rarity" class="text-[10px] uppercase tracking-wide text-gray-400">
-            {{ itemForSkill?.rarity }}
-          </p>
-        </div>
+            <InventoryImg
+              v-if="tile.item"
+              :key="tile.item.icon_asset_name ?? tile.description"
+              :item="{ name: tile.item.name ?? '', icon_asset_name: tile.item.icon_asset_name ?? '' }"
+              :width="27"
+              :height="27"
+              skip-error-text
+              aria-hidden="true"
+            />
+            <UIcon v-else :name="tile.icon" class="size-3.5 text-muted opacity-65" aria-hidden="true" />
+          </component>
+        </ItemHint>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.gear-tile {
+  background-color: var(--ui-bg-elevated);
+  background-color: color-mix(in srgb, var(--gear-tier, var(--ui-bg-elevated)) 14%, var(--ui-bg-elevated));
+  border-color: var(--ui-border-accented);
+  border-color: color-mix(in srgb, var(--gear-rarity, var(--ui-text-muted)) 75%, var(--ui-border-accented));
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.gear-tile:hover,
+.gear-tile:focus-visible {
+  background-color: color-mix(in srgb, var(--gear-tier, var(--ui-bg-accented)) 21%, var(--ui-bg-accented));
+  border-color: var(--gear-rarity, var(--ui-text-muted));
+}
+</style>

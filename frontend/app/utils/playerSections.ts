@@ -1,3 +1,10 @@
+export const equipmentPlayerSection = {
+  value: "equipment",
+  slug: "equipment",
+  label: "Equipment",
+  icon: "i-lucide-shirt",
+} as const;
+
 export function getFavoritePlayerSections<T extends { value: string }>(sections: T[], favorites: string[]): T[] {
   const byValue = new Map(sections.map((section) => [section.value, section]));
   return [...new Set(favorites)].flatMap((value) => {
