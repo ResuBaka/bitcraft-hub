@@ -244,7 +244,7 @@ const houseInventoryById = computed(() => new Map(
   (houseInventories.value ?? []).map((house) => [String(house.house_entity_id), house]),
 ));
 
-const { data: inventoryData } = useFetchMsPack<InventorysResponse>(
+const { data: inventoryData, refresh: refreshInventory } = useFetchMsPack<InventorysResponse>(
   () => {
     return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
   },
@@ -747,6 +747,14 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             />
           </div>
         </UCard>
+
+        <BitcraftPlayerStats
+          v-if="selectedSection === 'stats'"
+          :key="String(route.params.id)"
+          :player-id="String(route.params.id)"
+          :toolbelt="tools"
+          @resync-toolbelt="refreshInventory({ dedupe: 'defer' })"
+        />
 
         <BitcraftPlayerEquipment
           v-if="selectedSection === 'equipment'"

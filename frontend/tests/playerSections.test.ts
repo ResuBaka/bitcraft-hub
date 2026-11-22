@@ -5,6 +5,7 @@ describe("player section routes", () => {
   test("uses the base player URL for overview and resolves each unique section slug", () => {
     expect(getPlayerSection(undefined)?.value).toBe("overview");
     expect(getPlayerSection("")?.value).toBe("overview");
+    expect(getPlayerSection("stats")?.value).toBe("stats");
     expect(getPlayerSection("xp-history")?.value).toBe("xp_history");
     expect(getPlayerSection("traveler-tasks")?.value).toBe("traveler_tasks");
     for (const section of playerSections) {

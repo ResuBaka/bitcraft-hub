@@ -2,10 +2,11 @@
 use entity::shared::Region;
 use game_module::module_bindings::{
     ActiveBuff, ActiveBuffState, BuffDesc, BuffTypeDesc, CharacterStatType, CharacterStatsState,
-    FoodDesc, HealthState, StaminaState,
+    FoodDesc, HealthState, SkillType, StaminaState, ToolDesc, ToolTypeDesc,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::atomic::{AtomicU32, Ordering};
 use ts_rs::TS;
 
 #[derive(Default)]
@@ -16,7 +17,7 @@ struct RegionStats {
     buffs: HashMap<u64, Box<[ActiveBuff]>>,
     // Keep known-empty rows distinct from rows we haven't received.
     empty_buffs: HashSet<u64>,
-    character_stats: HashMap<u64, (Option<f32>, Option<f32>)>,
+    character_stats: HashMap<u64, (u32, Vec<f32>)>,
 }
 
 #[derive(Default)]
@@ -39,6 +40,42 @@ pub(crate) struct PlayerStats {
     buff_desc: parking_lot::RwLock<HashMap<i32, BuffDesc>>,
     buff_types: parking_lot::RwLock<HashMap<i32, BuffTypeDesc>>,
     food_buffs: parking_lot::RwLock<FoodBuffIndex>,
+    tools: parking_lot::RwLock<ToolIndex>,
+    character_revision: AtomicU32,
+}
+
+#[derive(Serialize)]
+pub(crate) struct CharacterStatsSnapshot {
+    pub player_id: String,
+    pub revision: Option<u32>,
+    pub values: Option<Vec<Option<f32>>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct CharacterStatsDelta {
+    pub base_revision: u32,
+    pub revision: u32,
+    pub changes: Vec<(u32, Option<f32>)>,
+}
+
+pub(crate) enum CharacterStatsChange {
+    Reset,
+    Delta(CharacterStatsDelta),
+}
+
+#[derive(Default)]
+pub(crate) struct ToolIndex {
+    pub region: Option<Region>,
+    pub ready: bool,
+    pub descriptions: BTreeMap<i32, ToolDesc>,
+    pub types: BTreeMap<i32, ToolTypeDesc>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ToolPowers {
+    pub slots_by_skill: BTreeMap<i32, i32>,
+    pub power_by_item: BTreeMap<i32, i32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
@@ -162,31 +199,114 @@ impl PlayerStats {
             state.empty_buffs.remove(&id);
         }
     }
-    pub fn character_stats(&self, region: Region, id: u64, row: Option<CharacterStatsState>) {
-        if let Some(state) = self.regions.write().get_mut(&region) {
-            if let Some(row) = row {
-                // The game indexes CharacterStatsState.values by CharacterStatType.
-                let maximum = |stat: CharacterStatType| {
-                    row.values
-                        .get(stat as usize)
-                        .copied()
-                        .filter(|value| value.is_finite() && *value > 0.0)
+    pub fn character_stats(
+        &self,
+        region: Region,
+        id: u64,
+        row: Option<CharacterStatsState>,
+    ) -> Option<CharacterStatsChange> {
+        let mut regions = self.regions.write();
+        let rows = &mut regions.get_mut(&region)?.character_stats;
+        let Some(row) = row.filter(|row| !row.values.is_empty()) else {
+            return rows.remove(&id).map(|_| CharacterStatsChange::Reset);
+        };
+        let next_revision = || {
+            self.character_revision
+                .fetch_add(1, Ordering::Relaxed)
+                .wrapping_add(1)
+        };
+        if let Some((base_revision, previous)) = rows.get_mut(&id) {
+            if previous.len() == row.values.len() {
+                let changes: Vec<_> = previous
+                    .iter()
+                    .zip(&row.values)
+                    .enumerate()
+                    .filter_map(|(index, (&old, &new))| {
+                        let old = old.is_finite().then_some(old);
+                        let new = new.is_finite().then_some(new);
+                        (old != new).then_some((index as u32, new))
+                    })
+                    .collect();
+                if changes.is_empty() {
+                    return None;
+                }
+                let revision = next_revision();
+                let delta = CharacterStatsDelta {
+                    base_revision: *base_revision,
+                    revision,
+                    changes,
                 };
-                state.character_stats.insert(
-                    id,
-                    (
-                        maximum(CharacterStatType::MaxHealth),
-                        maximum(CharacterStatType::MaxStamina),
-                    ),
-                );
-            } else {
-                state.character_stats.remove(&id);
+                *base_revision = revision;
+                *previous = row.values;
+                return Some(CharacterStatsChange::Delta(delta));
             }
         }
+        rows.insert(id, (next_revision(), row.values));
+        Some(CharacterStatsChange::Reset)
     }
     pub fn clear_character_stats(&self, region: Region) {
         if let Some(state) = self.regions.write().get_mut(&region) {
             state.character_stats.clear();
+        }
+    }
+    pub fn begin_tools(&self, region: Region) {
+        *self.tools.write() = ToolIndex {
+            region: Some(region),
+            ..Default::default()
+        };
+    }
+    pub fn clear_tools(&self, region: Region) {
+        self.update_tools(region, |index| *index = ToolIndex::default());
+    }
+    pub fn update_tools(&self, region: Region, update: impl FnOnce(&mut ToolIndex)) {
+        let mut index = self.tools.write();
+        if index.region == Some(region) {
+            update(&mut index);
+        }
+    }
+    pub fn tool_powers(&self) -> Option<ToolPowers> {
+        let index = self.tools.read();
+        if !index.ready {
+            return None;
+        }
+        let mut slots_by_skill: BTreeMap<_, _> = index
+            .types
+            .values()
+            .filter(|kind| kind.id > 0 && kind.skill_id > 0)
+            .map(|kind| (kind.skill_id, kind.id - 1))
+            .collect();
+        // The mallet has tool type 14 even in data where it has no assigned skill.
+        if index.types.contains_key(&14) {
+            slots_by_skill
+                .entry(SkillType::Construction as i32)
+                .or_insert(13);
+        }
+        let mut power_by_item = BTreeMap::new();
+        for tool in index.descriptions.values() {
+            power_by_item.entry(tool.item_id).or_insert(tool.power);
+        }
+        Some(ToolPowers {
+            slots_by_skill,
+            power_by_item,
+        })
+    }
+    pub fn character_snapshot(&self, region: Region, id: u64) -> CharacterStatsSnapshot {
+        let regions = self.regions.read();
+        // Preserve the enum-indexed layout and distinguish missing or invalid
+        // data from valid zeroes (e.g. armor or crit chance).
+        let row = regions
+            .get(&region)
+            .and_then(|state| state.character_stats.get(&id));
+        let values = row.map(|(_, values)| {
+            values
+                .iter()
+                .map(|&value| value.is_finite().then_some(value))
+                .collect()
+        });
+        CharacterStatsSnapshot {
+            player_id: id.to_string(),
+            revision: row.map(|(revision, _)| *revision),
+            values,
         }
     }
     pub fn buff_desc(&self, id: i32, row: Option<BuffDesc>) {
@@ -252,6 +372,15 @@ impl PlayerStats {
         let types = self.buff_types.read();
         let food = self.food_buffs.read();
         let state = regions.get(&region).filter(|state| state.ready);
+        let maximum = |stat: CharacterStatType| {
+            state?
+                .character_stats
+                .get(&id)?
+                .1
+                .get(stat as usize)
+                .copied()
+                .filter(|value| value.is_finite() && *value > 0.0)
+        };
         let buffs = state.and_then(|state| {
             state
                 .buffs
@@ -269,12 +398,8 @@ impl PlayerStats {
             stamina: state
                 .and_then(|state| state.stamina.get(&id))
                 .map(|row| row.stamina),
-            max_health: state
-                .and_then(|state| state.character_stats.get(&id))
-                .and_then(|values| values.0),
-            max_stamina: state
-                .and_then(|state| state.character_stats.get(&id))
-                .and_then(|values| values.1),
+            max_health: maximum(CharacterStatType::MaxHealth),
+            max_stamina: maximum(CharacterStatType::MaxStamina),
             buffs: buffs.map(|buffs| {
                 buffs
                     .iter()
@@ -528,6 +653,97 @@ mod tests {
         assert_eq!(snapshot.max_stamina, None);
         stats.clear_character_stats(1);
         assert_eq!(stats.snapshot_at(1, 42, true, 1000).max_health, None);
+    }
+
+    #[test]
+    fn character_details_preserve_stat_indices_and_real_zeroes() {
+        let stats = PlayerStats::default();
+        stats.reset(2);
+        stats.character_stats(
+            2,
+            42,
+            Some(CharacterStatsState {
+                entity_id: 42,
+                values: vec![150.0, f32::NAN, 0.0],
+            }),
+        );
+        let snapshot = stats.character_snapshot(2, 42);
+        assert_eq!(snapshot.player_id, "42");
+        assert_eq!(snapshot.values.unwrap(), [Some(150.0), None, Some(0.0)]);
+        assert!(stats.character_snapshot(1, 42).values.is_none());
+        stats.clear_character_stats(2);
+        assert!(stats.character_snapshot(2, 42).values.is_none());
+    }
+
+    #[test]
+    fn character_updates_only_send_changed_slots_and_reset_if_shape_changes() {
+        let stats = PlayerStats::default();
+        stats.reset(1);
+        let update = |values| {
+            stats.character_stats(
+                1,
+                42,
+                Some(CharacterStatsState {
+                    entity_id: 42,
+                    values,
+                }),
+            )
+        };
+        assert!(matches!(
+            update(vec![100.0, 0.0, f32::NAN]),
+            Some(CharacterStatsChange::Reset)
+        ));
+        let base = stats.character_snapshot(1, 42).revision.unwrap();
+        assert!(update(vec![100.0, 0.0, f32::INFINITY]).is_none());
+        let Some(CharacterStatsChange::Delta(delta)) = update(vec![100.0, 4.0, 0.0]) else {
+            panic!("expected changed fields");
+        };
+        assert_eq!(delta.base_revision, base);
+        assert_eq!(delta.changes, [(1, Some(4.0)), (2, Some(0.0))]);
+        assert_eq!(
+            stats.character_snapshot(1, 42).revision,
+            Some(delta.revision)
+        );
+        assert!(matches!(
+            update(vec![100.0]),
+            Some(CharacterStatsChange::Reset)
+        ));
+        assert!(matches!(
+            stats.character_stats(1, 42, None),
+            Some(CharacterStatsChange::Reset)
+        ));
+    }
+
+    #[test]
+    fn tool_powers_use_player_toolbelt_slot_and_item_id() {
+        let stats = PlayerStats::default();
+        stats.begin_tools(1);
+        let tool = ToolDesc {
+            id: 44,
+            item_id: 842,
+            tool_type: 4,
+            level: 2,
+            power: 23,
+        };
+        stats.update_tools(1, |index| {
+            index.descriptions.insert(tool.id, tool);
+            index.types.insert(
+                4,
+                ToolTypeDesc {
+                    id: 4,
+                    skill_id: SkillType::Mining as i32,
+                    name: "Pickaxe".into(),
+                },
+            );
+        });
+        assert!(stats.tool_powers().is_none());
+        stats.update_tools(1, |index| index.ready = true);
+        stats.clear_tools(2);
+        let result = stats.tool_powers().unwrap();
+        assert_eq!(result.slots_by_skill[&(SkillType::Mining as i32)], 3);
+        assert_eq!(result.power_by_item[&842], 23);
+        stats.clear_tools(1);
+        assert!(stats.tool_powers().is_none());
     }
 
     #[test]

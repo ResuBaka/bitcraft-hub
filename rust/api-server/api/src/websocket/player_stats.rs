@@ -1,5 +1,6 @@
 use crate::{
     AppState,
+    player_state::stats::{CharacterStatsChange, CharacterStatsDelta},
     websocket::{BroadcastTopics, OutboundWebSocketMessages},
 };
 use entity::shared::Region;
@@ -30,6 +31,53 @@ pub(super) fn changed(state: &AppState, player_id: Option<u64>) {
             }
         },
     );
+}
+
+pub(crate) fn character_changed(
+    state: &AppState,
+    player_id: Option<i64>,
+    delta: Option<CharacterStatsDelta>,
+) {
+    let _ = state.tx.send_if_interested(
+        BroadcastTopics::new([("player_character_stats".into(), player_id)]),
+        || OutboundWebSocketMessages::PlayerCharacterStatsChanged {
+            player_id: player_id.map(|id| id.to_string()),
+            delta,
+        },
+    );
+}
+
+fn character_row_changed(
+    state: &AppState,
+    region: Region,
+    id: u64,
+    row: Option<CharacterStatsState>,
+) {
+    let Some(change) = state.player_stats.character_stats(region, id, row) else {
+        return;
+    };
+    let Ok(id) = i64::try_from(id) else { return };
+    if state
+        .player_state
+        .get(&id)
+        .is_some_and(|player| player.region == region)
+    {
+        let maxima_changed = match &change {
+            CharacterStatsChange::Reset => true,
+            CharacterStatsChange::Delta(delta) => delta.changes.iter().any(|(index, _)| {
+                *index == CharacterStatType::MaxHealth as u32
+                    || *index == CharacterStatType::MaxStamina as u32
+            }),
+        };
+        let delta = match change {
+            CharacterStatsChange::Reset => None,
+            CharacterStatsChange::Delta(delta) => Some(delta),
+        };
+        character_changed(state, Some(id), delta);
+        if maxima_changed {
+            changed(state, Some(id as u64));
+        }
+    }
 }
 
 pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
@@ -70,7 +118,27 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
     listen_table!(health_state, health, Clone::clone);
     listen_table!(stamina_state, stamina, Clone::clone);
     listen_table!(active_buff_state, buffs, std::convert::identity);
-    listen_table!(character_stats_state, character_stats, Clone::clone);
+    let table = ctx.db.character_stats_state();
+    let target = state.clone();
+    table.on_initial_owned(move |_, rows| {
+        for row in rows {
+            let _ = target
+                .player_stats
+                .character_stats(region, row.entity_id, Some(row));
+        }
+    });
+    let target = state.clone();
+    table.on_insert(move |ctx, row| {
+        if !matches!(ctx.event, Event::SubscribeApplied) {
+            character_row_changed(&target, region, row.entity_id, Some(row.clone()));
+        }
+    });
+    let target = state.clone();
+    table.on_update(move |_, _, row| {
+        character_row_changed(&target, region, row.entity_id, Some(row.clone()))
+    });
+    let target = state.clone();
+    table.on_delete(move |_, row| character_row_changed(&target, region, row.entity_id, None));
     macro_rules! listen_desc {
         ($table:ident, $update:ident) => {{
             let table = ctx.db.$table();
@@ -101,6 +169,42 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
     }
     listen_desc!(buff_desc, buff_desc);
     listen_desc!(buff_type_desc, buff_type);
+
+    macro_rules! listen_tool_metadata {
+        ($table:ident, $map:ident) => {{
+            let table = ctx.db.$table();
+            let target = state.clone();
+            table.on_initial_rows(move |_, rows| {
+                target.player_stats.update_tools(region, |index| {
+                    index
+                        .$map
+                        .extend(rows.iter().map(|row| (row.id, row.clone())));
+                });
+            });
+            let target = state.clone();
+            table.on_insert(move |ctx, row| {
+                if !matches!(ctx.event, Event::SubscribeApplied) {
+                    target.player_stats.update_tools(region, |index| {
+                        index.$map.insert(row.id, row.clone());
+                    });
+                }
+            });
+            let target = state.clone();
+            table.on_update(move |_, _, row| {
+                target.player_stats.update_tools(region, |index| {
+                    index.$map.insert(row.id, row.clone());
+                });
+            });
+            let target = state.clone();
+            table.on_delete(move |_, row| {
+                target.player_stats.update_tools(region, |index| {
+                    index.$map.remove(&row.id);
+                });
+            });
+        }};
+    }
+    listen_tool_metadata!(tool_desc, descriptions);
+    listen_tool_metadata!(tool_type_desc, types);
 
     let table = ctx.db.food_desc();
     let target = state.clone();
@@ -138,6 +242,34 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
 mod tests {
     use super::*;
     use sea_orm::{DbBackend, MockDatabase};
+
+    #[tokio::test]
+    async fn detailed_delta_only_reaches_its_player_topic() {
+        let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db, tx, Default::default());
+        let _client = state
+            .subscribe_test_client(&[("player_character_stats", Some(42))])
+            .await;
+        let delta = CharacterStatsDelta {
+            base_revision: 12,
+            revision: 19,
+            changes: vec![(15, Some(1.2))],
+        };
+        character_changed(&state, Some(43), Some(delta.clone()));
+        character_changed(&state, Some(42), Some(delta));
+        let message = rx.try_recv().unwrap();
+        assert_eq!(
+            serde_json::to_value(message).unwrap(),
+            serde_json::json!({
+                "t": "PlayerCharacterStatsChanged",
+                "c": {"player_id": "42", "delta": {
+                    "base_revision": 12, "revision": 19, "changes": [[15, 1.2_f32]]
+                }}
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
 
     #[tokio::test]
     async fn notifications_only_reach_interested_topics() {

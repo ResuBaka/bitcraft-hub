@@ -7,6 +7,7 @@ export const equipmentPlayerSection = {
 
 export const playerSections = [
   { value: "overview", slug: "", label: "Overview", icon: "i-lucide-user" },
+  { value: "stats", slug: "stats", label: "Stats", icon: "i-lucide-heart-pulse" },
   equipmentPlayerSection,
   { value: "deployables", slug: "deployables", label: "Deployables", icon: "i-lucide-box" },
   { value: "crafting", slug: "crafting", label: "Crafting projects", icon: "i-lucide-hammer" },

@@ -7,7 +7,7 @@ import { SnapshotRevision } from "~/utils/snapshotRevision";
 import { hasSubscribedTopic } from "~/utils/websocketTopicRegistry";
 import { statsMessageAction } from "~/utils/statsMessage";
 
-const props = defineProps<{ playerId: string }>();
+const props = defineProps<{ playerId: string; title?: string }>();
 const revisions = new SnapshotRevision();
 let responseRevision = revisions.capture();
 const requestRevisions = new WeakMap<object, number>();
@@ -140,7 +140,7 @@ watch(
     <div class="flex shrink-0 items-center justify-between gap-1 overflow-x-auto">
       <div class="flex min-w-0 items-center gap-1">
         <slot name="handle" />
-        <h3 class="truncate text-base font-semibold">Stats</h3>
+        <h3 class="truncate text-base font-semibold">{{ title ?? "Stats" }}</h3>
       </div>
       <div class="flex shrink-0 items-center gap-1">
         <UButton

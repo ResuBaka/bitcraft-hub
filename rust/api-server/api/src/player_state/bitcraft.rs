@@ -387,11 +387,18 @@ impl PlayerStateWorker {
         model: &::entity::player_state::Model,
         previous_if_uncached: bool,
     ) {
-        let previous = self
+        let cached = self
             .global_app_state
             .player_state
-            .insert(model.entity_id, model.clone())
-            .map_or(previous_if_uncached, |player| player.signed_in);
+            .insert(model.entity_id, model.clone());
+        if cached.as_ref().is_none_or(|player| player.region != model.region) {
+            crate::websocket::player_stats::character_changed(
+                &self.global_app_state,
+                Some(model.entity_id),
+                None,
+            );
+        }
+        let previous = cached.map_or(previous_if_uncached, |player| player.signed_in);
         if previous != model.signed_in {
             let _ = self.global_app_state.tx.send_if_interested(
                 BroadcastTopics::player_presence(model.entity_id),

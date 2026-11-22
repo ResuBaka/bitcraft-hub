@@ -52,7 +52,7 @@ pub(crate) mod initial_sync;
 mod metric_handles;
 mod claim_locations;
 mod leaderboard_staff;
-mod player_stats;
+pub(crate) mod player_stats;
 mod player_activity;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
 mod overworld;
@@ -174,7 +174,9 @@ fn connect_to_db(
                 tmp_disconnect_global_app_state.player_activity.invalidate(region_number);
                 player_activity::changed(&tmp_disconnect_global_app_state, None);
                 tmp_disconnect_global_app_state.player_stats.invalidate_food(region_number);
+                tmp_disconnect_global_app_state.player_stats.clear_tools(region_number);
                 player_stats::changed(&tmp_disconnect_global_app_state, None);
+                player_stats::character_changed(&tmp_disconnect_global_app_state, None, None);
             }
             metrics::gauge!(
                 "bitcraft_database_connected",
@@ -442,17 +444,11 @@ async fn connect_to_db_logic(
     player_activity::listen(&ctx, region_number, global_app_state.clone());
     if !*remove_desc && !config.spacetimedb.skip_state_tables {
         global_app_state.player_stats.begin_food(region_number);
+        global_app_state.player_stats.begin_tools(region_number);
     }
     player_stats::listen(&ctx, region_number, global_app_state.clone());
     if !config.spacetimedb.skip_state_tables {
         crate::player_state::equipment::listen(&ctx, region_number, &global_app_state);
-        if !*remove_desc {
-            ctx.subscription_builder()
-                .on_error(move |_: &ErrorContext, err: Error| {
-                    tracing::warn!(region = region_number, "Tool descriptions subscription failed: {err}");
-                })
-                .subscribe(["SELECT * FROM tool_desc"]);
-        }
     }
 
     crate::claims::events::register_listeners(
@@ -951,6 +947,7 @@ async fn connect_to_db_logic(
             .on_error(move |_: &ErrorContext, err: Error| {
                 stats_on_error.player_stats.invalidate(region_number);
                 player_stats::changed(&stats_on_error, None);
+                player_stats::character_changed(&stats_on_error, None, None);
                 tracing::warn!(region = region_number, "Player stats subscription failed: {err}");
             })
             .subscribe([
@@ -958,14 +955,18 @@ async fn connect_to_db_logic(
                 "SELECT stamina_state.* FROM stamina_state JOIN player_state ON player_state.entity_id = stamina_state.entity_id",
                 "SELECT active_buff_state.* FROM active_buff_state JOIN player_state ON player_state.entity_id = active_buff_state.entity_id",
             ]);
-        let maxima_on_applied = global_app_state.clone();
-        let maxima_on_error = global_app_state.clone();
+        let character_stats_on_applied = global_app_state.clone();
+        let character_stats_on_error = global_app_state.clone();
         ctx.subscription_builder()
-            .on_applied(move |_: &SubscriptionEventContext| player_stats::changed(&maxima_on_applied, None))
+            .on_applied(move |_: &SubscriptionEventContext| {
+                player_stats::changed(&character_stats_on_applied, None);
+                player_stats::character_changed(&character_stats_on_applied, None, None);
+            })
             .on_error(move |_: &ErrorContext, err: Error| {
-                maxima_on_error.player_stats.clear_character_stats(region_number);
-                player_stats::changed(&maxima_on_error, None);
-                tracing::warn!(region = region_number, "Player maximum stats subscription failed: {err}");
+                character_stats_on_error.player_stats.clear_character_stats(region_number);
+                player_stats::changed(&character_stats_on_error, None);
+                player_stats::character_changed(&character_stats_on_error, None, None);
+                tracing::warn!(region = region_number, "Player character stats subscription failed: {err}");
             })
             .subscribe(["SELECT character_stats_state.* FROM character_stats_state JOIN player_state ON player_state.entity_id = character_stats_state.entity_id"]);
     }
@@ -977,6 +978,19 @@ async fn connect_to_db_logic(
                 tracing::warn!(region = region_number, "Buff descriptions subscription failed: {err}");
             })
             .subscribe(["SELECT * FROM buff_desc", "SELECT * FROM buff_type_desc"]);
+        let tools_on_applied = global_app_state.clone();
+        let tools_on_error = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| {
+                tools_on_applied.player_stats.update_tools(region_number, |index| index.ready = true);
+                player_stats::character_changed(&tools_on_applied, None, None);
+            })
+            .on_error(move |_: &ErrorContext, err: Error| {
+                tools_on_error.player_stats.clear_tools(region_number);
+                player_stats::character_changed(&tools_on_error, None, None);
+                tracing::warn!(region = region_number, "Tool descriptions subscription failed: {err}");
+            })
+            .subscribe(["SELECT * FROM tool_desc", "SELECT * FROM tool_type_desc"]);
         let food_on_applied = global_app_state.clone();
         let food_on_error = global_app_state.clone();
         ctx.subscription_builder()
@@ -1633,6 +1647,7 @@ pub(crate) enum OutboundWebSocketMessages {
     ClaimCraftingChanged { claim_id: Option<String> },
     PlayerCraftingChanged { player_id: Option<String> },
     PlayerStatsChanged { player_id: Option<String>, stats: Option<crate::player_state::stats::StatsSnapshot> },
+    PlayerCharacterStatsChanged { player_id: Option<String>, delta: Option<crate::player_state::stats::CharacterStatsDelta> },
     PlayerActivityChanged { player_id: Option<String>, activity: Option<crate::player_state::activity::ActivitySnapshot> },
     CraftProgressChanged { claim_id: Option<String>, player_id: String, craft_id: String, progress: i32, lock_expiration: String },
     PassiveCraftChanged { claim_id: Option<String>, player_id: String, craft_id: String, status: String, slot: Option<u32>, timestamp: String },
@@ -1860,6 +1875,9 @@ impl OutboundWebSocketMessages {
             ),
             OutboundWebSocketMessages::PlayerStatsChanged { player_id, .. } => Some(
                 BroadcastTopics::new([("player_stats".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            OutboundWebSocketMessages::PlayerCharacterStatsChanged { player_id, .. } => Some(
+                BroadcastTopics::new([("player_character_stats".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
             ),
             OutboundWebSocketMessages::PlayerActivityChanged { player_id, .. } => Some(
                 BroadcastTopics::new([("player_activity".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),

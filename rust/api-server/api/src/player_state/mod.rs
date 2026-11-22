@@ -46,6 +46,14 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/equipment-tool-powers",
             axum_codec::routing::get(equipment::tool_powers).into(),
         )
+        .route(
+            "/api/bitcraft/players/{id}/character-stats",
+            axum_codec::routing::get(player_character_stats).into(),
+        )
+        .route(
+            "/api/bitcraft/tool-powers",
+            axum_codec::routing::get(tool_powers).into(),
+        )
         .route("/api/bitcraft/players/{id}/activity", axum_codec::routing::get(player_activity).into())
         .route("/api/bitcraft/activity/recipe/{kind}/{id}", axum_codec::routing::get(activity_recipe).into())
         .route(
@@ -92,6 +100,23 @@ async fn player_stats(
 ) -> Result<axum_codec::Codec<stats::StatsSnapshot>, (StatusCode, &'static str)> {
     let player = state.player_state.get(&id).ok_or((StatusCode::NOT_FOUND, "Player not found"))?;
     Ok(axum_codec::Codec(state.player_stats.snapshot(player.region, id as u64, player.signed_in)))
+}
+
+async fn player_character_stats(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<stats::CharacterStatsSnapshot>, (StatusCode, &'static str)> {
+    let player = state
+        .player_state
+        .get(&id)
+        .ok_or((StatusCode::NOT_FOUND, "Player not found"))?;
+    Ok(axum_codec::Codec(
+        state.player_stats.character_snapshot(player.region, id as u64),
+    ))
+}
+
+async fn tool_powers(State(state): State<AppState>) -> axum_codec::Codec<Option<stats::ToolPowers>> {
+    axum_codec::Codec(state.player_stats.tool_powers())
 }
 
 #[derive(Deserialize)]
