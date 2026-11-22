@@ -321,6 +321,13 @@ fn extract_table_name(sql: &str) -> Option<&str> {
     while let Some(token) = tokens.next() {
         if token.eq_ignore_ascii_case("from") {
             from = tokens.peek().copied();
+            // INSERT ... SELECT FROM unnest(...) writes the INTO table. The
+            // set-returning function isn't a useful table label for the writer.
+            if into.is_some() && from.is_some_and(|s| {
+                s.get(..7).is_some_and(|prefix| prefix.eq_ignore_ascii_case("unnest("))
+            }) {
+                from = None;
+            }
             break;
         }
         // Once a higher-priority fallback exists, only look for keywords that
@@ -464,6 +471,12 @@ mod database_metric_tests {
             table.as_ptr(),
             sql[sql.find("inventory").unwrap()..].as_ptr()
         );
+    }
+
+    #[test]
+    fn array_upserts_keep_the_target_table_metric() {
+        let sql = "INSERT INTO inventory (entity_id) SELECT id FROM UNNEST($1::bigint[]) AS b(id)";
+        assert_eq!(database_query_labels(sql, false)[2].value(), "inventory");
     }
 
     #[test]

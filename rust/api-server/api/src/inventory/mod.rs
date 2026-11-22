@@ -1,5 +1,6 @@
 pub(crate) mod bitcraft;
 mod db_row;
+mod snapshot_write;
 
 use crate::{AppRouter, AppState};
 use axum::Router;

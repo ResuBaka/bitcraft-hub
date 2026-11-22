@@ -1113,6 +1113,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             global_app_state.clone(),
             3000,
             db_flush_delay,
+            config.database.inventory_snapshot_write_bytes,
         );
 
         let (item_desc_tx, item_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);

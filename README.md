@@ -110,6 +110,14 @@ Graceful shutdown drains accepted rows and flushes partial batches without
 waiting for that timer. A crash can still lose queued rows. Craft and claim
 event writers expose `worker_db_flush_rows` to measure the resulting SQL batch sizes.
 
+Inventory **snapshot** upserts flush at the existing 3,000-row comparison
+boundary or earlier when the next changed row would put the estimated bind
+payload over **1 MiB**. Configure the byte budget with
+`BITCRAFT_HUB_API__DATABASE__INVENTORY_SNAPSHOT_WRITE_BYTES` (positive integer).
+A single oversized inventory is written alone and counted in
+`inventory_snapshot_oversize_rows_total`. This is a per-statement budget, not
+a limit on snapshot read buffers or live-update queues.
+
 #### Upstream WebSocket TLS
 
 The SpacetimeDB SDK uses `tokio-websockets`. For `wss://`, the API defaults

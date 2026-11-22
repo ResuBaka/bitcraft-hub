@@ -31,6 +31,7 @@ pub(crate) struct InventoryStateWorker {
     tx: UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
     global_app_state: AppState,
     batch_size: usize,
+    snapshot_write_bytes: std::num::NonZeroUsize,
     time_limit: Duration,
     db_tx: Sender<InventoryDbOperation>,
     messages: Vec<::entity::inventory::ActiveModel>,
@@ -38,31 +39,25 @@ pub(crate) struct InventoryStateWorker {
     messages_changed: Vec<::entity::inventory_changelog::ActiveModel>,
     messages_delete: Vec<i64>,
     delete_positions: HashMap<i64, usize>,
-    on_conflict: OnConflict,
     description_cache: InventoryDescriptionCache,
 }
 
 impl InventoryStateWorker {
-    pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
+    pub(crate) fn new(
+        global_app_state: AppState,
+        batch_size: usize,
+        time_limit: Duration,
+        snapshot_write_bytes: std::num::NonZeroUsize,
+    ) -> Self {
         let db_tx = start_inventory_state_db_worker(global_app_state.clone());
         let (tx, rx) =
             crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
-        let on_conflict = sea_query::OnConflict::column(::entity::inventory::Column::EntityId)
-            .update_columns([
-                ::entity::inventory::Column::Pockets,
-                ::entity::inventory::Column::InventoryIndex,
-                ::entity::inventory::Column::CargoIndex,
-                ::entity::inventory::Column::OwnerEntityId,
-                ::entity::inventory::Column::PlayerOwnerEntityId,
-                ::entity::inventory::Column::Region,
-            ])
-            .to_owned();
-
         Self {
             rx,
             tx,
             global_app_state,
             batch_size,
+            snapshot_write_bytes,
             time_limit,
             db_tx,
             messages: Vec::new(),
@@ -70,7 +65,6 @@ impl InventoryStateWorker {
             messages_changed: Vec::new(),
             messages_delete: Vec::new(),
             delete_positions: HashMap::new(),
-            on_conflict,
             description_cache: InventoryDescriptionCache::default(),
         }
     }
@@ -259,11 +253,12 @@ impl InventoryStateWorker {
                 }
             }
             compare_initial_batch(&mut batch, &mut existing, &mut known_ids, &mut changes);
-            if !changes.is_empty()
-                && let Err(error) = ::entity::inventory::Entity::insert_many(changes.drain(..))
-                    .on_conflict(self.on_conflict.clone())
-                    .exec(&self.global_app_state.conn)
-                    .await
+            if let Err(error) = super::snapshot_write::write_changes(
+                &self.global_app_state.conn,
+                &mut changes,
+                self.snapshot_write_bytes,
+            )
+            .await
             {
                 tracing::error!(%error, region = database_name, "Could not write inventory snapshot batch; skipping stale-row deletion");
                 return;
@@ -622,12 +617,12 @@ fn compare_initial_batch(
     incoming: &mut Vec<::entity::inventory::Model>,
     existing: &mut HashMap<i64, ::entity::inventory::Model>,
     known_ids: &mut HashSet<i64>,
-    changes: &mut Vec<::entity::inventory::ActiveModel>,
+    changes: &mut Vec<::entity::inventory::Model>,
 ) {
     for model in incoming.drain(..) {
         known_ids.remove(&model.entity_id);
         if existing.remove(&model.entity_id).as_ref() != Some(&model) {
-            changes.push(model.into_active_model());
+            changes.push(model);
         }
     }
     // Release all existing pocket payloads before awaiting the INSERT, retaining
@@ -780,13 +775,13 @@ async fn insert_multiple_inventory_changelog(
 mod initial_reconciliation_tests {
     use super::*;
     use entity::inventory::{ItemStack, ItemType, Model, Pocket};
-    use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase};
+    use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, MockExecResult};
 
     fn reconcile_initial_batch(
         mut incoming: Vec<Model>,
         existing: Vec<Model>,
         known_ids: &mut HashSet<i64>,
-    ) -> Vec<::entity::inventory::ActiveModel> {
+    ) -> Vec<Model> {
         let mut existing = existing
             .into_iter()
             .map(|model| (model.entity_id, model))
@@ -861,6 +856,15 @@ mod initial_reconciliation_tests {
         .into()
     }
 
+    fn test_worker(state: AppState, batch_size: usize, delay: Duration) -> InventoryStateWorker {
+        InventoryStateWorker::new(
+            state,
+            batch_size,
+            delay,
+            crate::config::DatabaseConfig::default().inventory_snapshot_write_bytes,
+        )
+    }
+
     fn snapshot_worker(
         db: DatabaseConnection,
         batch_size: usize,
@@ -870,7 +874,7 @@ mod initial_reconciliation_tests {
     ) {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db, tx, Default::default());
-        let mut worker = InventoryStateWorker::new(state, batch_size, Duration::from_millis(200));
+        let mut worker = test_worker(state, batch_size, Duration::from_millis(200));
         // Keep stale deletes observable without running them asynchronously.
         let (db_tx, db_rx) = channel(5);
         worker.db_tx = db_tx;
@@ -880,15 +884,10 @@ mod initial_reconciliation_tests {
     #[tokio::test]
     async fn snapshot_streams_typed_comparisons_and_queues_only_region_scoped_stale_ids() {
         let unchanged = inventory(1);
-        let mut changed = inventory(2);
-        changed.pockets[0].contents.as_mut().unwrap().quantity = 10;
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![key_row(1), key_row(2), key_row(9)]])
-            .append_query_results([
-                vec![db_row(&unchanged), db_row(&inventory(2))],
-                vec![db_row(&changed)],      // first upsert
-                vec![db_row(&inventory(3))], // new-only second batch skips comparison
-            ])
+            .append_query_results([vec![db_row(&unchanged), db_row(&inventory(2))]])
+            .append_exec_results([MockExecResult::default(), MockExecResult::default()])
             .into_connection();
         let (mut worker, mut deletes) = snapshot_worker(db.clone(), 2);
         let mut changed_raw = raw_inventory(2);
@@ -949,17 +948,19 @@ mod initial_reconciliation_tests {
     async fn failed_snapshot_upsert_stops_before_later_batches_and_stale_deletes() {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![key_row(9)]])
-            .append_query_errors([DbErr::Custom("write failed".into())])
+            .append_exec_results([MockExecResult::default()])
+            .append_exec_errors([DbErr::Custom("write failed".into())])
             .into_connection();
-        let (mut worker, mut deletes) = snapshot_worker(db.clone(), 1);
+        let (mut worker, mut deletes) = snapshot_worker(db.clone(), 3);
+        worker.snapshot_write_bytes = std::num::NonZeroUsize::MIN;
         worker
-            .handle_initial(vec![raw_inventory(1), raw_inventory(2)], 1, None)
+            .handle_initial(vec![raw_inventory(1), raw_inventory(2), raw_inventory(3)], 1, None)
             .await;
         assert!(deletes.try_recv().is_err());
         assert_eq!(
             db.into_transaction_log().len(),
-            2,
-            "only keys and the failed upsert"
+            3,
+            "keys, one accepted sub-batch, and the failed sub-batch"
         );
     }
 
@@ -969,7 +970,7 @@ mod initial_reconciliation_tests {
             .append_query_results([
                 Vec::<std::collections::BTreeMap<String, sea_orm::Value>>::new(),
             ])
-            .append_query_results([vec![db_row(&inventory(1))], vec![db_row(&inventory(2))]])
+            .append_exec_results([MockExecResult::default(), MockExecResult::default()])
             .into_connection();
         let (mut worker, mut deletes) = snapshot_worker(db.clone(), 0);
         worker
@@ -995,7 +996,7 @@ mod initial_reconciliation_tests {
             existing.insert(99, inventory(99));
             compare_initial_batch(&mut incoming, &mut existing, &mut known_ids, &mut changes);
             assert!(incoming.is_empty() && existing.is_empty());
-            assert_eq!(changes, [inventory(first_id + 1).into_active_model()]);
+            assert_eq!(changes, [inventory(first_id + 1)]);
             assert_eq!(incoming.as_ptr(), input_storage);
             assert_eq!(changes.as_ptr(), change_storage);
             assert_eq!(existing.capacity(), map_capacity);
@@ -1049,13 +1050,7 @@ mod initial_reconciliation_tests {
             &mut known_ids,
         );
 
-        assert_eq!(
-            changes,
-            vec![
-                changed.into_active_model(),
-                inventory(4).into_active_model()
-            ]
-        );
+        assert_eq!(changes, vec![changed, inventory(4)]);
         assert_eq!(known_ids, HashSet::from([3]));
     }
 
@@ -1067,7 +1062,7 @@ mod initial_reconciliation_tests {
             tx,
             Default::default(),
         );
-        let mut worker = InventoryStateWorker::new(state, 3_000, Duration::from_millis(200));
+        let mut worker = test_worker(state, 3_000, Duration::from_millis(200));
         // Capture queue operations rather than executing database writes.
         let (db_tx, mut db_rx) = channel(5);
         worker.db_tx = db_tx;
@@ -1163,7 +1158,7 @@ mod initial_reconciliation_tests {
         let state = AppState::new(DatabaseConnection::default(), tx, Default::default());
         state.item_desc.insert(1, item_description());
         state.cargo_desc.insert(2, cargo_description());
-        let mut worker = InventoryStateWorker::new(state.clone(), 100, Duration::from_secs(60));
+        let mut worker = test_worker(state.clone(), 100, Duration::from_secs(60));
         let (db_tx, mut operations) = channel(5);
         worker.db_tx = db_tx;
 
@@ -1196,7 +1191,7 @@ mod initial_reconciliation_tests {
         ]).await;
         state.item_desc.insert(1, item_description());
         state.cargo_desc.insert(2, cargo_description());
-        let mut worker = InventoryStateWorker::new(state, 100, Duration::from_secs(60));
+        let mut worker = test_worker(state, 100, Duration::from_secs(60));
         let (db_tx, mut operations) = channel(5);
         worker.db_tx = db_tx;
         let first = ::entity::inventory_changelog::ActiveModel {
@@ -1298,7 +1293,7 @@ mod initial_reconciliation_tests {
                 vec![original.clone()],
                 &mut HashSet::from([1]),
             );
-            assert_eq!(changes, vec![changed.into_active_model()]);
+            assert_eq!(changes, vec![changed]);
         }
     }
 
@@ -1323,7 +1318,7 @@ mod initial_reconciliation_tests {
         let expected = incoming
             .iter()
             .filter(|&model| whole_snapshot.remove(&model.entity_id).as_ref() != Some(model))
-            .map(|model| model.clone().into_active_model())
+            .cloned()
             .collect::<Vec<_>>();
         let expected_deletes = whole_snapshot.into_keys().collect::<HashSet<_>>();
 

@@ -5,6 +5,9 @@ For the standalone DashMap, ClashMap, Papaya, and SCC Heaptrack comparison, see
 
 ## Heaptrack allocation profiling
 
+See the [2026-11-22 ingestion memory profile](memory-profile-2026-11-22.md)
+for measured startup, full-sync allocation stacks and proposed changes.
+
 ### Repeatable six-minute captures and graceful stop
 
 Use `serve --shutdown-after-seconds 360` to request shutdown after six minutes,
