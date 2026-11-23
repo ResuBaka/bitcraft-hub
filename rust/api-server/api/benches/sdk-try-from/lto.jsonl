@@ -1,0 +1,16 @@
+{"block": 0, "name": "base", "cpu_ms_per_1000": 0.73849, "observed": 104116.0, "burst_p99_ns": 34500.0, "service_p99_ns": 2090.0}
+{"block": 0, "name": "row", "cpu_ms_per_1000": 0.76291, "observed": 104116.0, "burst_p99_ns": 37930.0, "service_p99_ns": 2070.0}
+{"block": 1, "name": "row", "cpu_ms_per_1000": 0.76218, "observed": 104116.0, "burst_p99_ns": 42260.0, "service_p99_ns": 2560.0}
+{"block": 1, "name": "base", "cpu_ms_per_1000": 0.76469, "observed": 104116.0, "burst_p99_ns": 37351.0, "service_p99_ns": 2200.0}
+{"block": 2, "name": "row", "cpu_ms_per_1000": 0.72344, "observed": 104116.0, "burst_p99_ns": 35230.0, "service_p99_ns": 2010.0}
+{"block": 2, "name": "base", "cpu_ms_per_1000": 0.80943, "observed": 104116.0, "burst_p99_ns": 39520.0, "service_p99_ns": 2230.0}
+{"block": 3, "name": "base", "cpu_ms_per_1000": 0.72086, "observed": 104116.0, "burst_p99_ns": 39511.0, "service_p99_ns": 2300.0}
+{"block": 3, "name": "row", "cpu_ms_per_1000": 0.72532, "observed": 104116.0, "burst_p99_ns": 33960.0, "service_p99_ns": 2010.0}
+{"block": 4, "name": "row", "cpu_ms_per_1000": 0.7024, "observed": 104116.0, "burst_p99_ns": 39071.0, "service_p99_ns": 2060.0}
+{"block": 4, "name": "base", "cpu_ms_per_1000": 0.77049, "observed": 104116.0, "burst_p99_ns": 42420.0, "service_p99_ns": 2450.0}
+{"block": 5, "name": "base", "cpu_ms_per_1000": 0.79041, "observed": 104116.0, "burst_p99_ns": 46970.0, "service_p99_ns": 2720.0}
+{"block": 5, "name": "row", "cpu_ms_per_1000": 0.72154, "observed": 104116.0, "burst_p99_ns": 33350.0, "service_p99_ns": 1920.0}
+{"block": 6, "name": "row", "cpu_ms_per_1000": 0.73813, "observed": 104116.0, "burst_p99_ns": 41010.0, "service_p99_ns": 2410.0}
+{"block": 6, "name": "base", "cpu_ms_per_1000": 0.90432, "observed": 104116.0, "burst_p99_ns": 41720.0, "service_p99_ns": 2390.0}
+{"block": 7, "name": "base", "cpu_ms_per_1000": 0.74094, "observed": 104116.0, "burst_p99_ns": 35520.0, "service_p99_ns": 1980.0}
+{"block": 7, "name": "row", "cpu_ms_per_1000": 0.73826, "observed": 104116.0, "burst_p99_ns": 37700.0, "service_p99_ns": 2120.0}

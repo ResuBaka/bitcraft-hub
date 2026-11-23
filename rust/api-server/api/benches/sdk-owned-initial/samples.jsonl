@@ -1,0 +1,34 @@
+{"name": "base", "check": "frames=104116 calls=245643 hash=bb0c984258351b7a"}
+{"name": "candidate", "check": "frames=104116 calls=245643 hash=bb0c984258351b7a"}
+{"block": 0, "name": "base", "cpu_ms_per_1000": 0.7569, "observed": 104116.0, "burst_p99_ns": 53361.0, "service_p99_ns": 5290.0, "instructions:u": 4423977636, "cycles:u": 1738151798}
+{"block": 0, "name": "candidate", "cpu_ms_per_1000": 0.71582, "observed": 104116.0, "burst_p99_ns": 40990.0, "service_p99_ns": 2170.0, "instructions:u": 4347474134, "cycles:u": 1666742953}
+{"block": 1, "name": "candidate", "cpu_ms_per_1000": 0.735, "observed": 104116.0, "burst_p99_ns": 41420.0, "service_p99_ns": 4120.0, "instructions:u": 4347474845, "cycles:u": 1696947869}
+{"block": 1, "name": "base", "cpu_ms_per_1000": 0.74892, "observed": 104116.0, "burst_p99_ns": 45111.0, "service_p99_ns": 4370.0, "instructions:u": 4423975305, "cycles:u": 1725616268}
+{"block": 2, "name": "base", "cpu_ms_per_1000": 0.74112, "observed": 104116.0, "burst_p99_ns": 40051.0, "service_p99_ns": 2150.0, "instructions:u": 4423976594, "cycles:u": 1752535914}
+{"block": 2, "name": "candidate", "cpu_ms_per_1000": 0.72434, "observed": 104116.0, "burst_p99_ns": 51250.0, "service_p99_ns": 4451.0, "instructions:u": 4347473885, "cycles:u": 1678024990}
+{"block": 3, "name": "candidate", "cpu_ms_per_1000": 0.76233, "observed": 104116.0, "burst_p99_ns": 44101.0, "service_p99_ns": 3760.0, "instructions:u": 4347473700, "cycles:u": 1757997854}
+{"block": 3, "name": "base", "cpu_ms_per_1000": 0.76887, "observed": 104116.0, "burst_p99_ns": 48650.0, "service_p99_ns": 2741.0, "instructions:u": 4423970983, "cycles:u": 1820436863}
+{"block": 4, "name": "base", "cpu_ms_per_1000": 0.75387, "observed": 104116.0, "burst_p99_ns": 60251.0, "service_p99_ns": 5250.0, "instructions:u": 4423974120, "cycles:u": 1722898098}
+{"block": 4, "name": "candidate", "cpu_ms_per_1000": 0.76602, "observed": 104116.0, "burst_p99_ns": 45351.0, "service_p99_ns": 3450.0, "instructions:u": 4347476563, "cycles:u": 1764494072}
+{"block": 5, "name": "candidate", "cpu_ms_per_1000": 0.74954, "observed": 104116.0, "burst_p99_ns": 41750.0, "service_p99_ns": 2350.0, "instructions:u": 4347474921, "cycles:u": 1730524874}
+{"block": 5, "name": "base", "cpu_ms_per_1000": 0.73839, "observed": 104116.0, "burst_p99_ns": 48640.0, "service_p99_ns": 3850.0, "instructions:u": 4423973355, "cycles:u": 1747018677}
+{"block": 6, "name": "base", "cpu_ms_per_1000": 0.72764, "observed": 104116.0, "burst_p99_ns": 48310.0, "service_p99_ns": 4990.0, "instructions:u": 4423974094, "cycles:u": 1677138644}
+{"block": 6, "name": "candidate", "cpu_ms_per_1000": 0.71508, "observed": 104116.0, "burst_p99_ns": 44521.0, "service_p99_ns": 3960.0, "instructions:u": 4347471104, "cycles:u": 1649773659}
+{"block": 7, "name": "candidate", "cpu_ms_per_1000": 0.73506, "observed": 104116.0, "burst_p99_ns": 38921.0, "service_p99_ns": 2200.0, "instructions:u": 4347468854, "cycles:u": 1715293257}
+{"block": 7, "name": "base", "cpu_ms_per_1000": 0.73828, "observed": 104116.0, "burst_p99_ns": 45081.0, "service_p99_ns": 2551.0, "instructions:u": 4423975971, "cycles:u": 1700658729}
+{"block": 8, "name": "base", "cpu_ms_per_1000": 0.73137, "observed": 104116.0, "burst_p99_ns": 43511.0, "service_p99_ns": 2890.0, "instructions:u": 4423971704, "cycles:u": 1703640389}
+{"block": 8, "name": "candidate", "cpu_ms_per_1000": 0.76182, "observed": 104116.0, "burst_p99_ns": 45520.0, "service_p99_ns": 3920.0, "instructions:u": 4347473975, "cycles:u": 1738808372}
+{"block": 9, "name": "candidate", "cpu_ms_per_1000": 0.735, "observed": 104116.0, "burst_p99_ns": 38421.0, "service_p99_ns": 2120.0, "instructions:u": 4347476315, "cycles:u": 1691304799}
+{"block": 9, "name": "base", "cpu_ms_per_1000": 0.76018, "observed": 104116.0, "burst_p99_ns": 47301.0, "service_p99_ns": 4580.0, "instructions:u": 4423976442, "cycles:u": 1738907444}
+{"block": 10, "name": "base", "cpu_ms_per_1000": 0.7499, "observed": 104116.0, "burst_p99_ns": 41450.0, "service_p99_ns": 2380.0, "instructions:u": 4423972453, "cycles:u": 1726319134}
+{"block": 10, "name": "candidate", "cpu_ms_per_1000": 0.77077, "observed": 104116.0, "burst_p99_ns": 44051.0, "service_p99_ns": 2430.0, "instructions:u": 4347475077, "cycles:u": 1769029270}
+{"block": 11, "name": "candidate", "cpu_ms_per_1000": 0.75505, "observed": 104116.0, "burst_p99_ns": 42151.0, "service_p99_ns": 2300.0, "instructions:u": 4347474895, "cycles:u": 1716771665}
+{"block": 11, "name": "base", "cpu_ms_per_1000": 0.7398, "observed": 104116.0, "burst_p99_ns": 43501.0, "service_p99_ns": 2920.0, "instructions:u": 4423971494, "cycles:u": 1776932198}
+{"block": 12, "name": "base", "cpu_ms_per_1000": 0.79464, "observed": 104116.0, "burst_p99_ns": 43250.0, "service_p99_ns": 2400.0, "instructions:u": 4423976168, "cycles:u": 1804028718}
+{"block": 12, "name": "candidate", "cpu_ms_per_1000": 0.75217, "observed": 104116.0, "burst_p99_ns": 43200.0, "service_p99_ns": 2510.0, "instructions:u": 4347471738, "cycles:u": 1747883339}
+{"block": 13, "name": "candidate", "cpu_ms_per_1000": 0.75438, "observed": 104116.0, "burst_p99_ns": 45270.0, "service_p99_ns": 3140.0, "instructions:u": 4347472904, "cycles:u": 1732341209}
+{"block": 13, "name": "base", "cpu_ms_per_1000": 0.74945, "observed": 104116.0, "burst_p99_ns": 39860.0, "service_p99_ns": 2250.0, "instructions:u": 4423975895, "cycles:u": 1811441308}
+{"block": 14, "name": "base", "cpu_ms_per_1000": 0.7484, "observed": 104116.0, "burst_p99_ns": 44691.0, "service_p99_ns": 2760.0, "instructions:u": 4423973557, "cycles:u": 1719799047}
+{"block": 14, "name": "candidate", "cpu_ms_per_1000": 0.73466, "observed": 104116.0, "burst_p99_ns": 46070.0, "service_p99_ns": 3740.0, "instructions:u": 4347472311, "cycles:u": 1713831470}
+{"block": 15, "name": "candidate", "cpu_ms_per_1000": 0.76087, "observed": 104116.0, "burst_p99_ns": 44370.0, "service_p99_ns": 2600.0, "instructions:u": 4347470746, "cycles:u": 1737140973}
+{"block": 15, "name": "base", "cpu_ms_per_1000": 0.75344, "observed": 104116.0, "burst_p99_ns": 45830.0, "service_p99_ns": 3410.0, "instructions:u": 4423975584, "cycles:u": 1726232025}

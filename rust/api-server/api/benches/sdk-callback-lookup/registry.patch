@@ -1,0 +1,31 @@
+diff --git c/sdks/rust/src/callbacks.rs w/sdks/rust/src/callbacks.rs
+index 0df9fa389..cc406d6e8 100644
+--- c/sdks/rust/src/callbacks.rs
++++ w/sdks/rust/src/callbacks.rs
+@@ -73,8 +73,11 @@ impl<M: SpacetimeModule> DbCallbacks<M> {
+         update: &mut crate::spacetime_module::TableUpdate<Row>,
+         event: &M::EventContext,
+     ) {
+-        if update.is_initial() {
+-            invoke_owned_initial_callbacks(&mut self.get_table_callbacks(table_name).on_initial, event, update);
++        if !update.is_initial() {
++            return;
++        }
++        if let Some(callbacks) = self.table_callbacks.get_mut(table_name) {
++            invoke_owned_initial_callbacks(&mut callbacks.on_initial, event, update);
+         }
+     }
+ 
+@@ -100,7 +103,11 @@ impl<M: SpacetimeModule> DbCallbacks<M> {
+         if !applied_diff.has_changes() {
+             return;
+         }
+-        let table_callbacks = self.get_table_callbacks(table_name);
++        // Registration creates entries; dispatch must not create one for an
++        // unseen table or probe the registry once to check and again to invoke.
++        let Some(table_callbacks) = self.table_callbacks.get_mut(table_name) else {
++            return;
++        };
+         if !table_callbacks.on_initial.is_empty() {
+             if let Some(initial_rows) = applied_diff.initial_rows() {
+                 invoke_initial_callbacks(&mut table_callbacks.on_initial, event, initial_rows);

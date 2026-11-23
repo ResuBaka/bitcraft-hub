@@ -1,0 +1,23 @@
+diff --git i/sdks/rust/src/db_connection.rs w/sdks/rust/src/db_connection.rs
+index 8f5faceb9..3bdd905fc 100644
+--- i/sdks/rust/src/db_connection.rs
++++ w/sdks/rust/src/db_connection.rs
+@@ -309,12 +309,17 @@ impl<M: SpacetimeModule> DbContextImpl<M> {
+         let mut inner = self.shared.inner.lock().unwrap();
+ 
+         let event = get_event(&mut inner);
++        // Only SubscribeApplied marks table updates as initial (even empty tables).
++        // Avoid a second generated table walk for live updates.
++        let is_initial = matches!(event, Event::SubscribeApplied);
+         let row_event_ctx = self.make_event_ctx(event);
+         applied_diff.invoke_row_callbacks(&row_event_ctx, &mut inner.db_callbacks);
+         // The diff borrows decoded rows. Only move them after every borrowed
+         // listener has returned and those borrows are gone.
+         drop(applied_diff);
+-        update.invoke_owned_initial_callbacks(&row_event_ctx, &mut inner.db_callbacks);
++        if is_initial {
++            update.invoke_owned_initial_callbacks(&row_event_ctx, &mut inner.db_callbacks);
++        }
+     }
+ 
+     /// Mark the connection lifecycle as ended, route the terminal event to the

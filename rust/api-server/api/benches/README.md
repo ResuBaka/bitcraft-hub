@@ -1,6 +1,10 @@
 # Ranking benchmarks
 
 For the next stage, see [gzip and BSATN decoder CPU](sdk-decode/README.md).
+For uncompressed transactions, see [CPU and burst latency through row callbacks](sdk-live/README.md).
+For callback lookup cost and listener removal checks, see the [single-lookup replay](sdk-callback-lookup/README.md).
+For the SDK currently used by the API, see [borrowed cacheless row pairs](sdk-borrowed-pair/README.md)
+and [native small gzip](sdk-small-gzip-native/README.md).
 For PostgreSQL writes after callback coalescing, see the [live progressive-action upsert comparison](live-progressive-writes/README.md).
 
 For the standalone DashMap, ClashMap, Papaya, and SCC Heaptrack comparison, see

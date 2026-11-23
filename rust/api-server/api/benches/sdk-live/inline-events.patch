@@ -1,0 +1,179 @@
+diff --git i/sdks/rust/Cargo.toml w/sdks/rust/Cargo.toml
+index f23a0b86d..a99a43c26 100644
+--- i/sdks/rust/Cargo.toml
++++ w/sdks/rust/Cargo.toml
+@@ -44,6 +44,7 @@ thiserror.workspace = true
+ anymap3 = { version = "1.0.1", optional = true }
+ brotli.workspace = true
+ bytes.workspace = true
++smallvec.workspace = true
+ flate2 = { version = "1.1.4", default-features = false, features = ["zlib-rs"] }
+ futures.workspace = true
+ # try_recv() replaces the deprecated try_next() API.
+diff --git i/sdks/rust/src/client_cache.rs w/sdks/rust/src/client_cache.rs
+index 1f52e1544..dd1cf82de 100644
+--- i/sdks/rust/src/client_cache.rs
++++ w/sdks/rust/src/client_cache.rs
+@@ -144,29 +144,23 @@ impl<Row> Default for TableCache<Row> {
+     }
+ }
+ 
+-type RowEventList<'r, Row> = Vec<(&'r [u8], &'r Row)>;
++// A one-row change needs no heap allocation for its callback references.
++type RowEventList<'r, Row> = smallvec::SmallVec<[(&'r [u8], &'r Row); 1]>;
+ 
+ /// The diff result of applying [`TableUpdate`] to a [`TableCache`].
+ ///
+ /// Initially on construction via [`ClientCache::apply_diff_to_table`],
+-/// the list of updates (`update_deletes.zip(update_inserts)`) is empty
++/// the list of updates (old/new row pairs) is empty
+ /// and must be populated by using [`TableAppliedDiff::with_updates_by_pk`]
+ /// by passing a projection from rows to the primary key of the table.
+ ///
+-/// The set `deletes` is disjoint with `update_deletes`
+-/// and the set `inserts` with `update_inserts`.
+-/// When the latter sets are populated, they are *moved* from the former.
++/// Matched rows move from the delete/insert lists to `updates`.
+ pub struct TableAppliedDiff<'r, Row> {
+     /// The semantic deletes, or raw deletes when row deduplication is disabled.
+     deletes: RowEventList<'r, Row>,
+     /// The semantic inserts, or raw inserts when row deduplication is disabled.
+     inserts: RowEventList<'r, Row>,
+-    /// The delete part of the unique set of semantic updates from the client cache.
+-    /// For every element in this list there is a corresponding one in `update_inserts`.
+-    update_deletes: Vec<&'r Row>,
+-    /// The insert part of the unique set of semantic updates from the client cache.
+-    /// For every element in this list there is a corresponding one in `update_deletes`.
+-    update_inserts: Vec<&'r Row>,
++    updates: smallvec::SmallVec<[(&'r Row, &'r Row); 1]>,
+     // Keep the Vec reference (not a slice) for safe Any type erasure when
+     // invoking borrowed initial callbacks, without allocating a row/ref vector.
+     initial_rows: Option<&'r Vec<WithBsatn<Row>>>,
+@@ -177,8 +171,7 @@ impl<Row> Default for TableAppliedDiff<'_, Row> {
+         Self {
+             deletes: <_>::default(),
+             inserts: <_>::default(),
+-            update_deletes: <_>::default(),
+-            update_inserts: <_>::default(),
++            updates: Default::default(),
+             initial_rows: None,
+         }
+     }
+@@ -200,8 +193,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+         Self {
+             inserts: insert_map,
+             deletes: Default::default(),
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
++            updates: Default::default(),
+             initial_rows: None,
+         }
+     }
+@@ -210,8 +202,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+         Self {
+             deletes: diff.deletes.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
+             inserts: diff.inserts.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
++            updates: Default::default(),
+             initial_rows: diff.is_initial().then_some(&diff.inserts),
+         }
+     }
+@@ -231,8 +222,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+ 
+         if let ([(_, old)], [(_, new)]) = (&self.deletes[..], &self.inserts[..]) {
+             if derive_pk(old) == derive_pk(new) {
+-                self.update_deletes.push(old);
+-                self.update_inserts.push(new);
++                self.updates.push((old, new));
+                 self.deletes.clear();
+                 self.inserts.clear();
+             }
+@@ -249,8 +239,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+                 let Some(i) = self.deletes.iter().position(|(_, old)| derive_pk(old) == key) else {
+                     return true;
+                 };
+-                self.update_deletes.push(self.deletes.remove(i).1);
+-                self.update_inserts.push(new);
++                self.updates.push((self.deletes.remove(i).1, new));
+                 false
+             });
+             return;
+@@ -270,8 +259,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+ 
+         let mut matched_deletes = vec![false; self.deletes.len()];
+         let update_capacity = self.inserts.len().min(self.deletes.len());
+-        self.update_deletes.reserve(update_capacity);
+-        self.update_inserts.reserve(update_capacity);
++        self.updates.reserve(update_capacity);
+         self.inserts.retain(|(_, insert_row)| {
+             let insert_pk = derive_pk(insert_row);
+             let Some(delete_index) = deletes_by_pk.get(insert_pk).copied() else {
+@@ -284,8 +272,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+             }
+ 
+             matched_deletes[delete_index] = true;
+-            self.update_deletes.push(self.deletes[delete_index].1);
+-            self.update_inserts.push(insert_row);
++            self.updates.push((self.deletes[delete_index].1, insert_row));
+             false
+         });
+ 
+@@ -299,10 +286,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+ 
+     /// Returns whether the applied diff is empty.
+     pub(super) fn is_empty(&self) -> bool {
+-        self.deletes.is_empty()
+-            && self.inserts.is_empty()
+-            && self.update_deletes.is_empty()
+-            && self.update_inserts.is_empty()
++        self.deletes.is_empty() && self.inserts.is_empty() && self.updates.is_empty()
+     }
+ 
+     /// Returns the deleted rows in this diff.
+@@ -318,10 +302,7 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+     /// Returns the updated rows in this diff.
+     /// This will be empty if [`Self::derive_updates`] never ran.
+     pub(super) fn updates(&self) -> impl '_ + Iterator<Item = (&'r Row, &'r Row)> {
+-        self.update_deletes
+-            .iter()
+-            .copied()
+-            .zip(self.update_inserts.iter().copied())
++        self.updates.iter().copied()
+     }
+ 
+     pub(super) fn initial_rows(&self) -> Option<&'r Vec<WithBsatn<Row>>> {
+@@ -777,9 +758,9 @@ impl<Row: Clone + Debug + Send + Sync + 'static> TableCache<Row> {
+     /// after taking into account rows' refcounts.
+     ///
+     /// The resulting [`TableAppliedDiff`] will contain only deletes and inserts.
+-    /// Its `update_deletes` and `update_inserts` fields will be empty.
++    /// Its `updates` field will be empty.
+     /// The caller should use [`TableAppliedDiff::with_updates_by_pk`] to merge delete/insert pairs
+-    /// and populate the `update_*` fields.
++    /// and populate `updates`.
+     fn apply_diff<'r>(&mut self, diff: &'r TableUpdate<Row>) -> TableAppliedDiff<'r, Row> {
+         self.use_ref_counts(true);
+         // Apply all inserts and collect all `ref_count: 0 -> 1` events.
+@@ -816,8 +797,7 @@ impl<Row: Clone + Debug + Send + Sync + 'static> TableCache<Row> {
+         TableAppliedDiff {
+             deletes: delete_events,
+             inserts: insert_events,
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
++            updates: Default::default(),
+             initial_rows: diff.is_initial().then_some(&diff.inserts),
+         }
+     }
+diff --git i/sdks/rust/src/spacetime_module.rs w/sdks/rust/src/spacetime_module.rs
+index a2f98e012..923ac50e0 100644
+--- i/sdks/rust/src/spacetime_module.rs
++++ w/sdks/rust/src/spacetime_module.rs
+@@ -677,6 +677,7 @@ mod row_byte_retention_tests {
+         check_policy(&parsed.inserts, &events);
+         let applied = parsed.into_event_diff();
+         assert_eq!(applied.inserts().copied().collect::<Vec<_>>(), [30, 40]);
++        drop(applied);
+         drop(parsed);
+         assert_eq!(events.load(Ordering::Relaxed), 1);
+     }

@@ -1,0 +1,52 @@
+{"case": "all", "name": "base", "check": "frames=104116 calls=245643 hash=bb0c984258351b7a", "allocations": 2792155}
+{"case": "all", "name": "candidate", "check": "frames=104116 calls=245643 hash=bb0c984258351b7a", "allocations": 1952705}
+{"case": "all", "block": 0, "name": "base", "cpu_ms_per_1000": 0.65081, "burst_p99_ns": 34641.0, "service_p99_ns": 1730.0, "instructions:u": 4179405768, "cycles:u": 1476411392}
+{"case": "all", "block": 0, "name": "candidate", "cpu_ms_per_1000": 0.56443, "burst_p99_ns": 33280.0, "service_p99_ns": 1720.0, "instructions:u": 3679059458, "cycles:u": 1294161137}
+{"case": "all", "block": 1, "name": "candidate", "cpu_ms_per_1000": 0.58494, "burst_p99_ns": 32270.0, "service_p99_ns": 1620.0, "instructions:u": 3679059586, "cycles:u": 1333282008}
+{"case": "all", "block": 1, "name": "base", "cpu_ms_per_1000": 0.67349, "burst_p99_ns": 53581.0, "service_p99_ns": 5400.0, "instructions:u": 4179403415, "cycles:u": 1532622237}
+{"case": "all", "block": 2, "name": "base", "cpu_ms_per_1000": 0.70876, "burst_p99_ns": 35730.0, "service_p99_ns": 1850.0, "instructions:u": 4179407153, "cycles:u": 1614999748}
+{"case": "all", "block": 2, "name": "candidate", "cpu_ms_per_1000": 0.57529, "burst_p99_ns": 31070.0, "service_p99_ns": 1530.0, "instructions:u": 3679056708, "cycles:u": 1303479089}
+{"case": "all", "block": 3, "name": "candidate", "cpu_ms_per_1000": 0.58122, "burst_p99_ns": 34090.0, "service_p99_ns": 1790.0, "instructions:u": 3679058747, "cycles:u": 1314940122}
+{"case": "all", "block": 3, "name": "base", "cpu_ms_per_1000": 0.64333, "burst_p99_ns": 32441.0, "service_p99_ns": 1770.0, "instructions:u": 4179407443, "cycles:u": 1454764588}
+{"case": "all", "block": 4, "name": "base", "cpu_ms_per_1000": 0.65323, "burst_p99_ns": 31791.0, "service_p99_ns": 1660.0, "instructions:u": 4179403479, "cycles:u": 1478176605}
+{"case": "all", "block": 4, "name": "candidate", "cpu_ms_per_1000": 0.57722, "burst_p99_ns": 32940.0, "service_p99_ns": 1690.0, "instructions:u": 3679058351, "cycles:u": 1301193668}
+{"case": "all", "block": 5, "name": "candidate", "cpu_ms_per_1000": 0.56688, "burst_p99_ns": 32501.0, "service_p99_ns": 1670.0, "instructions:u": 3679057264, "cycles:u": 1282780535}
+{"case": "all", "block": 5, "name": "base", "cpu_ms_per_1000": 0.65021, "burst_p99_ns": 31531.0, "service_p99_ns": 1580.0, "instructions:u": 4179405813, "cycles:u": 1475103608}
+{"case": "all", "block": 6, "name": "base", "cpu_ms_per_1000": 0.66813, "burst_p99_ns": 35240.0, "service_p99_ns": 1880.0, "instructions:u": 4179406026, "cycles:u": 1506123420}
+{"case": "all", "block": 6, "name": "candidate", "cpu_ms_per_1000": 0.57022, "burst_p99_ns": 30200.0, "service_p99_ns": 1630.0, "instructions:u": 3679060077, "cycles:u": 1285140264}
+{"case": "all", "block": 7, "name": "candidate", "cpu_ms_per_1000": 0.58539, "burst_p99_ns": 28780.0, "service_p99_ns": 1520.0, "instructions:u": 3679058640, "cycles:u": 1315276779}
+{"case": "all", "block": 7, "name": "base", "cpu_ms_per_1000": 0.64777, "burst_p99_ns": 37300.0, "service_p99_ns": 2010.0, "instructions:u": 4179406415, "cycles:u": 1470873293}
+{"case": "all", "block": 8, "name": "base", "cpu_ms_per_1000": 0.65439, "burst_p99_ns": 32230.0, "service_p99_ns": 1560.0, "instructions:u": 4179405822, "cycles:u": 1477410277}
+{"case": "all", "block": 8, "name": "candidate", "cpu_ms_per_1000": 0.56649, "burst_p99_ns": 33700.0, "service_p99_ns": 1740.0, "instructions:u": 3679057891, "cycles:u": 1282195595}
+{"case": "all", "block": 9, "name": "candidate", "cpu_ms_per_1000": 0.62887, "burst_p99_ns": 28840.0, "service_p99_ns": 1520.0, "instructions:u": 3679058078, "cycles:u": 1405708500}
+{"case": "all", "block": 9, "name": "base", "cpu_ms_per_1000": 0.64798, "burst_p99_ns": 31050.0, "service_p99_ns": 1480.0, "instructions:u": 4179406686, "cycles:u": 1467424178}
+{"case": "all", "block": 10, "name": "base", "cpu_ms_per_1000": 0.65381, "burst_p99_ns": 32200.0, "service_p99_ns": 1590.0, "instructions:u": 4179406958, "cycles:u": 1475378383}
+{"case": "all", "block": 10, "name": "candidate", "cpu_ms_per_1000": 0.56773, "burst_p99_ns": 28460.0, "service_p99_ns": 1530.0, "instructions:u": 3679059744, "cycles:u": 1288282200}
+{"case": "all", "block": 11, "name": "candidate", "cpu_ms_per_1000": 0.58299, "burst_p99_ns": 27610.0, "service_p99_ns": 1380.0, "instructions:u": 3679059860, "cycles:u": 1331562093}
+{"case": "all", "block": 11, "name": "base", "cpu_ms_per_1000": 0.66977, "burst_p99_ns": 35951.0, "service_p99_ns": 1780.0, "instructions:u": 4179405297, "cycles:u": 1503663159}
+{"case": "fallback", "name": "base", "check": "frames=104496 calls=276192 hash=82ac3bb258ee8048", "allocations": 2111424}
+{"case": "fallback", "name": "candidate", "check": "frames=104496 calls=276192 hash=82ac3bb258ee8048", "allocations": 2111424}
+{"case": "fallback", "block": 0, "name": "base", "cpu_ms_per_1000": 0.70466, "instructions:u": 4408051821, "cycles:u": 1607339292}
+{"case": "fallback", "block": 0, "name": "candidate", "cpu_ms_per_1000": 0.70272, "instructions:u": 4432706272, "cycles:u": 1589970045}
+{"case": "fallback", "block": 1, "name": "candidate", "cpu_ms_per_1000": 0.7051, "instructions:u": 4432706058, "cycles:u": 1614534184}
+{"case": "fallback", "block": 1, "name": "base", "cpu_ms_per_1000": 0.70538, "instructions:u": 4408051370, "cycles:u": 1598919606}
+{"case": "fallback", "block": 2, "name": "base", "cpu_ms_per_1000": 0.72254, "instructions:u": 4408053052, "cycles:u": 1651214703}
+{"case": "fallback", "block": 2, "name": "candidate", "cpu_ms_per_1000": 0.71357, "instructions:u": 4432705483, "cycles:u": 1615258647}
+{"case": "fallback", "block": 3, "name": "candidate", "cpu_ms_per_1000": 0.69518, "instructions:u": 4432705115, "cycles:u": 1584766010}
+{"case": "fallback", "block": 3, "name": "base", "cpu_ms_per_1000": 0.70217, "instructions:u": 4408051027, "cycles:u": 1595881104}
+{"case": "fallback", "block": 4, "name": "base", "cpu_ms_per_1000": 0.73038, "instructions:u": 4408052951, "cycles:u": 1649351184}
+{"case": "fallback", "block": 4, "name": "candidate", "cpu_ms_per_1000": 0.71527, "instructions:u": 4432702126, "cycles:u": 1623402914}
+{"case": "fallback", "block": 5, "name": "candidate", "cpu_ms_per_1000": 0.69992, "instructions:u": 4432705038, "cycles:u": 1591199292}
+{"case": "fallback", "block": 5, "name": "base", "cpu_ms_per_1000": 0.71642, "instructions:u": 4408050286, "cycles:u": 1623016155}
+{"case": "fallback", "block": 6, "name": "base", "cpu_ms_per_1000": 0.71929, "instructions:u": 4408051625, "cycles:u": 1621799627}
+{"case": "fallback", "block": 6, "name": "candidate", "cpu_ms_per_1000": 0.75203, "instructions:u": 4432706054, "cycles:u": 1713698021}
+{"case": "fallback", "block": 7, "name": "candidate", "cpu_ms_per_1000": 0.6975, "instructions:u": 4432705717, "cycles:u": 1578277301}
+{"case": "fallback", "block": 7, "name": "base", "cpu_ms_per_1000": 0.71261, "instructions:u": 4408053200, "cycles:u": 1613016416}
+{"case": "fallback", "block": 8, "name": "base", "cpu_ms_per_1000": 0.70755, "instructions:u": 4408050812, "cycles:u": 1605338564}
+{"case": "fallback", "block": 8, "name": "candidate", "cpu_ms_per_1000": 0.73463, "instructions:u": 4432705902, "cycles:u": 1647717010}
+{"case": "fallback", "block": 9, "name": "candidate", "cpu_ms_per_1000": 0.69289, "instructions:u": 4432705878, "cycles:u": 1576695458}
+{"case": "fallback", "block": 9, "name": "base", "cpu_ms_per_1000": 0.70543, "instructions:u": 4408051828, "cycles:u": 1602147925}
+{"case": "fallback", "block": 10, "name": "base", "cpu_ms_per_1000": 0.70063, "instructions:u": 4408052222, "cycles:u": 1591856245}
+{"case": "fallback", "block": 10, "name": "candidate", "cpu_ms_per_1000": 0.69558, "instructions:u": 4432705642, "cycles:u": 1589422473}
+{"case": "fallback", "block": 11, "name": "candidate", "cpu_ms_per_1000": 0.71789, "instructions:u": 4432705991, "cycles:u": 1634876391}
+{"case": "fallback", "block": 11, "name": "base", "cpu_ms_per_1000": 0.70611, "instructions:u": 4408052179, "cycles:u": 1598338064}

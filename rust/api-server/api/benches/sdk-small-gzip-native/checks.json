@@ -1,0 +1,44 @@
+{
+  "native_cacheless": [
+    {
+      "passed": 39,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "native_client_cache": [
+    {
+      "passed": 41,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "cacheless_feature_off": [
+    {
+      "passed": 37,
+      "failed": 0,
+      "ignored": 1
+    }
+  ],
+  "wasm32_browser_native_small_gzip": "check passed; libdeflate absent from cargo tree -e normal,build",
+  "native_default": "libdeflate absent from cargo tree -e normal,build",
+  "native_socket_loopback": {
+    "connections": 2,
+    "passed": true,
+    "ordered_callbacks": [
+      "connected,applied,borrowed,borrowed-empty,owned,owned-empty,insert,update,committed,ended,delete,disconnected",
+      "connected,applied,borrowed,borrowed-empty,owned,owned-empty,insert,update,committed,ended,delete-initial,delete,disconnected"
+    ]
+  },
+  "git_apply_check": "passed against pristine f22bb32014d3377218375b6a033d3d74775027c9"
+}

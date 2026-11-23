@@ -1,0 +1,36 @@
+{"name": "base", "frames": "104116", "calls": "245643", "hash": "bb0c984258351b7a", "alloc_calls_per_pass": 2792155}
+{"name": "inline", "frames": "104116", "calls": "245643", "hash": "bb0c984258351b7a", "alloc_calls_per_pass": 1929701}
+{"name": "context", "frames": "104116", "calls": "245643", "hash": "bb0c984258351b7a", "alloc_calls_per_pass": 2792155}
+{"name": "both", "frames": "104116", "calls": "245643", "hash": "bb0c984258351b7a", "alloc_calls_per_pass": 1929701}
+{"block": 0, "name": "base", "cpu_ms_per_1000": 1.11742, "observed": 104116.0, "burst_p99_ns": 40570.0, "service_p99_ns": 1860.0}
+{"block": 0, "name": "inline", "cpu_ms_per_1000": 1.16843, "observed": 104116.0, "burst_p99_ns": 43880.0, "service_p99_ns": 2070.0}
+{"block": 0, "name": "context", "cpu_ms_per_1000": 0.76798, "observed": 104116.0, "burst_p99_ns": 30250.0, "service_p99_ns": 1690.0}
+{"block": 0, "name": "both", "cpu_ms_per_1000": 0.79401, "observed": 104116.0, "burst_p99_ns": 32680.0, "service_p99_ns": 1810.0}
+{"block": 1, "name": "inline", "cpu_ms_per_1000": 1.20339, "observed": 104116.0, "burst_p99_ns": 42510.0, "service_p99_ns": 2050.0}
+{"block": 1, "name": "context", "cpu_ms_per_1000": 0.75124, "observed": 104116.0, "burst_p99_ns": 30600.0, "service_p99_ns": 1690.0}
+{"block": 1, "name": "both", "cpu_ms_per_1000": 0.77673, "observed": 104116.0, "burst_p99_ns": 31140.0, "service_p99_ns": 1770.0}
+{"block": 1, "name": "base", "cpu_ms_per_1000": 1.11895, "observed": 104116.0, "burst_p99_ns": 42790.0, "service_p99_ns": 1920.0}
+{"block": 2, "name": "context", "cpu_ms_per_1000": 0.7678, "observed": 104116.0, "burst_p99_ns": 31421.0, "service_p99_ns": 1730.0}
+{"block": 2, "name": "both", "cpu_ms_per_1000": 0.76629, "observed": 104116.0, "burst_p99_ns": 31651.0, "service_p99_ns": 1780.0}
+{"block": 2, "name": "base", "cpu_ms_per_1000": 1.11626, "observed": 104116.0, "burst_p99_ns": 50311.0, "service_p99_ns": 2500.0}
+{"block": 2, "name": "inline", "cpu_ms_per_1000": 1.16247, "observed": 104116.0, "burst_p99_ns": 44580.0, "service_p99_ns": 2090.0}
+{"block": 3, "name": "both", "cpu_ms_per_1000": 0.76582, "observed": 104116.0, "burst_p99_ns": 35700.0, "service_p99_ns": 2160.0}
+{"block": 3, "name": "base", "cpu_ms_per_1000": 1.11475, "observed": 104116.0, "burst_p99_ns": 40911.0, "service_p99_ns": 1870.0}
+{"block": 3, "name": "inline", "cpu_ms_per_1000": 1.16311, "observed": 104116.0, "burst_p99_ns": 44810.0, "service_p99_ns": 2130.0}
+{"block": 3, "name": "context", "cpu_ms_per_1000": 0.75189, "observed": 104116.0, "burst_p99_ns": 31041.0, "service_p99_ns": 1700.0}
+{"block": 4, "name": "both", "cpu_ms_per_1000": 0.76871, "observed": 104116.0, "burst_p99_ns": 31680.0, "service_p99_ns": 1770.0}
+{"block": 4, "name": "context", "cpu_ms_per_1000": 0.74646, "observed": 104116.0, "burst_p99_ns": 31321.0, "service_p99_ns": 1700.0}
+{"block": 4, "name": "inline", "cpu_ms_per_1000": 1.1717, "observed": 104116.0, "burst_p99_ns": 43730.0, "service_p99_ns": 2130.0}
+{"block": 4, "name": "base", "cpu_ms_per_1000": 1.103, "observed": 104116.0, "burst_p99_ns": 41540.0, "service_p99_ns": 1880.0}
+{"block": 5, "name": "base", "cpu_ms_per_1000": 1.10997, "observed": 104116.0, "burst_p99_ns": 47951.0, "service_p99_ns": 2390.0}
+{"block": 5, "name": "both", "cpu_ms_per_1000": 0.77447, "observed": 104116.0, "burst_p99_ns": 31101.0, "service_p99_ns": 1770.0}
+{"block": 5, "name": "context", "cpu_ms_per_1000": 0.74295, "observed": 104116.0, "burst_p99_ns": 29620.0, "service_p99_ns": 1680.0}
+{"block": 5, "name": "inline", "cpu_ms_per_1000": 1.17298, "observed": 104116.0, "burst_p99_ns": 43891.0, "service_p99_ns": 2070.0}
+{"block": 6, "name": "inline", "cpu_ms_per_1000": 1.17838, "observed": 104116.0, "burst_p99_ns": 42961.0, "service_p99_ns": 2060.0}
+{"block": 6, "name": "base", "cpu_ms_per_1000": 1.12309, "observed": 104116.0, "burst_p99_ns": 41910.0, "service_p99_ns": 1880.0}
+{"block": 6, "name": "both", "cpu_ms_per_1000": 0.77211, "observed": 104116.0, "burst_p99_ns": 31800.0, "service_p99_ns": 1820.0}
+{"block": 6, "name": "context", "cpu_ms_per_1000": 0.76856, "observed": 104116.0, "burst_p99_ns": 29850.0, "service_p99_ns": 1690.0}
+{"block": 7, "name": "context", "cpu_ms_per_1000": 0.74989, "observed": 104116.0, "burst_p99_ns": 29550.0, "service_p99_ns": 1690.0}
+{"block": 7, "name": "inline", "cpu_ms_per_1000": 1.17356, "observed": 104116.0, "burst_p99_ns": 44940.0, "service_p99_ns": 2090.0}
+{"block": 7, "name": "base", "cpu_ms_per_1000": 1.12342, "observed": 104116.0, "burst_p99_ns": 42930.0, "service_p99_ns": 1910.0}
+{"block": 7, "name": "both", "cpu_ms_per_1000": 0.77169, "observed": 104116.0, "burst_p99_ns": 30340.0, "service_p99_ns": 1750.0}

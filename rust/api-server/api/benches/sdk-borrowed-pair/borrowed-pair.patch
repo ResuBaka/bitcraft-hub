@@ -1,0 +1,305 @@
+diff --git i/sdks/rust/src/client_cache.rs w/sdks/rust/src/client_cache.rs
+index a19a3bf..728a8cf 100644
+--- i/sdks/rust/src/client_cache.rs
++++ w/sdks/rust/src/client_cache.rs
+@@ -144,19 +144,30 @@ impl<Row> Default for TableCache<Row> {
+     }
+ }
+ 
+-type RowEventList<'r, Row> = Vec<(&'r [u8], &'r Row)>;
++type RowEvent<'r, Row> = (&'r [u8], &'r Row);
++type RowEventList<'r, Row> = Vec<RowEvent<'r, Row>>;
+ 
+ /// The diff result of applying [`TableUpdate`] to a [`TableCache`].
+ ///
+-/// Initially on construction via [`ClientCache::apply_diff_to_table`],
+-/// the list of updates (`update_deletes.zip(update_inserts)`) is empty
+-/// and must be populated by using [`TableAppliedDiff::with_updates_by_pk`]
+-/// by passing a projection from rows to the primary key of the table.
+-///
+-/// The set `deletes` is disjoint with `update_deletes`
+-/// and the set `inserts` with `update_inserts`.
+-/// When the latter sets are populated, they are *moved* from the former.
++/// Initially this contains only inserts and deletes. [`Self::with_updates_by_pk`]
++/// pairs matching rows; a paired row is no longer a separate insert or delete.
+ pub struct TableAppliedDiff<'r, Row> {
++    events: AppliedEvents<'r, Row>,
++}
++
++enum AppliedEvents<'r, Row> {
++    Lists(EventLists<'r, Row>),
++    // Keep the wire rows borrowed through matching and callback dispatch.
++    // Until a projection actually matches, these are ordinary delete/insert events.
++    #[cfg(not(feature = "client-cache"))]
++    LivePair {
++        old: RowEvent<'r, Row>,
++        new: RowEvent<'r, Row>,
++        matched: bool,
++    },
++}
++
++struct EventLists<'r, Row> {
+     /// The semantic deletes, or raw deletes when row deduplication is disabled.
+     deletes: RowEventList<'r, Row>,
+     /// The semantic inserts, or raw inserts when row deduplication is disabled.
+@@ -172,7 +183,7 @@ pub struct TableAppliedDiff<'r, Row> {
+     initial_rows: Option<&'r Vec<WithBsatn<Row>>>,
+ }
+ 
+-impl<Row> Default for TableAppliedDiff<'_, Row> {
++impl<Row> Default for EventLists<'_, Row> {
+     fn default() -> Self {
+         Self {
+             deletes: <_>::default(),
+@@ -184,12 +195,20 @@ impl<Row> Default for TableAppliedDiff<'_, Row> {
+     }
+ }
+ 
++impl<Row> Default for TableAppliedDiff<'_, Row> {
++    fn default() -> Self {
++        Self {
++            events: AppliedEvents::Lists(EventLists::default()),
++        }
++    }
++}
++
+ impl<'r, Row> TableAppliedDiff<'r, Row> {
+     /// Whether callback dispatch has row events or an initial snapshot to deliver.
+     /// An empty initial snapshot is not an untouched table.
+     #[inline]
+     pub fn has_changes(&self) -> bool {
+-        self.initial_rows.is_some() || !self.is_empty()
++        self.initial_rows().is_some() || !self.is_empty()
+     }
+ 
+     /// For event tables: construct a `TableAppliedDiff` with just inserts,
+@@ -198,30 +217,111 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+     pub(crate) fn from_event_inserts(inserts: &'r [WithBsatn<Row>]) -> Self {
+         let insert_map = inserts.iter().map(|wb| (wb.bsatn.as_ref(), &wb.row)).collect();
+         Self {
+-            inserts: insert_map,
+-            deletes: Default::default(),
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
+-            initial_rows: None,
++            events: AppliedEvents::Lists(EventLists {
++                inserts: insert_map,
++                ..Default::default()
++            }),
+         }
+     }
+ 
+     fn from_raw(diff: &'r TableUpdate<Row>) -> Self {
++        #[cfg(not(feature = "client-cache"))]
++        if let ([old], [new]) = (&diff.deletes[..], &diff.inserts[..])
++            && !diff.is_initial()
++        {
++            return Self {
++                events: AppliedEvents::LivePair {
++                    old: (old.bsatn.as_ref(), &old.row),
++                    new: (new.bsatn.as_ref(), &new.row),
++                    matched: false,
++                },
++            };
++        }
+         Self {
+-            deletes: diff.deletes.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
+-            inserts: diff.inserts.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
+-            initial_rows: diff.is_initial().then_some(&diff.inserts),
++            events: AppliedEvents::Lists(EventLists {
++                deletes: diff.deletes.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
++                inserts: diff.inserts.iter().map(|row| (row.bsatn.as_ref(), &row.row)).collect(),
++                update_deletes: Vec::new(),
++                update_inserts: Vec::new(),
++                initial_rows: diff.is_initial().then_some(&diff.inserts),
++            }),
+         }
+     }
+     /// Returns the applied diff restructured
+     /// with row updates where deletes and inserts are found according to `derive_pk`.
+     pub fn with_updates_by_pk<Pk: Eq + Hash>(mut self, derive_pk: impl Fn(&Row) -> &Pk) -> Self {
+-        self.derive_updates(derive_pk);
++        match &mut self.events {
++            AppliedEvents::Lists(lists) => lists.derive_updates(derive_pk),
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair { old, new, matched } => {
++                if !*matched {
++                    *matched = derive_pk(old.1) == derive_pk(new.1);
++                }
++            }
++        }
+         self
+     }
+ 
++    pub(super) fn is_empty(&self) -> bool {
++        match &self.events {
++            AppliedEvents::Lists(lists) => {
++                lists.deletes.is_empty()
++                    && lists.inserts.is_empty()
++                    && lists.update_deletes.is_empty()
++                    && lists.update_inserts.is_empty()
++            }
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair { .. } => false,
++        }
++    }
++
++    fn unmatched(&self) -> (&[RowEvent<'r, Row>], &[RowEvent<'r, Row>]) {
++        match &self.events {
++            AppliedEvents::Lists(lists) => (&lists.deletes, &lists.inserts),
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair {
++                old,
++                new,
++                matched: false,
++            } => (std::slice::from_ref(old), std::slice::from_ref(new)),
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair { .. } => (&[], &[]),
++        }
++    }
++
++    pub(super) fn deletes(&self) -> impl '_ + Iterator<Item = &'r Row> {
++        self.unmatched().0.iter().map(|(_, row)| *row)
++    }
++
++    pub(super) fn inserts(&self) -> impl '_ + Iterator<Item = &'r Row> {
++        self.unmatched().1.iter().map(|(_, row)| *row)
++    }
++
++    pub(super) fn updates(&self) -> impl '_ + Iterator<Item = (&'r Row, &'r Row)> {
++        let (old, new) = match &self.events {
++            AppliedEvents::Lists(lists) => (&lists.update_deletes[..], &lists.update_inserts[..]),
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair {
++                old,
++                new,
++                matched: true,
++            } => (std::slice::from_ref(&old.1), std::slice::from_ref(&new.1)),
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair { .. } => (&[][..], &[][..]),
++        };
++        old.iter().copied().zip(new.iter().copied())
++    }
++
++    pub(super) fn initial_rows(&self) -> Option<&'r Vec<WithBsatn<Row>>> {
++        match &self.events {
++            AppliedEvents::Lists(lists) => lists.initial_rows,
++            #[cfg(not(feature = "client-cache"))]
++            AppliedEvents::LivePair { .. } => None,
++        }
++    }
++}
++
++impl<'r, Row> EventLists<'r, Row> {
+     /// Given this applied diff and a function `derive_pk` to extract the primary key,
+     /// this restructures the diff such that row updates are found.
+     fn derive_updates<Pk: Eq + Hash>(&mut self, derive_pk: impl Fn(&Row) -> &Pk) {
+@@ -296,37 +396,6 @@ impl<'r, Row> TableAppliedDiff<'r, Row> {
+             keep
+         });
+     }
+-
+-    /// Returns whether the applied diff is empty.
+-    pub(super) fn is_empty(&self) -> bool {
+-        self.deletes.is_empty()
+-            && self.inserts.is_empty()
+-            && self.update_deletes.is_empty()
+-            && self.update_inserts.is_empty()
+-    }
+-
+-    /// Returns the deleted rows in this diff.
+-    pub(super) fn deletes(&self) -> impl '_ + Iterator<Item = &'r Row> {
+-        self.deletes.iter().map(|(_, row)| *row)
+-    }
+-
+-    /// Returns the inserted rows in this diff.
+-    pub(super) fn inserts(&self) -> impl '_ + Iterator<Item = &'r Row> {
+-        self.inserts.iter().map(|(_, row)| *row)
+-    }
+-
+-    /// Returns the updated rows in this diff.
+-    /// This will be empty if [`Self::derive_updates`] never ran.
+-    pub(super) fn updates(&self) -> impl '_ + Iterator<Item = (&'r Row, &'r Row)> {
+-        self.update_deletes
+-            .iter()
+-            .copied()
+-            .zip(self.update_inserts.iter().copied())
+-    }
+-
+-    pub(super) fn initial_rows(&self) -> Option<&'r Vec<WithBsatn<Row>>> {
+-        self.initial_rows
+-    }
+ }
+ 
+ #[cfg(test)]
+@@ -415,7 +484,7 @@ mod applied_diff_tests {
+         assert!(TableAppliedDiff::from_raw(&live).has_changes());
+         live.inserts.push(row(1, 20));
+         let applied = TableAppliedDiff::from_raw(&live).with_updates_by_pk(|row| &row.id);
+-        assert!(applied.inserts.is_empty() && applied.deletes.is_empty());
++        assert!(applied.inserts().next().is_none() && applied.deletes().next().is_none());
+         assert!(applied.has_changes(), "update-only diffs must be dispatched");
+     }
+ 
+@@ -501,6 +570,40 @@ mod applied_diff_tests {
+         assert!(diff.inserts().eq([&update.inserts[0].row]));
+     }
+ 
++    #[test]
++    fn live_pair_borrows_original_rows_and_only_matches_on_request() {
++        let mut update = TableUpdate::default();
++        update.deletes.push(row(7, 10));
++        update.inserts.push(row(7, 20));
++        let old = &update.deletes[0].row;
++        let new = &update.inserts[0].row;
++        let diff = TableAppliedDiff::from_raw(&update);
++        assert!(std::ptr::eq(diff.deletes().next().unwrap(), old));
++        assert!(std::ptr::eq(diff.inserts().next().unwrap(), new));
++        assert_eq!(diff.updates().count(), 0);
++        let matched = diff.with_updates_by_pk(|r| &r.id);
++        let matched = matched.with_updates_by_pk::<u32>(|_| panic!("already paired"));
++        assert!(matched.has_changes());
++        assert!(matched.initial_rows().is_none());
++        assert_eq!((matched.deletes().count(), matched.inserts().count()), (0, 0));
++        let mut updates = matched.updates();
++        let (a, b) = updates.next().unwrap();
++        assert!(std::ptr::eq(a, old) && std::ptr::eq(b, new));
++        assert!(updates.next().is_none());
++    }
++
++    #[test]
++    fn initial_diff_keeps_its_source_even_when_rows_pair() {
++        let mut update = TableUpdate::default();
++        update.append(TableUpdate::default());
++        update.deletes.push(row(7, 10));
++        update.inserts.push(row(7, 20));
++        update.mark_initial();
++        let diff = TableAppliedDiff::from_raw(&update).with_updates_by_pk(|r| &r.id);
++        assert!(std::ptr::eq(diff.initial_rows().unwrap(), &update.inserts));
++        assert!(diff.updates().eq([(&update.deletes[0].row, &update.inserts[0].row)]));
++    }
++
+     #[test]
+     fn derives_large_update_batch_with_linear_key_projections() {
+         const ROW_COUNT: u32 = 256;
+@@ -814,11 +917,13 @@ impl<Row: Clone + Debug + Send + Sync + 'static> TableCache<Row> {
+         }
+ 
+         TableAppliedDiff {
+-            deletes: delete_events,
+-            inserts: insert_events,
+-            update_deletes: Vec::new(),
+-            update_inserts: Vec::new(),
+-            initial_rows: diff.is_initial().then_some(&diff.inserts),
++            events: AppliedEvents::Lists(EventLists {
++                deletes: delete_events,
++                inserts: insert_events,
++                update_deletes: Vec::new(),
++                update_inserts: Vec::new(),
++                initial_rows: diff.is_initial().then_some(&diff.inserts),
++            }),
+         }
+     }
+ 

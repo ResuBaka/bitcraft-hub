@@ -1,0 +1,71 @@
+diff --git i/crates/client-api-messages/src/websocket/common.rs w/crates/client-api-messages/src/websocket/common.rs
+index d8eefe929..1bfc9ee06 100644
+--- i/crates/client-api-messages/src/websocket/common.rs
++++ w/crates/client-api-messages/src/websocket/common.rs
+@@ -142,6 +142,18 @@ impl ByteListLen for BsatnRowList {
+ }
+ 
+ impl BsatnRowList {
++    /// Borrow the complete payload when it encodes exactly one row starting
++    /// at offset zero. Noncanonical layouts fall back to normal iteration.
++    #[inline]
++    pub fn single_row_slice(&self) -> Option<&[u8]> {
++        match &self.size_hint {
++            RowSizeHint::FixedSize(size) if *size != 0 && usize::from(*size) == self.rows_data.len() => {}
++            RowSizeHint::RowOffsets(offsets) if offsets.as_ref() == [0] => {}
++            _ => return None,
++        }
++        Some(&self.rows_data)
++    }
++
+     /// Returns the element at `index` in the list.
+     pub fn get(&self, index: usize) -> Option<Bytes> {
+         let data_end = self.rows_data.len();
+diff --git i/sdks/rust/src/spacetime_module.rs w/sdks/rust/src/spacetime_module.rs
+index a2f98e012..c3bb10690 100644
+--- i/sdks/rust/src/spacetime_module.rs
++++ w/sdks/rust/src/spacetime_module.rs
+@@ -361,6 +361,16 @@ impl<Row: DeserializeOwned + Debug> TableUpdate<Row> {
+     }
+ 
+     fn parse_from_row_list(sink: &mut Vec<WithBsatn<Row>>, raw_rows: &ws::common::BsatnRowList) -> crate::Result<()> {
++        #[cfg(not(any(feature = "client-cache", feature = "retain-row-bytes")))]
++        if sink.capacity() == 0 {
++            if let Some(bytes) = raw_rows.single_row_slice() {
++                *sink = vec![WithBsatn {
++                    row: Self::decode_row(bytes)?,
++                    bsatn: [],
++                }];
++                return Ok(());
++            }
++        }
+         sink.reserve(raw_rows.len());
+         #[cfg(any(feature = "client-cache", feature = "retain-row-bytes"))]
+         for bsatn in raw_rows {
+@@ -646,6 +656,26 @@ mod row_byte_retention_tests {
+         assert_eq!(parsed.inserts.len(), expected.len());
+     }
+ 
++    #[test]
++    fn singleton_offsets_respect_the_row_span_even_when_it_is_empty() {
++        let rows = BsatnRowList::new(
++            RowSizeHint::RowOffsets([1].into()),
++            Bytes::from_static(&[0xff, 7, 0, 0, 0]),
++        );
++        let parsed = parse_row_list_as_inserts::<u32>(rows).unwrap();
++        assert_eq!(parsed.inserts.len(), 1);
++        assert_eq!(parsed.inserts[0].row, 7);
++
++        // The offset count, not the payload length, distinguishes a unit row
++        // from an empty table update.
++        let unit = BsatnRowList::new(RowSizeHint::RowOffsets([0].into()), Bytes::new());
++        assert_eq!(parse_row_list_as_inserts::<()>(unit).unwrap().inserts.len(), 1);
++        assert!(parse_row_list_as_inserts::<()>(BsatnRowList::default())
++            .unwrap()
++            .inserts
++            .is_empty());
++    }
++
+     #[test]
+     fn persistent_and_event_parsing_preserve_values_without_pinning_bytes() {
+         let inserts = Arc::new(AtomicUsize::new(0));
