@@ -712,26 +712,30 @@ pub(crate) async fn get_claim(
         }
     };
 
-    if state.skill_desc.is_empty() {
-        let skills = service::Query::skill_descriptions(&state.conn)
+    let cached_skills = {
+        let skills = state.skill_desc.read();
+        (!skills.is_empty()).then(|| {
+            skills.values()
+                .filter(|skill| skill.skill_category != 0)
+                .map(|skill| (skill.id, skill.name.clone()))
+                .collect::<Vec<_>>()
+        })
+    };
+    let mut skills = match cached_skills {
+        Some(skills) => skills,
+        // The DB can lag buffered skill updates/removals. Use fallback rows
+        // for this response without publishing them to the live XP worker.
+        None => service::Query::skill_descriptions(&state.conn)
             .await
             .map_err(|error| {
                 error!("Error: {error}");
-
                 (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
-
-        for skill in skills {
-            state.skill_desc.insert(skill.id, skill.clone());
-        }
-    }
-
-    let mut skills = state
-        .skill_desc
-        .iter()
-        .filter(|skill| skill.skill_category != 0)
-        .map(|skill| (skill.id, skill.name.clone()))
-        .collect::<Vec<_>>();
+            })?
+            .into_iter()
+            .filter(|skill| skill.skill_category != 0)
+            .map(|skill| (skill.id, skill.name))
+            .collect(),
+    };
     skills.sort_by(|(a_id, a), (b_id, b)| (skill_sort_key(a), a_id).cmp(&(skill_sort_key(b), b_id)));
     for (skill_id, skill_name) in skills {
         if let Some(a) = state.ranking_system.skill_leaderboard(skill_id) {

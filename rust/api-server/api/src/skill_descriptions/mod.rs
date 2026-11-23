@@ -1,4 +1,6 @@
 pub(crate) mod bitcraft;
+mod definitions;
+pub(crate) use definitions::SkillDefinitions;
 
 const SKILL_ORDER: &[&str] = &[
     "Forestry", "Carpentry", "Farming", "Foraging", "Tailoring", "Mining", "Smithing", "Masonry",

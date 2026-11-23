@@ -1,0 +1,16 @@
+{"block": 0, "skills": "original", "hints": true, "cpu_ns_per_update": 1097.22, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 0, "skills": "candidate", "hints": true, "cpu_ns_per_update": 949.68, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 1, "skills": "candidate", "hints": true, "cpu_ns_per_update": 987.65, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 1, "skills": "original", "hints": true, "cpu_ns_per_update": 1187.83, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 2, "skills": "original", "hints": true, "cpu_ns_per_update": 1172.37, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 2, "skills": "candidate", "hints": true, "cpu_ns_per_update": 928.87, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 3, "skills": "candidate", "hints": true, "cpu_ns_per_update": 955.24, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 3, "skills": "original", "hints": true, "cpu_ns_per_update": 1094.44, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 4, "skills": "original", "hints": true, "cpu_ns_per_update": 1390.4, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 4, "skills": "candidate", "hints": true, "cpu_ns_per_update": 956.9, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 5, "skills": "candidate", "hints": true, "cpu_ns_per_update": 998.64, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 5, "skills": "original", "hints": true, "cpu_ns_per_update": 1132.02, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 6, "skills": "original", "hints": true, "cpu_ns_per_update": 1098.02, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 6, "skills": "candidate", "hints": true, "cpu_ns_per_update": 935.52, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 7, "skills": "candidate", "hints": true, "cpu_ns_per_update": 1051.42, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 7, "skills": "original", "hints": true, "cpu_ns_per_update": 1124.41, "history": 37649, "digest": "b7e623ea527650bd"}

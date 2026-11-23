@@ -1331,7 +1331,7 @@ fn record_app_state_metrics(app_state: &AppState) {
     metrics::gauge!("app_state_cache_size", &[("cache", "item_list_desc")])
         .set(app_state.item_list_desc.len() as f64);
     metrics::gauge!("app_state_cache_size", &[("cache", "skill_desc")])
-        .set(app_state.skill_desc.len() as f64);
+        .set(app_state.skill_desc.read().len() as f64);
     metrics::gauge!("app_state_cache_size", &[("cache", "cargo_desc")])
         .set(app_state.cargo_desc.len() as f64);
     metrics::gauge!("app_state_cache_size", &[("cache", "cargo_tags")])
@@ -1404,7 +1404,8 @@ struct AppState {
     item_tiers: Arc<dashmap::DashSet<i64>>,
     item_desc: Arc<dashmap::DashMap<i32, entity::item_desc::Model>>,
     item_list_desc: Arc<dashmap::DashMap<i32, entity::item_list_desc::Model>>,
-    skill_desc: Arc<dashmap::DashMap<i64, entity::skill_desc::Model>>,
+    // Small, rarely edited definition table. XP handlers read one coherent set per player.
+    skill_desc: Arc<parking_lot::RwLock<skill_descriptions::SkillDefinitions>>,
     cargo_desc: Arc<dashmap::DashMap<i32, entity::cargo_desc::Model>>,
     cargo_tags: Arc<dashmap::DashSet<String>>,
     building_desc: Arc<dashmap::DashMap<i64, entity::building_desc::Model>>,
@@ -1492,7 +1493,7 @@ impl AppState {
             item_tiers: Arc::new(dashmap::DashSet::new()),
             item_desc: Arc::new(dashmap::DashMap::new()),
             item_list_desc: Arc::new(dashmap::DashMap::new()),
-            skill_desc: Arc::new(dashmap::DashMap::new()),
+            skill_desc: Arc::default(),
             cargo_tags: Arc::new(dashmap::DashSet::new()),
             cargo_tiers: Arc::new(dashmap::DashSet::new()),
             cargo_desc: Arc::new(dashmap::DashMap::new()),
@@ -1563,7 +1564,7 @@ impl AppState {
                 }
             ),
             stream_into(::entity::skill_desc::Entity::find(), &self.conn, |value| {
-                self.skill_desc.insert(value.id, value);
+                self.skill_desc.write().insert(value.id, value);
             }),
             stream_into(
                 ::entity::building_desc::Entity::find(),
@@ -1615,7 +1616,7 @@ impl AppState {
                 self.item_desc.len(),
                 self.cargo_desc.len(),
                 self.claim_local_state.len(),
-                self.skill_desc.len(),
+                self.skill_desc.read().len(),
                 self.building_desc.len(),
                 self.building_nickname_state.len(),
                 self.crafting_recipe_desc.len(),
@@ -1626,7 +1627,8 @@ impl AppState {
 
         let ranked_skills = self
             .skill_desc
-            .iter()
+            .read()
+            .values()
             .filter(|skill| skill.skill_category != 0)
             .map(|skill| skill.id)
             .collect::<Vec<_>>();
@@ -1688,6 +1690,7 @@ impl AppState {
             experience_rows += 1;
             let Some(skill_category) = self
                 .skill_desc
+                .read()
                 .get(&i64::from(item.skill_id))
                 .map(|skill| skill.skill_category)
             else {

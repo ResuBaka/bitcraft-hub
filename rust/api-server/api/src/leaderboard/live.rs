@@ -94,7 +94,8 @@ pub(crate) fn delta_topic(id: i32) -> BroadcastTopics {
 fn boards(state: &AppState) -> Vec<LeaderboardBoard> {
     let mut skills: Vec<_> = state
         .skill_desc
-        .iter()
+        .read()
+        .values()
         .filter_map(|skill| {
             let id = i32::try_from(skill.id).ok()?;
             (id >= 0 && skill.skill_category != 0).then(|| LeaderboardBoard {

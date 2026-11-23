@@ -1,0 +1,41 @@
+--- a/api/src/skill_descriptions/mod.rs
++++ b/api/src/skill_descriptions/mod.rs
+@@ -1,6 +1,5 @@
+ pub(crate) mod bitcraft;
+-mod definitions;
+-pub(crate) use definitions::SkillDefinitions;
++pub(crate) type SkillDefinitions = std::collections::HashMap<i64, entity::skill_desc::Model>;
+ 
+ const SKILL_ORDER: &[&str] = &[
+     "Forestry", "Carpentry", "Farming", "Foraging", "Tailoring", "Mining", "Smithing", "Masonry",
+--- a/api/src/leaderboard/bitcraft.rs
++++ b/api/src/leaderboard/bitcraft.rs
+@@ -136,7 +136,7 @@
+         if let Some(category @ (1 | 2)) = calc.desc.map(|s| s.skill_category) {
+             let sum = new
+                 .iter()
+-                .filter(|es| skills.category(es.skill_id) == Some(category))
++                .filter(|es| describe(es).is_some_and(|s| s.skill_category == category))
+                 .map(|es| i64::from(es.quantity))
+                 .sum();
+             if category == 1 {
+--- a/api/src/skill_descriptions/bitcraft.rs
++++ b/api/src/skill_descriptions/bitcraft.rs
+@@ -232,6 +232,6 @@
+         let skills = state.skill_desc.read();
+         assert_eq!(
+-            **skills,
++            *skills,
+             [
+                 (1, edited.into()),
+                 (3, skill(3).into()),
+@@ -249,3 +249,3 @@
+         ] {
+-            assert_eq!(skills.category(id), category, "skill {id}");
++            assert_eq!(skills.get(&id).map(|s| s.skill_category), category, "skill {id}");
+         }
+@@ -285,3 +285,3 @@
+             for id in [-1, 0] {
+-                assert_eq!(skills.category(id), fail_flush.then_some(1));
++                assert_eq!(skills.get(&i64::from(id)).map(|s| s.skill_category), fail_flush.then_some(1));
+                 assert_eq!(skills.contains_key(&i64::from(id)), fail_flush);

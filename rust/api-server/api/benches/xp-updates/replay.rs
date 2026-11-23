@@ -75,7 +75,7 @@ fn replay_input(state: &AppState) -> Operations {
                         }
                         "skill_desc" => {
                             for r in rows!(SkillDesc) {
-                                state.skill_desc.insert(i64::from(r.id), r.into());
+                                state.skill_desc.write().insert(i64::from(r.id), r.into());
                             }
                         }
                         _ => {}
@@ -143,6 +143,7 @@ fn replay_input(state: &AppState) -> Operations {
                         let key = i64::from(skill.skill_id);
                         if state
                             .skill_desc
+                            .read()
                             .get(&key)
                             .is_some_and(|s| s.skill_category != 0)
                         {
@@ -252,6 +253,76 @@ async fn replay_xp_worker() {
             );
         }
     }
+}
+
+#[tokio::test]
+#[ignore = "subscribed parity pass on the private region-14 capture"]
+async fn replay_xp_parity() {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+    let state = AppState::new(Default::default(), tx, Default::default());
+    let ops = replay_input(&state);
+    let mut worker = ExperienceStateWorker::new(state.clone(), 3000, Duration::from_secs(5));
+    let ranking = &state.ranking_system;
+    let mut players = HashSet::new();
+    let mut topics = Vec::new();
+    for (old, _, _) in &ops.messages {
+        if players.insert(old.entity_id) {
+            for es in &old.experience_stacks {
+                ranking.ensure_skill_leaderboard(i64::from(es.skill_id));
+            }
+            worker.handle_insert(old.clone(), REGION).await;
+            for topic in [
+                "level",
+                "experience",
+                "total_experience",
+                "total_adventure_experience",
+                "total_profession_experience",
+            ] {
+                topics.push((topic, Some(old.entity_id as i64)));
+            }
+        }
+    }
+    // Publish the same nonempty initial ranks once. Actual rank publication
+    // is asynchronous; racing it would make exact payload comparison flaky.
+    ranking.shutdown().await;
+    let _sub = state.subscribe_test_client(&topics).await;
+    let mut scores = DefaultHasher::new();
+    let mut events = DefaultHasher::new();
+    let mut count = 0;
+    for (old, new, _) in ops.messages {
+        let id = new.entity_id as i64;
+        let stacks = new.experience_stacks.clone();
+        worker.handle_update(new, REGION, old).await;
+        id.hash(&mut scores);
+        for board in [
+            &ranking.global_leaderboard,
+            &ranking.level_leaderboard,
+            &ranking.profession_leaderboard,
+            &ranking.adventure_leaderboard,
+            &ranking.xp_per_hour,
+        ] {
+            board.get_value(&id).hash(&mut scores);
+        }
+        for es in stacks {
+            es.skill_id.hash(&mut scores);
+            ranking
+                .skill_leaderboard(i64::from(es.skill_id))
+                .and_then(|board| board.get_value(&id))
+                .hash(&mut scores);
+        }
+        count.hash(&mut events); // delimit events belonging to each update
+        while let Ok(message) = notifications.try_recv() {
+            serde_json::to_vec(&message).unwrap().hash(&mut events);
+            count += 1;
+        }
+    }
+    assert!(count > ops.updates);
+    println!(
+        "scores={:016x} notifications={count} payloads={:016x}",
+        scores.finish(),
+        events.finish()
+    );
 }
 
 #[tokio::test]

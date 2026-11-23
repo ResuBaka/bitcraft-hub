@@ -243,7 +243,7 @@ async fn leaderboard_rank_snapshots(
         "Experience Per Hour" => "xp_per_hour".to_string(),
         "Time Played" => "time_played".to_string(),
         "Time Online" => "time_signed_in".to_string(),
-        name => match state.skill_desc.iter().find(|skill| skill.name == name) {
+        name => match state.skill_desc.read().values().find(|skill| skill.name == name) {
             Some(skill) => format!("skill_{}", skill.id),
             None => return Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: Vec::new() })),
         },
@@ -293,7 +293,7 @@ async fn player_rank_snapshot(
     let mut result = Vec::with_capacity(rows.len());
     for row in rows {
         let (label, current_rank) = if let Some(id) = row.board.strip_prefix("skill_").and_then(|id| id.parse::<i64>().ok()) {
-            let name = state.skill_desc.get(&id).map(|skill| skill.name.clone()).unwrap_or_else(|| format!("Skill {id}"));
+            let name = state.skill_desc.read().get(&id).map(|skill| skill.name.clone()).unwrap_or_else(|| format!("Skill {id}"));
             (name, state.ranking_system.skill_leaderboard(id).and_then(|board| board.get_rank(player_id)))
         } else {
             let label = match row.board.as_str() {
@@ -326,7 +326,7 @@ struct ExperienceHistorySkill {
 async fn experience_history_skills(
     State(state): State<AppState>,
 ) -> axum_codec::Codec<Vec<ExperienceHistorySkill>> {
-    let mut skills: Vec<_> = state.skill_desc.iter().filter(|skill| skill.skill_category != 0)
+    let mut skills: Vec<_> = state.skill_desc.read().values().filter(|skill| skill.skill_category != 0)
         .map(|skill| ExperienceHistorySkill { id: skill.id, name: skill.name.clone() }).collect();
     skills.sort_by(|a, b| (skill_sort_key(&a.name), a.id).cmp(&(skill_sort_key(&b.name), b.id)));
     axum_codec::Codec(skills)
@@ -1350,8 +1350,9 @@ pub(crate) async fn get_top_100(
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
     let skills = state
         .skill_desc
-        .iter()
-        .map(|skill_desc| skill_desc.clone())
+        .read()
+        .values()
+        .cloned()
         .collect::<Vec<_>>();
 
     let mut leaderboard_result: IndexMap<String, Vec<RankType>> = IndexMap::new();
@@ -1663,8 +1664,9 @@ pub(crate) async fn player_leaderboard(
 ) -> Result<axum_codec::Codec<PlayerLeaderboardResponse>, (StatusCode, &'static str)> {
     let skills = state
         .skill_desc
-        .iter()
-        .map(|skill| skill.value().clone())
+        .read()
+        .values()
+        .cloned()
         .collect::<Vec<_>>();
 
     let has_player = state.player_state.contains_key(&player_id);
@@ -1898,8 +1900,9 @@ pub(crate) async fn get_claim_leaderboard(
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
     let skills = state
         .skill_desc
-        .iter()
-        .map(|skill| skill.value().clone())
+        .read()
+        .values()
+        .cloned()
         .collect::<Vec<_>>();
 
     let mut player_ids = state

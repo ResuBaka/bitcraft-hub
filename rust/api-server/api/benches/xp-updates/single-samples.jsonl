@@ -1,0 +1,16 @@
+{"block": 0, "handler": "original", "hints": true, "cpu_ns_per_update": 844.84, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 0, "handler": "candidate", "hints": true, "cpu_ns_per_update": 665.69, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 1, "handler": "candidate", "hints": true, "cpu_ns_per_update": 649.81, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 1, "handler": "original", "hints": true, "cpu_ns_per_update": 847.16, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 2, "handler": "original", "hints": true, "cpu_ns_per_update": 896.92, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 2, "handler": "candidate", "hints": true, "cpu_ns_per_update": 638.02, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 3, "handler": "candidate", "hints": true, "cpu_ns_per_update": 627.67, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 3, "handler": "original", "hints": true, "cpu_ns_per_update": 878.89, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 4, "handler": "original", "hints": true, "cpu_ns_per_update": 862.34, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 4, "handler": "candidate", "hints": true, "cpu_ns_per_update": 652.76, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 5, "handler": "candidate", "hints": true, "cpu_ns_per_update": 653.8, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 5, "handler": "original", "hints": true, "cpu_ns_per_update": 839.49, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 6, "handler": "original", "hints": true, "cpu_ns_per_update": 848.27, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 6, "handler": "candidate", "hints": true, "cpu_ns_per_update": 655.36, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 7, "handler": "candidate", "hints": true, "cpu_ns_per_update": 645.31, "history": 37649, "digest": "b7e623ea527650bd"}
+{"block": 7, "handler": "original", "hints": true, "cpu_ns_per_update": 828.53, "history": 37649, "digest": "b7e623ea527650bd"}
