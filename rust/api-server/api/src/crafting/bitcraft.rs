@@ -23,21 +23,7 @@ pub(crate) fn start_worker_progressive_action_state(
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
         let receive_metrics = WorkerReceiveMetrics::new("progressive_action_state");
-        let on_conflict =
-            sea_query::OnConflict::column(::entity::progressive_action_state::Column::EntityId)
-                .update_columns([
-                    ::entity::progressive_action_state::Column::BuildingEntityId,
-                    ::entity::progressive_action_state::Column::FunctionType,
-                    ::entity::progressive_action_state::Column::Progress,
-                    ::entity::progressive_action_state::Column::RecipeId,
-                    ::entity::progressive_action_state::Column::CraftCount,
-                    ::entity::progressive_action_state::Column::LastCritOutcome,
-                    ::entity::progressive_action_state::Column::OwnerEntityId,
-                    ::entity::progressive_action_state::Column::LockExpiration,
-                    ::entity::progressive_action_state::Column::Preparation,
-                    ::entity::progressive_action_state::Column::Region,
-                ])
-                .to_owned();
+        let on_conflict = live_upsert_conflict();
 
         let mut pending = PendingActions::default();
         const RECEIVE_LIMIT: usize = 64;
@@ -262,6 +248,24 @@ impl PendingActions {
     }
 }
 
+fn live_upsert_conflict() -> sea_query::OnConflict {
+    use entity::progressive_action_state::Column::*;
+    sea_query::OnConflict::column(EntityId)
+        .update_columns([
+            BuildingEntityId,
+            FunctionType,
+            Progress,
+            RecipeId,
+            CraftCount,
+            LastCritOutcome,
+            OwnerEntityId,
+            LockExpiration,
+            Preparation,
+            Region,
+        ])
+        .to_owned()
+}
+
 async fn insert_multiple_progressive_action_state(
     global_app_state: &AppState,
     on_conflict: &sea_query::OnConflict,
@@ -280,6 +284,10 @@ async fn insert_multiple_progressive_action_state(
     messages.clear();
     success
 }
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/live-progressive-writes/replay.rs"]
+mod live_writer_bench;
 
 #[cfg(test)]
 mod tests {
