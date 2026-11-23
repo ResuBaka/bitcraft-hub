@@ -8,7 +8,7 @@ use ts_rs::TS;
 #[derive(Default)]
 struct RegionActivity {
     ready: bool,
-    players: HashMap<u64, HashMap<u64, PlayerActionState>>,
+    players: HashMap<u64, Vec<PlayerActionState>>,
 }
 
 #[derive(Default)]
@@ -53,20 +53,28 @@ impl PlayerActivity {
     }
     pub fn insert(&self, region: Region, row: PlayerActionState) {
         if let Some(state) = self.regions.write().get_mut(&region) {
-            state
+            // Players usually have two action rows, but auto_id is the key, not layer.
+            let actions = state
                 .players
                 .entry(row.entity_id)
-                .or_default()
-                .insert(row.auto_id, row);
+                .or_insert_with(|| Vec::with_capacity(2));
+            match actions
+                .iter_mut()
+                .find(|action| action.auto_id == row.auto_id)
+            {
+                Some(action) => *action = row,
+                None => actions.push(row),
+            }
         }
     }
     pub fn remove(&self, region: Region, player: u64, id: u64) {
-        if let Some(state) = self.regions.write().get_mut(&region) {
-            if let Some(actions) = state.players.get_mut(&player) {
-                actions.remove(&id);
-                if actions.is_empty() {
-                    state.players.remove(&player);
-                }
+        if let Some(state) = self.regions.write().get_mut(&region)
+            && let Some(actions) = state.players.get_mut(&player)
+            && let Some(index) = actions.iter().position(|action| action.auto_id == id)
+        {
+            actions.swap_remove(index);
+            if actions.is_empty() {
+                state.players.remove(&player);
             }
         }
     }
@@ -92,7 +100,7 @@ impl PlayerActivity {
                 .and_then(|state| state.players.get(&player))
                 .map(|actions| {
                     actions
-                        .values()
+                        .iter()
                         .map(|action| ActivityAction {
                             action_type: format!("{:?}", action.action_type),
                             successful: action.last_action_result
@@ -108,6 +116,10 @@ impl PlayerActivity {
         }
     }
 }
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/player-activity/replay.rs"]
+mod replay;
 
 pub(crate) fn player_snapshot(state: &crate::AppState, id: u64) -> Option<ActivitySnapshot> {
     let (region, signed_in) = {
@@ -164,7 +176,9 @@ mod tests {
         let cache = PlayerActivity::default();
         cache.reset(1);
         cache.insert(1, action(10, 42, PlayerActionType::Craft));
-        cache.insert(1, action(11, 42, PlayerActionType::PlayerMove));
+        let mut upper = action(11, 42, PlayerActionType::PlayerMove);
+        upper.layer = PlayerActionLayer::UpperBody;
+        cache.insert(1, upper);
         cache.ready(1);
         let actions = cache.snapshot(1, 42, true, Some(false)).actions.unwrap();
         assert_eq!(actions.len(), 2);
@@ -179,5 +193,30 @@ mod tests {
         assert_eq!(actions[0].action_type, "PlayerMove");
         cache.remove(1, 42, 11);
         assert!(cache.snapshot(1, 42, true, None).actions.is_none());
+    }
+
+    #[test]
+    fn grows_past_two_rows_and_replaces_by_auto_id() {
+        let cache = PlayerActivity::default();
+        cache.reset(1);
+        for id in [10, 11, 12] {
+            cache.insert(1, action(id, 42, PlayerActionType::Craft));
+        }
+        cache.insert(1, action(12, 42, PlayerActionType::Extract));
+        cache.remove(1, 42, 99);
+        cache.ready(1);
+        let actions = cache.snapshot(1, 42, true, None).actions.unwrap();
+        assert_eq!(actions.len(), 3);
+        assert_eq!(
+            actions
+                .iter()
+                .filter(|a| a.action_type == "Extract")
+                .count(),
+            1
+        );
+        cache.remove(1, 42, 12);
+        let actions = cache.snapshot(1, 42, true, None).actions.unwrap();
+        assert_eq!(actions.len(), 2);
+        assert!(actions.iter().all(|a| a.action_type == "Craft"));
     }
 }

@@ -1,5 +1,5 @@
 //! Stop producers first, then seal and drain worker input, then DB writers.
-use crate::websocket::worker_channel::ChannelControl;
+use crate::websocket::worker_channel::SealInput;
 use parking_lot::Mutex;
 use std::{
     future::Future,
@@ -17,12 +17,12 @@ pub(crate) struct Shutdown {
     connections: TaskTracker,
     workers: TaskTracker,
     pub(crate) clients: TaskTracker,
-    inputs: Arc<Mutex<Vec<Weak<ChannelControl>>>>,
+    inputs: Arc<Mutex<Vec<Weak<dyn SealInput>>>>,
 }
 
 impl Shutdown {
-    pub(crate) fn register_input(&self, control: &Arc<ChannelControl>) {
-        self.inputs.lock().push(Arc::downgrade(control));
+    pub(crate) fn register_input(&self, input: Weak<dyn SealInput>) {
+        self.inputs.lock().push(input);
     }
 
     pub(crate) fn spawn_connection(

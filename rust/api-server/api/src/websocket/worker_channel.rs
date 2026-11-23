@@ -14,29 +14,29 @@ use backend::TryRecvError as BackendTryRecvError;
 use backend::error::TryRecvError as BackendTryRecvError;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
 
-#[derive(Default)]
-pub(crate) struct ChannelControl {
-    gate: Mutex<()>,
-    closed: CancellationToken,
+pub(crate) trait SealInput: Send + Sync {
+    fn close(&self);
 }
 
-impl ChannelControl {
-    pub(crate) fn close(&self) {
-        let _guard = self.gate.lock();
-        self.closed.cancel();
+// All producers share the *only* backend sender. Sealing under the send lock
+// drops it, so the backend itself wakes the receiver, drains, and reports EOF.
+struct Input<T> {
+    sender: Mutex<Option<backend::UnboundedSender<T>>>,
+}
+
+impl<T: Send> SealInput for Input<T> {
+    fn close(&self) {
+        self.sender.lock().take();
     }
 }
 
 pub(crate) struct UnboundedSender<T> {
-    inner: backend::UnboundedSender<T>,
-    control: Arc<ChannelControl>,
+    input: Arc<Input<T>>,
 }
 
 pub(crate) struct UnboundedReceiver<T> {
     inner: backend::UnboundedReceiver<T>,
-    control: Arc<ChannelControl>,
 }
 
 #[derive(Debug)]
@@ -51,31 +51,32 @@ pub(crate) enum TryRecvError {
 impl<T> Clone for UnboundedSender<T> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
-            control: self.control.clone(),
+            input: self.input.clone(),
         }
     }
 }
 
 impl<T> UnboundedSender<T> {
     pub(crate) fn send(&self, value: T) -> Result<(), SendError> {
-        let _guard = self.control.gate.lock();
-        if self.control.closed.is_cancelled() {
-            return Err(SendError);
-        }
-        self.inner.send(value).map_err(|_| SendError)
+        self.input
+            .sender
+            .lock()
+            .as_ref()
+            .ok_or(SendError)?
+            .send(value)
+            .map_err(|_| SendError)
     }
 }
 
 pub(crate) fn unbounded_channel<T: Send + 'static>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
     let (tx, rx) = backend::unbounded_channel();
-    let control = Arc::new(ChannelControl::default());
     (
         UnboundedSender {
-            inner: tx,
-            control: control.clone(),
+            input: Arc::new(Input {
+                sender: Mutex::new(Some(tx)),
+            }),
         },
-        UnboundedReceiver { inner: rx, control },
+        UnboundedReceiver { inner: rx },
     )
 }
 
@@ -83,24 +84,20 @@ pub(crate) fn shutdown_channel<T: Send + 'static>(
     shutdown: &crate::shutdown::Shutdown,
 ) -> (UnboundedSender<T>, UnboundedReceiver<T>) {
     let (tx, rx) = unbounded_channel();
-    shutdown.register_input(&rx.control);
+    let input = Arc::downgrade(&tx.input);
+    shutdown.register_input(input);
     (tx, rx)
 }
 
 impl<T: Send + 'static> UnboundedReceiver<T> {
     pub(crate) async fn recv(&mut self) -> Option<T> {
-        tokio::select! { biased;
-            _ = self.control.closed.cancelled() => self.try_recv().ok(),
-            value = self.inner.recv() => value,
-        }
+        self.inner.recv().await
     }
 
     pub(crate) fn try_recv(&mut self) -> Result<T, TryRecvError> {
         match self.inner.try_recv() {
             Ok(value) => Ok(value),
-            Err(BackendTryRecvError::Empty) if !self.control.closed.is_cancelled() => {
-                Err(TryRecvError::Empty)
-            }
+            Err(BackendTryRecvError::Empty) => Err(TryRecvError::Empty),
             Err(_) => Err(TryRecvError::Disconnected),
         }
     }
@@ -127,7 +124,7 @@ impl<T: Send + 'static> UnboundedReceiver<T> {
     }
 
     pub(crate) fn is_closed(&self) -> bool {
-        self.control.closed.is_cancelled() || self.inner.is_closed()
+        self.inner.is_closed()
     }
     pub(crate) fn is_empty(&self) -> bool {
         self.inner.is_empty()
@@ -139,6 +136,10 @@ pub(crate) const BACKEND: &str = if cfg!(feature = "tokio-worker-queues") {
 } else {
     "kanal"
 };
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/worker-queue/replay.rs"]
+mod replay;
 
 #[cfg(test)]
 mod tests {
@@ -181,7 +182,7 @@ mod tests {
         let (tx, mut rx) = unbounded_channel();
         tx.send(1).unwrap();
         tx.send(2).unwrap();
-        rx.control.close();
+        tx.input.close();
         assert!(tx.send(3).is_err());
         assert!(rx.is_closed());
         assert_eq!(rx.recv().await, Some(1));
@@ -191,20 +192,59 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn close_wakes_pending_receive_and_preserves_a_message_in_flight() {
+    async fn close_wakes_parked_receive_and_preserves_a_message_in_flight() {
         for with_message in [false, true] {
             let (tx, mut rx) = unbounded_channel();
-            {
-                let receive = rx.recv();
-                futures::pin_mut!(receive);
-                assert!(futures::poll!(receive.as_mut()).is_pending());
-            }
+            let (parked, registered) = tokio::sync::oneshot::channel();
+            let task = tokio::spawn(async move {
+                let first = {
+                    let receive = rx.recv();
+                    futures::pin_mut!(receive);
+                    assert!(futures::poll!(receive.as_mut()).is_pending());
+                    parked.send(()).unwrap();
+                    receive.await
+                };
+                (first, rx.recv().await)
+            });
+            registered.await.unwrap();
             if with_message {
                 tx.send(7).unwrap();
             }
-            rx.control.close();
-            assert_eq!(rx.recv().await, with_message.then_some(7));
-            assert_eq!(rx.recv().await, None);
+            tx.input.close();
+            let received = tokio::time::timeout(std::time::Duration::from_secs(2), task)
+                .await
+                .expect("closing must wake a parked worker")
+                .unwrap();
+            assert_eq!(received, (with_message.then_some(7), None));
         }
+    }
+
+    #[tokio::test]
+    async fn racing_seal_drains_exactly_the_accepted_messages_per_producer() {
+        let (tx, mut rx) = unbounded_channel();
+        let start = std::sync::Barrier::new(3);
+        let accepted = std::thread::scope(|scope| {
+            let producers = [0, 1].map(|id| {
+                let producer = tx.clone();
+                let start = &start;
+                scope.spawn(move || {
+                    producer.send((id, 0)).unwrap();
+                    start.wait();
+                    (1..1024)
+                        .find(|&seq| producer.send((id, seq)).is_err())
+                        .unwrap_or(1024)
+                })
+            });
+            start.wait();
+            tx.input.close();
+            producers.map(|p| p.join().unwrap())
+        });
+        assert!(tx.send((0, 1024)).is_err());
+        let mut drained = [0; 2];
+        while let Some((id, seq)) = rx.recv().await {
+            assert_eq!(seq, drained[id]);
+            drained[id] += 1;
+        }
+        assert_eq!(drained, accepted);
     }
 }

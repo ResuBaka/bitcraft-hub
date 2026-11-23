@@ -2,13 +2,13 @@
 //! Kanal 0.1.1 receive futures are NOT cancellation-safe in `tokio::select!`.
 //! The persistent unfold stream owns each in-progress receive across cancelled
 //! calls to `recv`, rather than constructing/dropping a Kanal receive per select.
-use futures::{Stream, StreamExt, stream};
+use futures::{Stream, StreamExt, future::poll_fn, stream};
 use std::pin::Pin;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
 };
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 
 pub(crate) struct UnboundedSender<T> {
     inner: kanal::Sender<T>,
@@ -20,6 +20,9 @@ pub(crate) struct UnboundedReceiver<T> {
     // Mutex makes the receiver Sync for workers with async &self helpers.
     // Receive methods have &mut self and use get_mut(), with no lock per poll.
     stream: parking_lot::Mutex<Pin<Box<dyn Stream<Item = T> + Send>>>,
+    // A cancelled async caller can leave a pending direct handoff in `stream`.
+    // Nonblocking drains must finish that handoff before reading the sync queue.
+    pending: Option<Waker>,
     outstanding: Arc<AtomicUsize>,
 }
 
@@ -46,6 +49,7 @@ pub(crate) fn unbounded_channel<T: Send + 'static>() -> (UnboundedSender<T>, Unb
         UnboundedReceiver {
             inner: rx,
             stream: parking_lot::Mutex::new(Box::pin(stream)),
+            pending: None,
             outstanding,
         },
     )
@@ -79,7 +83,19 @@ impl<T: Send + 'static> UnboundedReceiver<T> {
         // this, a worker with a continuously ready queue can run indefinitely
         // without yielding, starving other workers and timers on its thread.
         // Keep the receive itself in the persistent stream for cancellation safety.
-        let value = tokio::task::coop::cooperative(self.stream.get_mut().next()).await;
+        let value = tokio::task::coop::cooperative(poll_fn(|cx| {
+            let result = self.stream.get_mut().as_mut().poll_next(cx);
+            if result.is_pending() {
+                match &mut self.pending {
+                    Some(waker) => waker.clone_from(cx.waker()),
+                    None => self.pending = Some(cx.waker().clone()),
+                }
+            } else {
+                self.pending = None;
+            }
+            result
+        }))
+        .await;
         if value.is_some() {
             self.outstanding.fetch_sub(1, Ordering::Relaxed);
         }
@@ -87,15 +103,29 @@ impl<T: Send + 'static> UnboundedReceiver<T> {
     }
 
     pub(crate) fn try_recv(&mut self) -> Result<T, TryRecvError> {
-        let mut context = Context::from_waker(futures::task::noop_waker_ref());
-        match self.stream.get_mut().as_mut().poll_next(&mut context) {
-            Poll::Ready(Some(value)) => {
-                self.outstanding.fetch_sub(1, Ordering::Relaxed);
-                Ok(value)
+        let value = if let Some(waker) = &self.pending {
+            match self
+                .stream
+                .get_mut()
+                .as_mut()
+                .poll_next(&mut Context::from_waker(waker))
+            {
+                Poll::Ready(value) => {
+                    self.pending = None;
+                    value.ok_or(TryRecvError::Disconnected)?
+                }
+                Poll::Pending => return Err(TryRecvError::Empty),
             }
-            Poll::Ready(None) => Err(TryRecvError::Disconnected),
-            Poll::Pending => Err(TryRecvError::Empty),
-        }
+        } else {
+            // A speculative empty drain must not install a receive with a no-op
+            // waker. The next async waiter registers its own waker if needed.
+            self.inner
+                .try_recv()
+                .map_err(|_| TryRecvError::Disconnected)?
+                .ok_or(TryRecvError::Empty)?
+        };
+        self.outstanding.fetch_sub(1, Ordering::Relaxed);
+        Ok(value)
     }
 
     #[cfg(test)]
@@ -155,6 +185,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn try_recv_takes_reserved_handoff_before_queued_values() {
+        let (tx, mut rx) = unbounded_channel();
+        {
+            let wait = rx.recv();
+            futures::pin_mut!(wait);
+            assert!(futures::poll!(wait.as_mut()).is_pending());
+        }
+        assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+        tx.send(1).unwrap(); // reserved for the pending async receive
+        tx.send(2).unwrap(); // buffered behind it
+        drop(tx);
+        assert_eq!(rx.try_recv(), Ok(1));
+        assert_eq!(rx.try_recv(), Ok(2));
+        assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
+        assert!(rx.is_empty());
+    }
+
+    #[tokio::test]
     async fn last_sender_drop_drains_and_receiver_drop_rejects_sends() {
         let (tx, mut rx) = unbounded_channel();
         let clone = tx.clone();
@@ -188,7 +236,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn try_recv_pending_waker_can_be_replaced_by_async_receive() {
+    async fn empty_try_recv_does_not_steal_the_async_receivers_wakeup() {
         let (tx, mut rx) = unbounded_channel();
         assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
         let task = tokio::spawn(async move { rx.recv().await });
@@ -211,8 +259,7 @@ mod tests {
             assert_eq!(rx.recv_many(&mut buffer, 500).await, 1);
             assert_eq!(buffer, [expected]);
 
-            // recv_many's final try_recv registered a no-op waker. Poll the
-            // next receive to Pending BEFORE sending, so success requires a
+            // Poll the next receive to Pending BEFORE sending, so success requires a
             // real wake-up rather than finding an already available value.
             let (ready, started) = tokio::sync::oneshot::channel();
             let task = tokio::spawn(async move {

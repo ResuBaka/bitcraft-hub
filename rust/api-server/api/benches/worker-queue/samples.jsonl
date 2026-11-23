@@ -1,0 +1,56 @@
+{"block": 0, "variant": "base", "ready": 118.95, "batch1": 135.35, "batch32": 53.96, "handoff": 623.55, "backend": "tokio"}
+{"block": 0, "variant": "seal", "ready": 48.03, "batch1": 50.57, "batch32": 41.88, "handoff": 515.07, "backend": "tokio"}
+{"block": 1, "variant": "seal", "ready": 46.52, "batch1": 50.08, "batch32": 41.82, "handoff": 520.8, "backend": "tokio"}
+{"block": 1, "variant": "base", "ready": 120.57, "batch1": 135.6, "batch32": 54.71, "handoff": 622.15, "backend": "tokio"}
+{"block": 2, "variant": "base", "ready": 119.19, "batch1": 134.35, "batch32": 53.99, "handoff": 632.29, "backend": "tokio"}
+{"block": 2, "variant": "seal", "ready": 47.48, "batch1": 49.98, "batch32": 41.76, "handoff": 520.51, "backend": "tokio"}
+{"block": 3, "variant": "seal", "ready": 46.64, "batch1": 50.44, "batch32": 41.88, "handoff": 519.64, "backend": "tokio"}
+{"block": 3, "variant": "base", "ready": 119.24, "batch1": 131.89, "batch32": 54.04, "handoff": 612.7, "backend": "tokio"}
+{"block": 4, "variant": "base", "ready": 119.21, "batch1": 131.91, "batch32": 53.87, "handoff": 614.29, "backend": "tokio"}
+{"block": 4, "variant": "seal", "ready": 46.91, "batch1": 49.96, "batch32": 41.83, "handoff": 523.08, "backend": "tokio"}
+{"block": 5, "variant": "seal", "ready": 46.5, "batch1": 49.88, "batch32": 42.14, "handoff": 518.08, "backend": "tokio"}
+{"block": 5, "variant": "base", "ready": 119.31, "batch1": 133.6, "batch32": 54.43, "handoff": 614.89, "backend": "tokio"}
+{"block": 6, "variant": "base", "ready": 119.39, "batch1": 133.01, "batch32": 53.71, "handoff": 614.42, "backend": "tokio"}
+{"block": 6, "variant": "seal", "ready": 46.91, "batch1": 50.06, "batch32": 41.54, "handoff": 516.21, "backend": "tokio"}
+{"block": 7, "variant": "seal", "ready": 46.5, "batch1": 50.31, "batch32": 41.74, "handoff": 524.55, "backend": "tokio"}
+{"block": 7, "variant": "base", "ready": 119.31, "batch1": 131.45, "batch32": 53.94, "handoff": 628.15, "backend": "tokio"}
+{"block": 0, "variant": "base", "ready": 113.13, "batch1": 130.68, "batch32": 48.18, "handoff": 644.9, "backend": "kanal"}
+{"block": 0, "variant": "seal", "ready": 41.65, "batch1": 49.91, "batch32": 31.71, "handoff": 512.4, "backend": "kanal"}
+{"block": 1, "variant": "seal", "ready": 41.14, "batch1": 49.7, "batch32": 31.71, "handoff": 525.53, "backend": "kanal"}
+{"block": 1, "variant": "base", "ready": 113.57, "batch1": 130.22, "batch32": 48.0, "handoff": 600.07, "backend": "kanal"}
+{"block": 2, "variant": "base", "ready": 112.99, "batch1": 129.42, "batch32": 48.27, "handoff": 653.71, "backend": "kanal"}
+{"block": 2, "variant": "seal", "ready": 42.74, "batch1": 51.27, "batch32": 31.8, "handoff": 521.3, "backend": "kanal"}
+{"block": 3, "variant": "seal", "ready": 41.83, "batch1": 49.94, "batch32": 32.45, "handoff": 519.27, "backend": "kanal"}
+{"block": 3, "variant": "base", "ready": 113.18, "batch1": 131.07, "batch32": 48.59, "handoff": 628.33, "backend": "kanal"}
+{"block": 4, "variant": "base", "ready": 113.25, "batch1": 130.8, "batch32": 55.6, "handoff": 735.02, "backend": "kanal"}
+{"block": 4, "variant": "seal", "ready": 41.72, "batch1": 50.21, "batch32": 31.82, "handoff": 530.63, "backend": "kanal"}
+{"block": 5, "variant": "seal", "ready": 41.4, "batch1": 50.47, "batch32": 32.0, "handoff": 642.28, "backend": "kanal"}
+{"block": 5, "variant": "base", "ready": 114.27, "batch1": 131.08, "batch32": 48.33, "handoff": 620.5, "backend": "kanal"}
+{"block": 6, "variant": "base", "ready": 114.98, "batch1": 132.56, "batch32": 48.15, "handoff": 623.35, "backend": "kanal"}
+{"block": 6, "variant": "seal", "ready": 42.22, "batch1": 50.72, "batch32": 31.6, "handoff": 524.14, "backend": "kanal"}
+{"block": 7, "variant": "seal", "ready": 41.38, "batch1": 50.77, "batch32": 32.17, "handoff": 522.75, "backend": "kanal"}
+{"block": 7, "variant": "base", "ready": 113.55, "batch1": 131.17, "batch32": 48.39, "handoff": 625.18, "backend": "kanal"}
+{"block": 0, "backend": "tokio", "variant": "base", "concurrent": 362.13}
+{"block": 0, "backend": "tokio", "variant": "seal", "concurrent": 265.32}
+{"block": 1, "backend": "tokio", "variant": "seal", "concurrent": 279.59}
+{"block": 1, "backend": "tokio", "variant": "base", "concurrent": 328.88}
+{"block": 2, "backend": "tokio", "variant": "base", "concurrent": 388.62}
+{"block": 2, "backend": "tokio", "variant": "seal", "concurrent": 260.19}
+{"block": 3, "backend": "tokio", "variant": "seal", "concurrent": 245.33}
+{"block": 3, "backend": "tokio", "variant": "base", "concurrent": 336.93}
+{"block": 4, "backend": "tokio", "variant": "base", "concurrent": 373.35}
+{"block": 4, "backend": "tokio", "variant": "seal", "concurrent": 272.73}
+{"block": 5, "backend": "tokio", "variant": "seal", "concurrent": 265.27}
+{"block": 5, "backend": "tokio", "variant": "base", "concurrent": 333.94}
+{"block": 6, "backend": "tokio", "variant": "base", "concurrent": 358.53}
+{"block": 6, "backend": "tokio", "variant": "seal", "concurrent": 276.83}
+{"block": 7, "backend": "tokio", "variant": "seal", "concurrent": 260.61}
+{"block": 7, "backend": "tokio", "variant": "base", "concurrent": 360.33}
+{"block": 8, "backend": "tokio", "variant": "base", "concurrent": 340.26}
+{"block": 8, "backend": "tokio", "variant": "seal", "concurrent": 278.64}
+{"block": 9, "backend": "tokio", "variant": "seal", "concurrent": 276.79}
+{"block": 9, "backend": "tokio", "variant": "base", "concurrent": 342.85}
+{"block": 10, "backend": "tokio", "variant": "base", "concurrent": 99.8}
+{"block": 10, "backend": "tokio", "variant": "seal", "concurrent": 72.58}
+{"block": 11, "backend": "tokio", "variant": "seal", "concurrent": 71.7}
+{"block": 11, "backend": "tokio", "variant": "base", "concurrent": 99.8}
