@@ -16,6 +16,18 @@ use std::time::Instant;
 const BENCH_TILES: usize = 3_291_000;
 const BENCH_EDITS: usize = 4_096;
 
+impl super::ClaimLocationSubscriptions {
+    pub(crate) fn disable_search_hints_for_replay(&self, region: entity::shared::Region) {
+        self.update(region, |state| {
+            let super::Overworld::Ready(index) = &mut state.overworld else {
+                panic!("replay needs a ready claim index")
+            };
+            assert!(!index.base.search_hints.is_empty());
+            index.base.search_hints = Box::default();
+        });
+    }
+}
+
 /// Deterministic xorshift so baseline and instrumented runs build identical data.
 struct Rng(u64);
 

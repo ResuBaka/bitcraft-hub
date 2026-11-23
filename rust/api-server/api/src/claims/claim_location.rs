@@ -6,6 +6,7 @@ use entity::shared::Region;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
 use std::ops::Range;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ClaimAtLocation {
@@ -78,6 +79,9 @@ struct TileRow {
 struct CompactBase {
     /// Packed coordinates in coordinate order (ascending).
     coords: Box<[u32]>,
+    /// Direct-mapped (packed coordinate, lower bound) pairs in `coords`.
+    /// This array belongs to the immutable base, never to its edit overlay.
+    search_hints: Box<[AtomicU64]>,
     /// Entity IDs aligned with `coords` in the same coordinate order.
     ids: Box<[u64]>,
     /// Claim-dictionary slot per tile, aligned with `coords`.
@@ -93,6 +97,8 @@ struct CompactBase {
 }
 
 impl CompactBase {
+    const HINT_BITS: u32 = 9;
+
     fn build(tiles: Vec<(u64, OverworldTile)>) -> Self {
         let mut narrow: Vec<(u64, u64, u32)> = Vec::with_capacity(tiles.len());
         let mut wide_by_id = HashMap::new();
@@ -129,6 +135,14 @@ impl CompactBase {
         let mut by_id: Vec<u32> = (0..count).collect();
         by_id.sort_unstable_by_key(|&pos| ids[pos as usize]);
         Self {
+            search_hints: if coords.len() >= 4096 {
+                // (0, 0) is valid even before the first search: zero is the minimum key.
+                (0..1 << Self::HINT_BITS)
+                    .map(|_| AtomicU64::new(0))
+                    .collect()
+            } else {
+                Box::default()
+            },
             coords: coords.into_boxed_slice(),
             ids: ids.into_boxed_slice(),
             claim_slots: claim_slots.into_boxed_slice(),
@@ -144,7 +158,23 @@ impl CompactBase {
         let Some(key) = pack(coords) else {
             return 0..0;
         };
-        let start = self.coords.partition_point(|&packed| packed < key);
+        let search = || self.coords.partition_point(|&packed| packed < key);
+        let start = if self.search_hints.is_empty() {
+            search()
+        } else {
+            let bucket = key.wrapping_mul(0x9e37_79b9) >> (32 - Self::HINT_BITS);
+            let hint = &self.search_hints[bucket as usize];
+            // Readers may replace each other's hints. An atomic pair prevents
+            // mixing a different key's position into this lookup; only hits matter.
+            let pair = hint.load(Ordering::Relaxed);
+            if (pair >> 32) as u32 == key {
+                pair as u32 as usize
+            } else {
+                let pos = search();
+                hint.store((u64::from(key) << 32) | pos as u64, Ordering::Relaxed);
+                pos
+            }
+        };
         let count = self.coords[start..]
             .iter()
             .take_while(move |&&packed| packed == key)
@@ -390,7 +420,8 @@ impl SortedOverworld {
                 .values()
                 .map(|ids| ids.capacity() * std::mem::size_of::<u64>())
                 .sum::<usize>();
-        self.base.coords.len() * std::mem::size_of::<u32>()
+        std::mem::size_of_val(&*self.base.search_hints)
+            + self.base.coords.len() * std::mem::size_of::<u32>()
             + self.base.ids.len() * std::mem::size_of::<u64>()
             + self.base.claim_slots.len() * std::mem::size_of::<u32>()
             + self.base.perm.len() * std::mem::size_of::<u32>()
@@ -1090,6 +1121,46 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn large_base_hints_follow_edits_overlaps_and_rebuilds() {
+        let mut index = SortedOverworld::new(
+            (0..5000)
+                .map(|id| TileRow {
+                    id,
+                    tile: OverworldTile {
+                        claim: id,
+                        coords: (id as i32, 0),
+                    },
+                })
+                .collect(),
+        );
+        for x in (0..5000).chain((0..5000).rev()) {
+            assert_eq!(index.lookup((x, 0)), ClaimAtLocation::Claim(x as u64));
+        }
+        // Warm a miss and a hit before moving their occupants via the overlay.
+        let target = (-1, -1);
+        assert_eq!(index.lookup(target), ClaimAtLocation::Unclaimed);
+        for id in [0, 1234] {
+            let old = index.get(id).unwrap();
+            assert_eq!(index.lookup(old.coords), ClaimAtLocation::Claim(id));
+            index.replace(
+                id,
+                Some(old),
+                Some(OverworldTile {
+                    claim: id,
+                    coords: target,
+                }),
+            );
+            assert_eq!(index.lookup(old.coords), ClaimAtLocation::Unclaimed);
+        }
+        assert_eq!(index.lookup(target), ClaimAtLocation::Unknown);
+        index.rebuild();
+        assert_eq!(index.lookup(target), ClaimAtLocation::Unknown);
+        assert_eq!(index.lookup((0, 0)), ClaimAtLocation::Unclaimed);
+        assert_eq!(index.lookup((1234, 0)), ClaimAtLocation::Unclaimed);
+        assert_eq!(index.lookup((1235, 0)), ClaimAtLocation::Claim(1235));
     }
 
     #[test]

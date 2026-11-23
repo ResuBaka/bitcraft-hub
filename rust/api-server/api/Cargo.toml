@@ -61,6 +61,9 @@ tokio = { workspace = true, features = ["test-util"] }
 criterion = "0.8.2"
 sea-orm = { workspace = true, features = ["mock"] }
 
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+rustix = { version = "1", features = ["time"] }
+
 [[bench]]
 name = "leaderboard_get_rank"
 harness = false

@@ -863,6 +863,10 @@ async fn insert_multiple_experience_state(
 }
 
 #[cfg(test)]
+#[path = "../../benches/xp-updates/replay.rs"]
+mod xp_replay;
+
+#[cfg(test)]
 mod initial_tests {
     use super::*;
     use game_module::module_bindings::ExperienceStack;

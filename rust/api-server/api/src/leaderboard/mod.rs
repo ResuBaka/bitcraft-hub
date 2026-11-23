@@ -862,11 +862,13 @@ mod bookkeeping_tests {
     #[test]
     fn repeated_player_updates_keep_one_pending_change_and_one_wakeup() {
         let (board, rx) = board();
-        for xp in 0..100_000 {
+        board.update(1, 0);
+        rx.try_recv().unwrap(); // publisher woke, but hasn't taken this batch yet
+        for xp in 1..100_000 {
             board.update(1, xp);
         }
         assert_eq!(board.state.lock().pending.len(), 1);
-        assert_eq!(rx.len(), 1);
+        assert!(rx.is_empty());
         assert_eq!(
             board.get_value(&1),
             Some(99_999),
@@ -879,6 +881,8 @@ mod bookkeeping_tests {
         apply_pending(&board, &rx);
         assert_consistent(&board);
         assert!(board.state.lock().pending.is_empty());
+        board.remove(1);
+        rx.try_recv().expect("first change after the drain must wake the publisher");
     }
 
     #[test]

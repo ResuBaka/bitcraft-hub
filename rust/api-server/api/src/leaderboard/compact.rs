@@ -742,9 +742,11 @@ impl Leaderboard {
             return;
         }
         state.scores.set(index, Some(new_xp));
-        Self::queue_change(&mut state, index, old, Some(new_xp));
+        let wake = Self::queue_change(&mut state, index, old, Some(new_xp));
         drop(state);
-        let _ = self.tx.try_send(());
+        if wake {
+            let _ = self.tx.try_send(());
+        }
     }
 
     fn queue_change(
@@ -752,15 +754,21 @@ impl Leaderboard {
         index: u32,
         previous: Option<i64>,
         latest: Option<i64>,
-    ) {
-        let previous = state
-            .pending
-            .get(&index)
-            .copied()
-            .map(LeaderboardOp::previous_score)
-            .unwrap_or(previous);
+    ) -> bool {
+        use std::collections::hash_map::Entry;
+        // The publisher swaps the entire pending map under this lock. The
+        // first change after each swap schedules the next pass for this board.
+        let was_empty = state.pending.is_empty();
+        let entry = state.pending.entry(index);
+        let previous = match &entry {
+            Entry::Occupied(e) => e.get().previous_score(),
+            Entry::Vacant(_) => previous,
+        };
         if previous == latest {
-            state.pending.remove(&index);
+            if let Entry::Occupied(e) = entry {
+                e.remove();
+            }
+            false
         } else {
             let op = match (previous, latest) {
                 (None, Some(new_xp)) => LeaderboardOp::Insert { new_xp },
@@ -768,7 +776,8 @@ impl Leaderboard {
                 (Some(xp), None) => LeaderboardOp::Remove { xp },
                 (None, None) => unreachable!(),
             };
-            state.pending.insert(index, op);
+            entry.insert_entry(op);
+            was_empty
         }
     }
 
@@ -826,9 +835,11 @@ impl Leaderboard {
             return;
         };
         state.scores.set(index, None);
-        Self::queue_change(&mut state, index, Some(old), None);
+        let wake = Self::queue_change(&mut state, index, Some(old), None);
         drop(state);
-        let _ = self.tx.try_send(());
+        if wake {
+            let _ = self.tx.try_send(());
+        }
     }
 
     pub(crate) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {

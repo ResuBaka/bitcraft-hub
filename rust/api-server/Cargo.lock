@@ -195,6 +195,7 @@ dependencies = [
  "prometheus",
  "rand 0.10.3",
  "rayon",
+ "rustix",
  "scc",
  "sea-orm",
  "sea-orm-cli",
