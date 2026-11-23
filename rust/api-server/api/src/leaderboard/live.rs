@@ -2,6 +2,7 @@
 //! for older clients.
 use super::{LeaderboardEntry, RankingSystem, experience_to_level};
 use crate::AppState;
+use crate::skill_descriptions::skill_sort_key;
 use crate::websocket::{BroadcastTopics, OutboundWebSocketMessages};
 use axum::{
     extract::{Path, State},
@@ -14,7 +15,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::time::{Duration, MissedTickBehavior};
 use ts_rs::TS;
 
-const BUILT_INS: [(i32, &str); 7] = [
+pub(super) const BUILT_INS: [(i32, &str); 7] = [
     (-1, "Professions"),
     (-2, "Skills"),
     (-3, "Experience"),
@@ -102,7 +103,9 @@ fn boards(state: &AppState) -> Vec<LeaderboardBoard> {
             })
         })
         .collect();
-    skills.sort_unstable_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    skills.sort_unstable_by(|a, b| {
+        (skill_sort_key(&a.name), a.id).cmp(&(skill_sort_key(&b.name), b.id))
+    });
     BUILT_INS
         .into_iter()
         .map(|(id, name)| LeaderboardBoard {

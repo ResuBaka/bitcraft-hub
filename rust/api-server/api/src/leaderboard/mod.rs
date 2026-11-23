@@ -3,6 +3,8 @@ pub(crate) mod live;
 pub(crate) mod snapshots;
 
 use crate::{AppRouter, AppState, leaderboard};
+use crate::skill_descriptions::skill_sort_key;
+use indexmap::IndexMap;
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -10,7 +12,7 @@ use dashmap::DashMap;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use ts_rs::TS;
@@ -311,6 +313,7 @@ async fn player_rank_snapshot(
             current_rank: current_rank.map(|rank| rank as u64), captured_at: row.captured_at,
         });
     }
+    result.sort_by(|a, b| board_sort_key(&a.label).cmp(&board_sort_key(&b.label)));
     Ok(axum_codec::Codec(result))
 }
 
@@ -325,7 +328,7 @@ async fn experience_history_skills(
 ) -> axum_codec::Codec<Vec<ExperienceHistorySkill>> {
     let mut skills: Vec<_> = state.skill_desc.iter().filter(|skill| skill.skill_category != 0)
         .map(|skill| ExperienceHistorySkill { id: skill.id, name: skill.name.clone() }).collect();
-    skills.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    skills.sort_by(|a, b| (skill_sort_key(&a.name), a.id).cmp(&(skill_sort_key(&b.name), b.id)));
     axum_codec::Codec(skills)
 }
 
@@ -655,6 +658,7 @@ impl BucketLayout {
 mod bookkeeping_tests {
     use super::compact::LeaderboardOp;
     use super::*;
+    use std::collections::BTreeMap;
     use crossbeam_channel::Receiver;
 
     #[test]
@@ -1346,7 +1350,7 @@ pub(crate) async fn get_top_100(
         .map(|skill_desc| skill_desc.clone())
         .collect::<Vec<_>>();
 
-    let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
+    let mut leaderboard_result: IndexMap<String, Vec<RankType>> = IndexMap::new();
 
     // let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
@@ -1582,7 +1586,7 @@ pub(crate) async fn get_top_100(
 
     Ok(axum_codec::Codec(GetTop100Response {
         player_map: players,
-        leaderboard: leaderboard_result,
+        leaderboard: ordered_boards(leaderboard_result),
     }))
 }
 
@@ -1621,7 +1625,20 @@ pub(crate) fn start_live_updates(state: AppState) {
 #[ts(export)]
 pub(crate) struct GetTop100Response {
     pub player_map: HashMap<i64, entity::player_state::Model>,
-    pub leaderboard: BTreeMap<String, Vec<RankType>>,
+    pub leaderboard: IndexMap<String, Vec<RankType>>,
+}
+
+fn board_sort_key(name: &str) -> (usize, &str) {
+    if let Some(index) = live::BUILT_INS.iter().position(|&(_, board)| board == name) {
+        return (index, name);
+    }
+    let (index, name) = skill_sort_key(name);
+    (live::BUILT_INS.len() + index, name)
+}
+
+fn ordered_boards<T>(mut boards: IndexMap<String, T>) -> IndexMap<String, T> {
+    boards.sort_by(|a, _, b, _| board_sort_key(a).cmp(&board_sort_key(b)));
+    boards
 }
 
 pub(crate) fn experience_to_level(experience: i64) -> i32 {
@@ -1634,7 +1651,7 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
 
 #[derive(Serialize, TS)]
 #[ts(export)]
-pub(crate) struct PlayerLeaderboardResponse(BTreeMap<String, RankType>);
+pub(crate) struct PlayerLeaderboardResponse(IndexMap<String, RankType>);
 
 pub(crate) async fn player_leaderboard(
     state: State<AppState>,
@@ -1654,10 +1671,10 @@ pub(crate) async fn player_leaderboard(
         return Err((StatusCode::NOT_FOUND, "Not found"));
     };
     if !state.ranking_system.player_is_rank_eligible(player_id) {
-        return Ok(axum_codec::Codec(PlayerLeaderboardResponse(BTreeMap::new())));
+        return Ok(axum_codec::Codec(PlayerLeaderboardResponse(IndexMap::new())));
     }
 
-    let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
+    let mut leaderboard_result: IndexMap<String, RankType> = IndexMap::new();
 
     let mut results = vec![];
 
@@ -1867,7 +1884,7 @@ pub(crate) async fn player_leaderboard(
     }
 
     Ok(axum_codec::Codec(PlayerLeaderboardResponse(
-        leaderboard_result,
+        ordered_boards(leaderboard_result),
     )))
 }
 
@@ -1899,11 +1916,11 @@ pub(crate) async fn get_claim_leaderboard(
     if player_ids.is_empty() {
         return Ok(axum_codec::Codec(GetTop100Response {
             player_map: HashMap::new(),
-            leaderboard: BTreeMap::new(),
+            leaderboard: IndexMap::new(),
         }));
     }
 
-    let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
+    let mut leaderboard_result: IndexMap<String, Vec<RankType>> = IndexMap::new();
 
     let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
@@ -2154,6 +2171,6 @@ pub(crate) async fn get_claim_leaderboard(
 
     Ok(axum_codec::Codec(GetTop100Response {
         player_map: players,
-        leaderboard: leaderboard_result,
+        leaderboard: ordered_boards(leaderboard_result),
     }))
 }

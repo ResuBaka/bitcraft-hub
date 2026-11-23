@@ -22,7 +22,9 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::skill_descriptions::skill_sort_key;
+use indexmap::IndexMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 use ts_rs::TS;
@@ -382,7 +384,7 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub officer_permission: bool,
     pub co_owner_permission: bool,
     pub online_state: OnlineState,
-    pub skills_ranks: Option<BTreeMap<String, i64>>,
+    pub skills_ranks: Option<IndexMap<String, i64>>,
     pub inventory: Option<ResolvedInventory>,
 }
 
@@ -622,7 +624,7 @@ pub(crate) async fn get_claim(
                     officer_permission: member.officer_permission,
                     co_owner_permission: member.co_owner_permission,
                     online_state: OnlineState::Offline,
-                    skills_ranks: Some(BTreeMap::new()),
+                    skills_ranks: Some(IndexMap::new()),
                     inventory: None,
                 })
                 .collect()
@@ -724,12 +726,13 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let skills = state
+    let mut skills = state
         .skill_desc
         .iter()
         .filter(|skill| skill.skill_category != 0)
         .map(|skill| (skill.id, skill.name.clone()))
         .collect::<Vec<_>>();
+    skills.sort_by(|(a_id, a), (b_id, b)| (skill_sort_key(a), a_id).cmp(&(skill_sort_key(b), b_id)));
     for (skill_id, skill_name) in skills {
         if let Some(a) = state.ranking_system.skill_leaderboard(skill_id) {
             for member in claim.members.iter_mut() {
@@ -744,11 +747,7 @@ pub(crate) async fn get_claim(
 
                     0
                 };
-                if member.skills_ranks.is_none() {
-                    member.skills_ranks = Some(BTreeMap::new());
-                }
-
-                let skills_ranks = member.skills_ranks.as_mut().unwrap();
+                let skills_ranks = member.skills_ranks.get_or_insert_with(IndexMap::new);
                 skills_ranks.insert(skill_name.clone(), xp);
             }
         } else {
@@ -1223,7 +1222,7 @@ pub(crate) async fn list_claims(
                             officer_permission: member.officer_permission,
                             co_owner_permission: member.co_owner_permission,
                             online_state: OnlineState::Offline,
-                            skills_ranks: Some(BTreeMap::new()),
+                            skills_ranks: Some(IndexMap::new()),
                             inventory: None,
                         })
                         .collect()

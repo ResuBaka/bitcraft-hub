@@ -11,6 +11,7 @@ import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { ClaimTechDesc } from "~/types/ClaimTechDesc";
 import { getClaimMaxSupplies } from "~/utils/claimSupplies";
+import { primarySkills as memberSkills, secondarySkills as memberSecondarySkills, skillOrder } from "~/utils/skillOrder";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { InventoryItemLocation } from "~/types/InventoryItemLocation";
@@ -654,30 +655,6 @@ const onlinePlayersCount = computed(() => {
   return Object.values(members.value).filter((member) => member.online_state === "Online").length;
 });
 
-const memberSkills = [
-  "Carpentry",
-  "Farming",
-  "Forestry",
-  "Foraging",
-  "Tailoring",
-  "Fishing",
-  "Hunting",
-  "Leatherworking",
-  "Mining",
-  "Smithing",
-  "Masonry",
-  "Scholar",
-] as const;
-
-const memberSecondarySkills = [
-  "Cooking",
-  "Sailing",
-  "Slayer",
-  "Taming",
-  "Construction",
-  "Merchanting",
-] as const;
-
 const memberColumns = computed(() => {
   return [
     {
@@ -693,14 +670,7 @@ const memberColumns = computed(() => {
       enableSorting: true,
       meta: { class: { th: "text-center", td: "text-center" } },
     },
-    ...memberSkills.toSorted().map((skill) => ({
-      id: `skill_${skill}`,
-      header: skill,
-      accessorFn: (row) => row?.skills_ranks?.[skill] ?? 0,
-      enableSorting: true,
-      meta: { class: { th: "text-center", td: "text-center" } },
-    })),
-    ...memberSecondarySkills.toSorted().map((skill) => ({
+    ...skillOrder.map((skill) => ({
       id: `skill_${skill}`,
       header: skill,
       accessorFn: (row) => row?.skills_ranks?.[skill] ?? 0,

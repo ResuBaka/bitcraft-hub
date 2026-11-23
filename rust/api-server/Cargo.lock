@@ -183,6 +183,7 @@ dependencies = [
  "futures",
  "game_module",
  "hyper",
+ "indexmap 2.14.0",
  "kanal",
  "log",
  "metrics",
@@ -5640,6 +5641,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "756050066659291d47a554a9f558125db17428b073c5ffce1daf5dcb0f7231d8"
 dependencies = [
  "chrono",
+ "indexmap 2.14.0",
  "thiserror 2.0.19",
  "ts-rs-macros",
 ]

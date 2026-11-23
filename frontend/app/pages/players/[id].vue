@@ -14,6 +14,7 @@ import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { useDelayedPending } from "~/utils";
 import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 import { groupProfessionEquipment } from "~/utils/playerEquipment";
+import { compareSkillNames } from "~/utils/skillOrder";
 import { getPlayerSection } from "~/utils/playerSections";
 import { socialUrls } from "~/utils/socialMetadata";
 
@@ -419,7 +420,7 @@ const expeirence = computed(() => {
     Level: {},
   };
 
-  for (const [skill, xp_info] of Object.entries(experienceData.value)) {
+  for (const [skill, xp_info] of Object.entries(experienceData.value).sort(([a], [b]) => compareSkillNames(a, b))) {
     let shouldAddClass = true;
 
     if (

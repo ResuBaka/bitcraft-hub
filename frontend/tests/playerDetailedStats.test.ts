@@ -30,6 +30,7 @@ test("shows profession power with the equipped tool and keeps crit bonus distinc
   const metadata = { slots_by_skill: { 5: 0 }, power_by_item: { 42: 23 } };
   const toolbelt = { pockets: [{ contents: { item_id: 42, item_type: "Item" } }] };
   const groups = professionStatGroups(values, toolbelt, metadata);
+  expect(groups.map((group) => group.title)).toEqual(["Forager", "Miner"]);
   expect(displayed(groups.find((group) => group.title === "Miner")!)).toEqual({
     "Total Power": "27",
     Speed: "+13%",

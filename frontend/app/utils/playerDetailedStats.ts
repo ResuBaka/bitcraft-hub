@@ -1,4 +1,5 @@
 import type { ToolPowers } from "../types/CharacterStatsSnapshot";
+import { compareSkillNames } from "./skillOrder";
 
 type Unit = "points" | "percent" | "bonus" | "regen" | "decimal";
 type Row = { label: string; value: number | null; unit: Unit; description?: string };
@@ -107,27 +108,29 @@ export function characterStatGroups(values: (number | null)[]): Group[] {
 // Cooking has no crit stats. Hexite Gathering was appended separately.
 const professions: {
   title: string;
+  skillName: string;
   skill: number;
   power: number;
   speed: number | null;
   chance: number | null;
   crit: number | null;
-}[] = [
-  "Forester",
-  "Carpenter",
-  "Mason",
-  "Miner",
-  "Smith",
-  "Scholar",
-  "Leatherworker",
-  "Hunter",
-  "Tailor",
-  "Farmer",
-  "Fisher",
-  "Cook",
-  "Forager",
-].map((title, offset) => ({
+}[] = ([
+  ["Forester", "Forestry"],
+  ["Carpenter", "Carpentry"],
+  ["Mason", "Masonry"],
+  ["Miner", "Mining"],
+  ["Smith", "Smithing"],
+  ["Scholar", "Scholar"],
+  ["Leatherworker", "Leatherworking"],
+  ["Hunter", "Hunting"],
+  ["Tailor", "Tailoring"],
+  ["Farmer", "Farming"],
+  ["Fisher", "Fishing"],
+  ["Cook", "Cooking"],
+  ["Forager", "Foraging"],
+] as const).map(([title, skillName], offset) => ({
   title,
+  skillName,
   skill: 2 + offset,
   power: 34 + offset,
   speed: 21 + offset,
@@ -137,15 +140,16 @@ const professions: {
 professions.push(
   {
     title: "Builder",
+    skillName: "Construction",
     skill: 15,
     power: Stat.ConstructionPower,
     speed: null,
     chance: null,
     crit: null,
   },
-  { title: "Hexite Gatherer", skill: 22, power: 79, speed: 80, chance: 81, crit: 82 },
+  { title: "Hexite Gatherer", skillName: "Hexite Gathering", skill: 22, power: 79, speed: 80, chance: 81, crit: 82 },
 );
-professions.sort((a, b) => a.title.localeCompare(b.title));
+professions.sort((a, b) => compareSkillNames(a.skillName, b.skillName));
 
 const powerDescription =
   "Profession power bonus plus equipped tool power. An empty tool slot uses the game's no-tool power of 1.";

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/shared";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
+import { compareSkillNames } from "~/utils/skillOrder";
 
 const props = defineProps<{ playerId?: string; claimId?: string }>();
 type Point = {
@@ -54,7 +55,7 @@ const skillIcons: Record<string, string> = {
 const skillOptions = computed(() => [
   { label: "All skills", value: "all", icon: "i-mdi-chart-line" },
   { label: "Total XP", value: "total", icon: "i-mdi-star-circle" },
-  ...(skills.value ?? []).map((skill) => ({
+  ...(skills.value ?? []).toSorted((a, b) => compareSkillNames(a.name, b.name)).map((skill) => ({
     label: skill.name,
     value: String(skill.id),
     icon: skillIcons[skill.name] ?? "i-mdi-star-outline",
@@ -145,7 +146,7 @@ const chartSkills = computed(() => {
       result.set(point.skill_id, { id: point.skill_id, name: `Skill ${point.skill_id}` });
     }
   }
-  return [...result.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...result.values()].sort((a, b) => compareSkillNames(a.name, b.name));
 });
 const chartCategories = computed(() => [
   ...(selectedSkills.value.includes("total") ? [{ key: "total", label: "Total XP" }] : []),

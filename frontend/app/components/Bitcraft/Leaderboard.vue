@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
+import { compareSkillNames } from "~/utils/skillOrder";
 import type { LeaderboardBoard } from "~/types/LeaderboardBoard";
 import type { LeaderboardBoardRow } from "~/types/LeaderboardBoardRow";
 import type { LeaderboardBoardSnapshot } from "~/types/LeaderboardBoardSnapshot";
@@ -16,7 +17,7 @@ const router = useRouter();
 
 const summaryBoards = new Set(["Experience", "Level", "Experience Per Hour", "Skills", "Professions"]);
 const skills = computed(() =>
-  (boards.value ?? []).map((board) => board.name).filter((name) => !summaryBoards.has(name)),
+  (boards.value ?? []).map((board) => board.name).filter((name) => !summaryBoards.has(name)).sort(compareSkillNames),
 );
 
 const selectedSkills = ref(typeof route.query.skill === "string" ? route.query.skill : "Professions");

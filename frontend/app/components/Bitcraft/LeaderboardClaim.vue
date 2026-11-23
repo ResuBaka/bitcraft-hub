@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
-import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardResponse";
+import { compareSkillNames } from "~/utils/skillOrder";
+import type { GetTop100Response } from "~/types/GetTop100Response";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 const props = defineProps<{
   claimId: number | bigint;
 }>();
 
-const { data: leaderboard, pending } = await useFetchMsPack<PlayerLeaderboardResponse>(
+const { data: leaderboard, pending } = await useFetchMsPack<GetTop100Response>(
   () => {
     return `/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
   },
@@ -23,7 +24,7 @@ const skills = computed(() => {
 
   return Object.keys(leaderboard.value.leaderboard).filter((name) => {
     return name !== "Experience" && name !== "Level";
-  });
+  }).sort(compareSkillNames);
 });
 
 let selectedSkills = ref("Experience");
