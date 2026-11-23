@@ -77,6 +77,10 @@ impl BatchTimer {
         }
     }
 
+    pub(crate) fn is_due(&self) -> bool {
+        self.deadline.is_some_and(|end| Instant::now() >= end)
+    }
+
     pub(crate) async fn elapsed(&mut self) {
         // Cancelling this select branch drops only a borrow, not the registered
         // Sleep. It is pinned once per active batch and never reset by messages.

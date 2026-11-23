@@ -40,81 +40,107 @@ pub(crate) fn start_worker_progressive_action_state(
                 .to_owned();
 
         let mut pending = PendingActions::default();
-        let mut changed_buildings = HashSet::new();
-        let mut changed_players = HashSet::new();
-        let mut progress_updates = HashMap::new();
+        const RECEIVE_LIMIT: usize = 64;
+        let mut ready = Vec::new();
+        let mut timer = BatchTimer::new(time_limit);
         loop {
-            let mut timer = BatchTimer::new(time_limit);
-
-            loop {
-                tokio::select! {
-                    msg = rx.recv() => {
-                        let Some(msg) = msg else { break; };
-                        timer.start();
-                        receive_metrics.record(1);
-                        match msg {
-                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                pending.reconcile_snapshot(&global_app_state, &on_conflict, data, database_name, batch_size).await;
-                                changed_buildings.clear();
-                                changed_players.clear();
-                                progress_updates.clear();
-                                crate::crafting::notifications::all(&global_app_state);
-                            }
-                            SpacetimeUpdateMessages::Update { old, new, database_name, .. } => {
-                                if progress_only(&old, &new) {
-                                    progress_updates.insert(new.entity_id as i64, new.clone());
-                                } else {
-                                    changed_buildings.insert(old.building_entity_id as i64);
-                                    changed_buildings.insert(new.building_entity_id as i64);
-                                    changed_players.insert(old.owner_entity_id as i64);
-                                    changed_players.insert(new.owner_entity_id as i64);
-                                    progress_updates.remove(&(new.entity_id as i64));
-                                }
-                                let model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
-                                pending.upsert(model);
-                                if pending.upserts.len() >= batch_size { break; }
-                            }
-                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                changed_buildings.insert(new.building_entity_id as i64);
-                                changed_players.insert(new.owner_entity_id as i64);
-                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
-                                pending.upsert(model);
-                                if pending.upserts.len() >= batch_size {
-                                    break;
-                                }
-                            }
-                            SpacetimeUpdateMessages::Remove { delete, .. } => {
-                                changed_buildings.insert(delete.building_entity_id as i64);
-                                changed_players.insert(delete.owner_entity_id as i64);
-                                progress_updates.remove(&(delete.entity_id as i64));
-                                pending.delete(delete.entity_id as i64);
-                                if pending.deletes.len() >= batch_size {
-                                    break;
-                                }
-                            }
+            let count = tokio::select! {
+                biased;
+                _ = timer.elapsed() => {
+                    pending.flush_and_notify(&global_app_state, &on_conflict).await;
+                    timer = BatchTimer::new(time_limit);
+                    continue;
+                }
+                count = rx.recv_many(&mut ready, RECEIVE_LIMIT) => count,
+            };
+            if count == 0 {
+                pending
+                    .flush_and_notify(&global_app_state, &on_conflict)
+                    .await;
+                break;
+            }
+            receive_metrics.record(count);
+            for (index, msg) in ready.drain(..).enumerate() {
+                timer.start();
+                match msg {
+                    SpacetimeUpdateMessages::Initial {
+                        data,
+                        database_name,
+                        ..
+                    } => {
+                        pending
+                            .reconcile_snapshot(
+                                &global_app_state,
+                                &on_conflict,
+                                data,
+                                database_name,
+                                batch_size,
+                            )
+                            .await;
+                        pending.clear_notifications();
+                        crate::crafting::notifications::all(&global_app_state);
+                    }
+                    SpacetimeUpdateMessages::Update {
+                        old,
+                        new,
+                        database_name,
+                        ..
+                    } => {
+                        if progress_only(&old, &new) {
+                            pending
+                                .progress_updates
+                                .insert(new.entity_id as i64, new.clone());
+                        } else {
+                            pending
+                                .changed_buildings
+                                .insert(old.building_entity_id as i64);
+                            pending
+                                .changed_buildings
+                                .insert(new.building_entity_id as i64);
+                            pending.changed_players.insert(old.owner_entity_id as i64);
+                            pending.changed_players.insert(new.owner_entity_id as i64);
+                            pending.progress_updates.remove(&(new.entity_id as i64));
                         }
+                        let model = ::entity::progressive_action_state::ModelBuilder::new(new)
+                            .with_region(database_name)
+                            .build();
+                        pending.upsert(model);
                     }
-                    _ = timer.elapsed() => {
-                        // Time limit reached
-                        break;
+                    SpacetimeUpdateMessages::Insert {
+                        new, database_name, ..
+                    } => {
+                        pending
+                            .changed_buildings
+                            .insert(new.building_entity_id as i64);
+                        pending.changed_players.insert(new.owner_entity_id as i64);
+                        let model = ::entity::progressive_action_state::ModelBuilder::new(new)
+                            .with_region(database_name)
+                            .build();
+                        pending.upsert(model);
                     }
-                    else => {
-                        // Channel closed and no more messages
-                        break;
+                    SpacetimeUpdateMessages::Remove { delete, .. } => {
+                        pending
+                            .changed_buildings
+                            .insert(delete.building_entity_id as i64);
+                        pending
+                            .changed_players
+                            .insert(delete.owner_entity_id as i64);
+                        pending.progress_updates.remove(&(delete.entity_id as i64));
+                        pending.delete(delete.entity_id as i64);
                     }
                 }
-            }
-
-            if pending.flush(&global_app_state, &on_conflict).await {
-                crate::crafting::notifications::progress(&global_app_state, &mut progress_updates).await;
-                crate::crafting::notifications::players(&global_app_state, &mut changed_players);
-                crate::crafting::notifications::buildings(&global_app_state, &mut changed_buildings).await;
-            } else { changed_buildings.clear(); changed_players.clear(); progress_updates.clear(); }
-
-            // If the channel is closed and we processed the last batch, exit the outer loop
-            if pending.upserts.is_empty() && pending.deletes.is_empty() && rx.is_closed() && rx.is_empty()
-            {
-                break;
+                // A receive can span several DB flush windows. Finish each one
+                // before processing the next FIFO message, even during shutdown.
+                // The outer select checks the deadline after the last message.
+                if pending.upserts.len() >= batch_size
+                    || pending.deletes.len() >= batch_size
+                    || (index + 1 < count && timer.is_due())
+                {
+                    pending
+                        .flush_and_notify(&global_app_state, &on_conflict)
+                        .await;
+                    timer = BatchTimer::new(time_limit);
+                }
             }
         }
     });
@@ -126,9 +152,28 @@ struct PendingActions {
     deletes: HashSet<i64>,
     rows: Vec<::entity::progressive_action_state::ActiveModel>,
     delete_ids: Vec<i64>,
+    changed_buildings: HashSet<i64>,
+    changed_players: HashSet<i64>,
+    progress_updates: HashMap<i64, ProgressiveActionState>,
 }
 
 impl PendingActions {
+    fn clear_notifications(&mut self) {
+        self.changed_buildings.clear();
+        self.changed_players.clear();
+        self.progress_updates.clear();
+    }
+
+    async fn flush_and_notify(&mut self, state: &AppState, conflict: &sea_query::OnConflict) {
+        if self.flush(state, conflict).await {
+            crate::crafting::notifications::progress(state, &mut self.progress_updates).await;
+            crate::crafting::notifications::players(state, &mut self.changed_players);
+            crate::crafting::notifications::buildings(state, &mut self.changed_buildings).await;
+        } else {
+            self.clear_notifications();
+        }
+    }
+
     fn upsert(&mut self, model: ::entity::progressive_action_state::Model) {
         self.deletes.remove(&model.entity_id);
         self.upserts.insert(model.entity_id, model);
@@ -374,6 +419,52 @@ mod tests {
         assert_eq!(log.len(), 2);
         assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
         assert!(format!("{:?}", log[1]).contains("DELETE FROM"));
+    }
+
+    #[tokio::test]
+    async fn ready_messages_cross_flush_boundaries_in_order_during_drain() {
+        // All three are ready at once, but either the size cap or the deadline
+        // requires separate writes. Coalescing across either would lose the delete.
+        for (batch_size, delay) in [(1, Duration::from_secs(60)), (100, Duration::ZERO)] {
+            let db = MockDatabase::new(DbBackend::Postgres)
+                .append_query_results([vec![model(1, 10, 7)], vec![model(1, 20, 7)]])
+                .append_exec_results([MockExecResult {
+                    last_insert_id: 0,
+                    rows_affected: 1,
+                }])
+                .into_connection();
+            let state = state(db.clone());
+            let (tx, rx) = crate::websocket::worker_channel::shutdown_channel(&state.shutdown);
+            for msg in [
+                SpacetimeUpdateMessages::Insert {
+                    new: wire(1, 10),
+                    database_name: 7,
+                    event: None,
+                },
+                SpacetimeUpdateMessages::Remove {
+                    delete: wire(1, 10),
+                    database_name: 7,
+                    event: None,
+                },
+                SpacetimeUpdateMessages::Insert {
+                    new: wire(1, 20),
+                    database_name: 7,
+                    event: None,
+                },
+            ] {
+                tx.send(msg).unwrap();
+            }
+            start_worker_progressive_action_state(state.clone(), rx, batch_size, delay);
+            tokio::time::timeout(Duration::from_secs(1), state.shutdown.drain())
+                .await
+                .unwrap();
+            let log = db.into_transaction_log();
+            let operations: Vec<_> = log
+                .iter()
+                .map(|tx| tx.statements()[0].sql.split_whitespace().next().unwrap())
+                .collect();
+            assert_eq!(operations, ["INSERT", "DELETE", "INSERT"]);
+        }
     }
 
     #[tokio::test]
