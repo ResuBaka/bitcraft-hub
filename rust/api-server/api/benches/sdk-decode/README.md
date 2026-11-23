@@ -8,9 +8,8 @@ gzip messages into an 8 KiB stack buffer. On verified EOF it uses the SDK's
 regular slice BSATN decoder. If the output fills the buffer, the SDK streams
 the prefix plus the remainder through its existing decoder: no second inflate,
 size limit or unbounded decompressed staging vector. Other compression tags
-take their existing paths. The patch needs no dependency update or connection
-state, and is in the local SDK fork; the application's Git dependency is
-still pinned to the baseline.
+take their existing paths. The API now uses the patch via SDK commit
+[`bdf9794b9`](https://github.com/ResuBaka/SpacetimeDB/commit/bdf9794b9429a58014bb73ae6db4e439d64d3e55).
 
 ## Same-wire comparisons
 
@@ -69,7 +68,8 @@ python3 measure.py target/release/sdk-decode "$WIRE" 11 > samples.jsonl
 python3 measure.py target/release/sdk-decode "$WIRE" 11 --stateless > stateless.jsonl
 ```
 
-The standalone lock uses the same SDK pin and flate2/zlib-rs backend as the
-API. `none` constructs tag-0 frames from the identical plaintext before
+The standalone benchmark lock keeps the pre-optimization SDK (`d83d75e8`)
+as its control and uses the API's flate2/zlib-rs backend. `none` constructs
+tag-0 frames from the identical plaintext before
 warmup. In that arm “gzip transactions” denotes the same selected messages
 that were compressed in the source, not gzip input to the timed decoder.

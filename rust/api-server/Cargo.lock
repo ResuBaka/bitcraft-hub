@@ -4722,7 +4722,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-bindings-macro"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "heck 0.4.1",
  "humantime",
@@ -4734,7 +4734,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-client-api-messages"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "bytes",
  "bytestring",
@@ -4753,7 +4753,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-data-structures"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "ahash 0.8.12",
  "crossbeam-queue",
@@ -4767,7 +4767,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-lib"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "anyhow",
  "blake3",
@@ -4783,7 +4783,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-metrics"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "arrayvec",
  "itertools 0.12.1",
@@ -4794,7 +4794,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-primitives"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "bitflags",
  "either",
@@ -4806,7 +4806,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-query-builder"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "spacetimedb-lib",
 ]
@@ -4814,7 +4814,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sats"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -4845,7 +4845,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sdk"
 version = "2.10.1"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#d83d75e88d363d31e9fd20f5f41203cbca1f280b"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#bdf9794b9429a58014bb73ae6db4e439d64d3e55"
 dependencies = [
  "brotli 9.1.1",
  "bytes",
