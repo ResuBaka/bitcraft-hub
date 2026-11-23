@@ -5,7 +5,7 @@ use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::ProgressiveActionState;
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
+use sea_orm::{ColumnTrait, EntityTrait, sea_query};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
@@ -132,11 +132,15 @@ pub(crate) fn start_worker_progressive_action_state(
     });
 }
 
+// Lowest coalesced upsert count in the measured large-flush capture;
+// no latency win for 1–2 rows. See benches/live-progressive-writes.
+const LIVE_UNNEST_MIN_ROWS: usize = 144;
+
 #[derive(Default)]
 struct PendingActions {
     upserts: HashMap<i64, ::entity::progressive_action_state::Model>,
     deletes: HashSet<i64>,
-    rows: Vec<::entity::progressive_action_state::ActiveModel>,
+    rows: Vec<::entity::progressive_action_state::Model>,
     delete_ids: Vec<i64>,
     changed_buildings: HashSet<i64>,
     changed_players: HashSet<i64>,
@@ -171,15 +175,25 @@ impl PendingActions {
     }
 
     async fn flush(&mut self, state: &AppState, conflict: &sea_query::OnConflict) -> bool {
+        let writer = if self.upserts.len() >= LIVE_UNNEST_MIN_ROWS {
+            Writer::Fixed(snapshot_write::progressive_actions)
+        } else {
+            Writer::Orm(conflict)
+        };
+        self.flush_with_writer(state, writer).await
+    }
+
+    async fn flush_with_writer(
+        &mut self,
+        state: &AppState,
+        writer: Writer<'_, ::entity::progressive_action_state::Entity>,
+    ) -> bool {
         let mut success = true;
-        self.rows.extend(
-            self.upserts
-                .drain()
-                .map(|(_, model)| model.into_active_model()),
-        );
-        if !self.rows.is_empty() {
-            success =
-                insert_multiple_progressive_action_state(state, conflict, &mut self.rows).await;
+        self.rows
+            .extend(self.upserts.drain().map(|(_, model)| model));
+        if let Err(error) = writer.write(&state.conn, &mut self.rows).await {
+            tracing::error!(%error, "Error inserting ProgressiveActionState");
+            success = false;
         }
         self.delete_ids.extend(self.deletes.drain());
         for ids in self.delete_ids.chunks(1000) {
@@ -264,25 +278,6 @@ fn live_upsert_conflict() -> sea_query::OnConflict {
             Region,
         ])
         .to_owned()
-}
-
-async fn insert_multiple_progressive_action_state(
-    global_app_state: &AppState,
-    on_conflict: &sea_query::OnConflict,
-    messages: &mut Vec<::entity::progressive_action_state::ActiveModel>,
-) -> bool {
-    let insert = ::entity::progressive_action_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
-
-    let success = insert.is_ok();
-    if let Err(err) = insert {
-        tracing::error!("Error inserting ProgressiveActionState: {}", err)
-    }
-
-    messages.clear();
-    success
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -387,6 +382,71 @@ mod tests {
         assert!(pending.deletes.is_empty());
         assert_eq!(pending.upserts[&1], model(1, 200, 9));
         assert_eq!(pending.upserts[&2], model(2, 2, 7));
+    }
+
+    #[tokio::test]
+    async fn live_sql_shape_depends_on_distinct_upserts_only() {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![model(1, 20, 7)]])
+            .append_exec_results([MockExecResult::default(), MockExecResult::default()])
+            .into_connection();
+        let state = state(db.clone());
+        let mut pending = PendingActions::default();
+        let limit = LIVE_UNNEST_MIN_ROWS as u64;
+        for count in [limit - 1, limit] {
+            for id in 1..=count {
+                pending.upsert(model(id, 10, 7));
+                pending.upsert(model(id, 20, 7));
+            }
+            if count < limit {
+                pending.delete(0);
+            }
+            assert!(pending.flush(&state, &live_upsert_conflict()).await);
+        }
+        let log = db.into_transaction_log();
+        assert_eq!(
+            log.len(),
+            3,
+            "one atomic upsert per batch and a separate delete"
+        );
+        assert!(log[0].statements()[0].sql.contains("VALUES"));
+        assert!(log[1].statements()[0].sql.starts_with("DELETE"));
+        let large = &log[2].statements()[0];
+        assert!(large.sql.contains("FROM unnest("));
+        assert_eq!(large.values.as_ref().unwrap().0.len(), 11);
+    }
+
+    #[tokio::test]
+    async fn failed_large_upsert_attempts_deletes_and_suppresses_notifications() {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_errors([DbErr::Custom("upsert failed".into())])
+            .append_exec_results([MockExecResult::default()])
+            .into_connection();
+        let (out, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db.clone(), out, Default::default());
+        let _client = state
+            .subscribe_test_client(&[("player_crafting", Some(6))])
+            .await;
+        let mut pending = PendingActions::default();
+        for id in 1..=LIVE_UNNEST_MIN_ROWS as u64 {
+            pending.upsert(model(id, 10, 7));
+        }
+        pending.delete(0);
+        pending.changed_players.insert(6);
+        pending
+            .flush_and_notify(&state, &live_upsert_conflict())
+            .await;
+        assert!(pending.changed_players.is_empty());
+        assert!(notifications.try_recv().is_err());
+        assert!(pending.flush(&state, &live_upsert_conflict()).await);
+        let log = db.into_transaction_log();
+        assert_eq!(
+            log.len(),
+            2,
+            "failed upserts are not retried on the next flush"
+        );
+        assert!(log[0].statements()[0].sql.contains("FROM unnest("));
+        assert!(log[1].statements()[0].sql.starts_with("DELETE"));
     }
 
     #[tokio::test]

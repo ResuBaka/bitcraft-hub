@@ -82,7 +82,6 @@ async fn compare_progressive_writers() {
             "seed": capture.seed.len(), "inserts": inserts, "conflicts": updates, "sizes": sizes
         })
     );
-    let fixed_writer = Writer::<Entity>::Fixed(snapshot_write::progressive_actions);
     let hasher = std::hash::RandomState::new();
     for block in 0..=12 {
         for fixed in [block % 2 != 0, block % 2 == 0] {
@@ -101,7 +100,6 @@ async fn compare_progressive_writers() {
                 upserts: HashMap::with_hasher(hasher.clone()),
                 ..Default::default()
             };
-            let mut models = Vec::new();
             let mut times = Vec::new();
             let mut cpu = 0;
             for step in &capture.steps {
@@ -113,12 +111,12 @@ async fn compare_progressive_writers() {
                         assert_eq!(pending.upserts.len(), batch.len());
                         let cpu_start = client_cpu_ns();
                         let start = Instant::now();
-                        if fixed {
-                            models.extend(pending.upserts.drain().map(|(_, m)| m));
-                            fixed_writer.write(&db, &mut models).await.unwrap();
+                        let writer = if fixed {
+                            Writer::Fixed(snapshot_write::progressive_actions)
                         } else {
-                            assert!(pending.flush(&state, &conflict).await);
-                        }
+                            Writer::Orm(&conflict)
+                        };
+                        assert!(pending.flush_with_writer(&state, writer).await);
                         let ns = start.elapsed().as_nanos() as u64;
                         cpu += client_cpu_ns() - cpu_start;
                         times.push(ns);

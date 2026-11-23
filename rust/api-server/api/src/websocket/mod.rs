@@ -223,6 +223,26 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
     // std::process::exit(1);
 }
 
+// The standard envelope uses one row type throughout. Inventory projects its
+// unused old slot to None; all other tables retain the complete old/new pair.
+pub(crate) trait ListenerRow<R>: Sized {
+    fn old(row: &R) -> Self;
+    fn live(row: &R) -> Self;
+    fn snapshot(rows: Vec<R>) -> Vec<Self>;
+}
+
+impl<R: Clone> ListenerRow<R> for R {
+    fn old(row: &R) -> Self {
+        row.clone()
+    }
+    fn live(row: &R) -> Self {
+        row.clone()
+    }
+    fn snapshot(rows: Vec<R>) -> Vec<Self> {
+        rows
+    }
+}
+
 macro_rules! setup_spacetime_db_listeners {
     ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr $(, $initial_batch_rows:expr)?) => {
         let table_name_str = stringify!($db_table_method);
@@ -241,8 +261,8 @@ macro_rules! setup_spacetime_db_listeners {
                     SpacetimeUpdateMessages::Update {
                         event: None,
                         database_name: $database_region,
-                        old: old.clone(),
-                        new: new.clone(),
+                        old: ListenerRow::old(old),
+                        new: ListenerRow::live(new),
                     },
                 );
             },
@@ -265,7 +285,7 @@ macro_rules! setup_spacetime_db_listeners {
                     SpacetimeUpdateMessages::Insert {
                         event: None,
                         database_name: $database_region,
-                        new: new.clone(),
+                        new: ListenerRow::live(new),
                     },
                 );
             },
@@ -288,7 +308,7 @@ macro_rules! setup_spacetime_db_listeners {
                 initial_batches::send_initial(
                     $worker_name,
                     &temp_tx,
-                    new,
+                    ListenerRow::snapshot(new),
                     $database_region,
                     initial_batch_rows,
                 );
@@ -308,7 +328,7 @@ macro_rules! setup_spacetime_db_listeners {
                     SpacetimeUpdateMessages::Remove {
                         event: None,
                         database_name: $database_region,
-                        delete: new.clone(),
+                        delete: ListenerRow::live(new),
                     },
                 );
             },
@@ -374,7 +394,7 @@ async fn connect_to_db_logic(
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
     experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
-    inventory_state_tx: &UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
+    inventory_state_tx: &UnboundedSender<inventory_bitcraft::InventoryMessage>,
     item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
     cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
     vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,

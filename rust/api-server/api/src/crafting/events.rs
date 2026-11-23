@@ -17,11 +17,21 @@ use spacetimedb_sdk::{Event, EventTable, Table, TableWithPrimaryKey};
 use crate::AppState;
 use crate::websocket::worker_channel::{self, UnboundedSender};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Project {
     building: u64,
     recipe: i32,
     count: i32,
+}
+
+impl From<&ProgressiveActionState> for Project {
+    fn from(row: &ProgressiveActionState) -> Self {
+        Self {
+            building: row.building_entity_id,
+            recipe: row.recipe_id,
+            count: row.craft_count,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -32,14 +42,26 @@ struct Context {
 
 impl Context {
     fn project(&self, value: &ProgressiveActionState) {
-        self.projects.insert(
-            value.entity_id,
-            Project {
-                building: value.building_entity_id,
-                recipe: value.recipe_id,
-                count: value.craft_count,
-            },
-        );
+        self.projects.insert(value.entity_id, Project::from(value));
+    }
+
+    fn reset_projects(&self, rows: &[ProgressiveActionState]) {
+        self.projects.clear();
+        for row in rows {
+            self.project(row);
+        }
+    }
+
+    fn update_project(&self, old: &ProgressiveActionState, new: &ProgressiveActionState) {
+        // This connection's full snapshot and inserts seed the map before updates.
+        // SDK callbacks are ordered, so unchanged projections need no map access.
+        let project = Project::from(new);
+        if old.entity_id != new.entity_id {
+            self.projects.remove(&old.entity_id);
+        } else if Project::from(old) == project {
+            return;
+        }
+        self.projects.insert(new.entity_id, project);
     }
 
     fn building(&self, value: &BuildingState) {
@@ -120,12 +142,7 @@ pub(crate) fn register_listeners(
     let cache = context.clone();
     ctx.db.on_initial_owned::<ProgressiveActionState>(
         "progressive_action_state",
-        move |_, rows| {
-            cache.projects.clear();
-            for row in &rows {
-                cache.project(row);
-            }
-        },
+        move |_, rows| cache.reset_projects(&rows),
     );
     let cache = context.clone();
     ctx.db
@@ -134,7 +151,7 @@ pub(crate) fn register_listeners(
     let cache = context.clone();
     ctx.db
         .progressive_action_state()
-        .on_update(move |_, _, row| cache.project(row));
+        .on_update(move |_, old, new| cache.update_project(old, new));
     let cache = context.clone();
     ctx.db.progressive_action_state().on_delete(move |_, row| {
         cache.projects.remove(&row.entity_id);
@@ -208,6 +225,61 @@ pub(crate) fn start_worker(state: AppState, flush_delay: Duration) -> UnboundedS
 mod tests {
     use super::*;
     use sea_orm::{DbBackend, MockDatabase};
+
+    #[test]
+    fn project_updates_keep_hit_context_in_sync() {
+        let ctx = Context::default();
+        ctx.buildings.insert(2, 5);
+        ctx.buildings.insert(20, 50);
+        let mut row = ProgressiveActionState {
+            entity_id: 1,
+            building_entity_id: 2,
+            function_type: 0,
+            progress: 0,
+            recipe_id: 3,
+            craft_count: 4,
+            last_crit_outcome: 0,
+            owner_entity_id: 0,
+            lock_expiration: spacetimedb_sdk::Timestamp::from_micros_since_unix_epoch(0),
+            preparation: false,
+        };
+        let check = |target, expected: Option<(i64, i64, i32, i32)>| {
+            let event = CraftEvent {
+                actor_entity_id: 6,
+                target_entity_id: target,
+                progress: 7,
+                is_crit: true,
+            };
+            let hit = hit(&event, 8, Utc::now(), &ctx);
+            assert_eq!(hit.building_entity_id, Set(expected.map(|p| p.0)));
+            assert_eq!(hit.claim_entity_id, Set(expected.map(|p| p.1)));
+            assert_eq!(hit.recipe_id, Set(expected.map(|p| p.2)));
+            assert_eq!(hit.craft_count, Set(expected.map(|p| p.3)));
+        };
+        ctx.reset_projects(std::slice::from_ref(&row));
+        let mut change = |mutate: fn(&mut ProgressiveActionState)| {
+            let old = row.clone();
+            mutate(&mut row);
+            ctx.update_project(&old, &row);
+        };
+        change(|r| r.progress += 1);
+        check(1, Some((2, 5, 3, 4)));
+        change(|r| r.building_entity_id = 20);
+        check(1, Some((20, 50, 3, 4)));
+        change(|r| r.recipe_id = 30);
+        check(1, Some((20, 50, 30, 4)));
+        change(|r| r.craft_count = 40);
+        check(1, Some((20, 50, 30, 40)));
+        change(|r| r.entity_id = 10);
+        check(1, None);
+        check(10, Some((20, 50, 30, 40)));
+        ctx.reset_projects(&[]);
+        check(10, None);
+        ctx.project(&row);
+        check(10, Some((20, 50, 30, 40)));
+        ctx.projects.remove(&row.entity_id);
+        check(10, None);
+    }
 
     fn context() -> Context {
         let context = Context::default();
@@ -305,3 +377,7 @@ mod tests {
         assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
     }
 }
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/craft-project/replay.rs"]
+mod replay;

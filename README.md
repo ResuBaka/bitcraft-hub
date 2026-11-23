@@ -116,7 +116,9 @@ payload over **1 MiB**. Configure the byte budget with
 `BITCRAFT_HUB_API__DATABASE__INVENTORY_SNAPSHOT_WRITE_BYTES` (positive integer).
 A single oversized inventory is written alone and counted in
 `inventory_snapshot_oversize_rows_total`. This is a per-statement budget, not
-a limit on snapshot read buffers or live-update queues.
+a limit on snapshot read buffers or live-update queues. Live inventory upserts
+use the same `UNNEST` statement and byte budget. If a live flush needs multiple
+statements, they commit together or all roll back.
 
 #### Upstream WebSocket TLS
 

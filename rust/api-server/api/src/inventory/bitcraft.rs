@@ -11,13 +11,29 @@ use futures::TryStreamExt;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QuerySelect};
+use sea_orm::{ColumnTrait, EntityTrait, QuerySelect};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, channel};
 
+pub(crate) type InventoryMessage = SpacetimeUpdateMessages<Option<InventoryState>>;
+
+impl crate::websocket::ListenerRow<InventoryState> for Option<InventoryState> {
+    fn old(_: &InventoryState) -> Self {
+        None
+    }
+    fn live(row: &InventoryState) -> Self {
+        Some(row.clone())
+    }
+    fn snapshot(rows: Vec<InventoryState>) -> Vec<Self> {
+        // Option uses a niche in the row. The in-place Vec collection keeps
+        // the snapshot allocation and moves each pocket vector, never cloning it.
+        rows.into_iter().map(Some).collect()
+    }
+}
+
 enum InventoryDbOperation {
-    Upsert(Vec<::entity::inventory::ActiveModel>),
+    Upsert(Vec<::entity::inventory::Model>),
     UpsertChangelog(Vec<::entity::inventory_changelog::ActiveModel>),
     Delete(Vec<i64>),
     DeleteForRegion {
@@ -26,15 +42,19 @@ enum InventoryDbOperation {
     },
 }
 
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/inventory-new-row/replay.rs"]
+mod delivery_replay;
+
 pub(crate) struct InventoryStateWorker {
-    rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
-    tx: UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
+    rx: UnboundedReceiver<InventoryMessage>,
+    tx: UnboundedSender<InventoryMessage>,
     global_app_state: AppState,
     batch_size: usize,
     snapshot_write_bytes: std::num::NonZeroUsize,
     time_limit: Duration,
     db_tx: Sender<InventoryDbOperation>,
-    messages: Vec<::entity::inventory::ActiveModel>,
+    messages: Vec<::entity::inventory::Model>,
     message_positions: HashMap<i64, usize>,
     messages_changed: Vec<::entity::inventory_changelog::ActiveModel>,
     messages_delete: Vec<i64>,
@@ -49,7 +69,7 @@ impl InventoryStateWorker {
         time_limit: Duration,
         snapshot_write_bytes: std::num::NonZeroUsize,
     ) -> Self {
-        let db_tx = start_inventory_state_db_worker(global_app_state.clone());
+        let db_tx = start_inventory_state_db_worker(global_app_state.clone(), snapshot_write_bytes);
         let (tx, rx) =
             crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
         Self {
@@ -69,7 +89,7 @@ impl InventoryStateWorker {
         }
     }
 
-    async fn queue_upserts(&self, messages: Vec<::entity::inventory::ActiveModel>) {
+    async fn queue_upserts(&self, messages: Vec<::entity::inventory::Model>) {
         if messages.is_empty() {
             return;
         }
@@ -136,7 +156,7 @@ impl InventoryStateWorker {
         }
     }
 
-    async fn process_message(&mut self, msg: SpacetimeUpdateMessages<InventoryState>) {
+    async fn process_message(&mut self, msg: InventoryMessage) {
         match msg {
             SpacetimeUpdateMessages::Initial {
                 data,
@@ -148,31 +168,30 @@ impl InventoryStateWorker {
             SpacetimeUpdateMessages::Insert {
                 new, database_name, ..
             } => {
-                self.handle_insert(new, database_name).await;
+                self.handle_insert(new.expect("inventory insert row"), database_name).await;
             }
             SpacetimeUpdateMessages::Update {
                 new,
-                old,
                 database_name,
                 ..
             } => {
-                self.handle_update(new, old, database_name).await;
+                self.handle_update(new.expect("inventory update row"), database_name).await;
             }
             SpacetimeUpdateMessages::Remove {
                 delete,
                 database_name,
                 ..
             } => {
-                self.handle_remove(delete, database_name).await;
+                self.handle_remove(delete.expect("inventory remove row"), database_name).await;
             }
         }
     }
 
-    async fn handle_initial(
+    async fn handle_initial<R: Send + Into<Option<InventoryState>>>(
         &mut self,
-        data: Vec<InventoryState>,
+        data: Vec<R>,
         database_name: entity::shared::Region,
-        batches: Option<crate::websocket::initial_batches::InitialBatches<InventoryState>>,
+        batches: Option<crate::websocket::initial_batches::InitialBatches<R>>,
     ) {
         tracing::debug!("Count of inventory amount to work on {}", data.len());
         // Keep only IDs for stale-row detection, not another region-wide copy of
@@ -204,7 +223,8 @@ impl InventoryStateWorker {
             }
         };
 
-        let incoming = crate::websocket::initial_batches::rows(data, batches);
+        let incoming = crate::websocket::initial_batches::rows(data, batches)
+            .map_ok(|r| r.into().expect("inventory initial row"));
         futures::pin_mut!(incoming);
         // Snapshot-local scratch space grows with the batch, not snapshot length.
         let batch_size = self.batch_size.max(1);
@@ -333,7 +353,6 @@ impl InventoryStateWorker {
     async fn handle_update(
         &mut self,
         new: InventoryState,
-        _old: InventoryState,
         database_name: entity::shared::Region,
     ) {
         // let caller_identity = None;
@@ -495,10 +514,10 @@ impl InventoryStateWorker {
             }
         }
         if let Some(&index) = self.message_positions.get(&id) {
-            self.messages[index] = model.into_active_model();
+            self.messages[index] = model;
         } else {
             self.message_positions.insert(id, self.messages.len());
-            self.messages.push(model.into_active_model());
+            self.messages.push(model);
         }
     }
 
@@ -506,8 +525,7 @@ impl InventoryStateWorker {
         if let Some(index) = self.message_positions.remove(&id) {
             self.messages.swap_remove(index);
             if let Some(moved) = self.messages.get(index) {
-                self.message_positions
-                    .insert(*moved.entity_id.as_ref(), index);
+                self.message_positions.insert(moved.entity_id, index);
             }
         }
         if !self.delete_positions.contains_key(&id) {
@@ -548,7 +566,7 @@ impl InventoryStateWorker {
 }
 
 impl BatchedWorker for InventoryStateWorker {
-    type Entity = InventoryState;
+    type Entity = Option<InventoryState>;
 
     fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<Self::Entity>> {
         &mut self.rx
@@ -630,18 +648,11 @@ fn compare_initial_batch(
     existing.clear();
 }
 
-fn start_inventory_state_db_worker(global_app_state: AppState) -> Sender<InventoryDbOperation> {
+fn start_inventory_state_db_worker(
+    global_app_state: AppState,
+    write_bytes: std::num::NonZeroUsize,
+) -> Sender<InventoryDbOperation> {
     let (tx, mut rx) = channel(5);
-    let on_conflict = sea_query::OnConflict::column(::entity::inventory::Column::EntityId)
-        .update_columns([
-            ::entity::inventory::Column::Pockets,
-            ::entity::inventory::Column::InventoryIndex,
-            ::entity::inventory::Column::CargoIndex,
-            ::entity::inventory::Column::OwnerEntityId,
-            ::entity::inventory::Column::PlayerOwnerEntityId,
-            ::entity::inventory::Column::Region,
-        ])
-        .to_owned();
     let on_conflict_changelog = sea_query::OnConflict::columns([
         ::entity::inventory_changelog::Column::Id,
         ::entity::inventory_changelog::Column::Timestamp,
@@ -665,8 +676,15 @@ fn start_inventory_state_db_worker(global_app_state: AppState) -> Sender<Invento
         while let Some(operation) = rx.recv().await {
             match operation {
                 InventoryDbOperation::Upsert(messages) => {
-                    let mut messages = messages;
-                    insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
+                    if let Err(error) = super::snapshot_write::write_live(
+                        &global_app_state.conn,
+                        messages,
+                        write_bytes,
+                    )
+                    .await
+                    {
+                        tracing::error!(%error, "Could not write live inventory flush");
+                    }
                 }
                 InventoryDbOperation::UpsertChangelog(messages) => {
                     let mut messages = messages;
@@ -728,25 +746,6 @@ async fn delete_multiple_inventory_for_region(
                 "Could not delete Inventory"
             );
         }
-    }
-}
-
-async fn insert_multiple_inventory(
-    global_app_state: &AppState,
-    on_conflict: &OnConflict,
-    messages: &mut Vec<::entity::inventory::ActiveModel>,
-) {
-    if messages.is_empty() {
-        return;
-    }
-
-    let insert = ::entity::inventory::Entity::insert_many(std::mem::take(messages))
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
-
-    if let Err(e) = insert {
-        tracing::error!("Error inserting InventoryState chunk: {}", e);
     }
 }
 
@@ -879,6 +878,66 @@ mod initial_reconciliation_tests {
         let (db_tx, db_rx) = channel(5);
         worker.db_tx = db_tx;
         (worker, db_rx)
+    }
+
+    #[tokio::test]
+    async fn projected_snapshots_retain_owned_rows_and_finish_before_live_delivery() {
+        use crate::websocket::{ListenerRow, initial_batches};
+        for batch_rows in [0, 2] {
+            let db = MockDatabase::new(DbBackend::Postgres)
+                .append_query_results([vec![key_row(9)]])
+                .append_exec_results([MockExecResult::default()])
+                .into_connection();
+            let (worker, mut writes) = snapshot_worker(db.clone(), 10);
+            let input: Vec<_> = (1..=3).map(raw_inventory).collect();
+            let outer = input.as_ptr().cast::<()>();
+            let pockets = input.iter().map(|r| r.pockets.as_ptr()).collect::<Vec<_>>();
+            let snapshot: Vec<Option<InventoryState>> = ListenerRow::snapshot(input);
+            assert_eq!(snapshot.as_ptr().cast::<()>(), outer);
+            assert!(snapshot.iter().zip(pockets).all(|(r, ptr)| {
+                r.as_ref().unwrap().pockets.as_ptr() == ptr
+            }));
+            let sender = worker.tx();
+            initial_batches::send_initial("inventory_state", &sender, snapshot, 14, batch_rows);
+            let old = raw_inventory(1);
+            let mut updated = old.clone();
+            updated.pockets[0].volume = 73;
+            let old_slot = Option::old(&old);
+            assert!(old_slot.is_none());
+            sender
+                .send(InventoryMessage::Update {
+                    old: old_slot,
+                    new: ListenerRow::live(&updated),
+                    event: None,
+                    database_name: 14,
+                })
+                .unwrap();
+            let shutdown = worker.global_app_state.shutdown.clone();
+            worker.start(&shutdown);
+            tokio::time::timeout(Duration::from_secs(3), shutdown.drain())
+                .await
+                .unwrap();
+            assert!(sender
+                .send(InventoryMessage::Remove {
+                    delete: ListenerRow::live(&updated),
+                    event: None,
+                    database_name: 14,
+                })
+                .is_err());
+            assert!(matches!(
+                writes.try_recv().unwrap(),
+                InventoryDbOperation::DeleteForRegion { ids, region } if ids == [9] && region == 14
+            ));
+            let InventoryDbOperation::Upsert(rows) = writes.try_recv().unwrap() else {
+                panic!("expected live flush");
+            };
+            assert_eq!(
+                rows,
+                [::entity::inventory::ModelBuilder::new(updated).with_region(14).build()]
+            );
+            assert!(writes.try_recv().is_err());
+            assert_eq!(db.into_transaction_log().len(), 2, "snapshot read then batch insert");
+        }
     }
 
     #[tokio::test]
@@ -1066,7 +1125,7 @@ mod initial_reconciliation_tests {
         // Capture queue operations rather than executing database writes.
         let (db_tx, mut db_rx) = channel(5);
         worker.db_tx = db_tx;
-        let model = inventory(1).into_active_model();
+        let model = inventory(1);
         worker.pending_upsert(inventory(1));
         let allocation = worker.messages.as_ptr();
         worker.flush_messages().await;
@@ -1107,7 +1166,7 @@ mod initial_reconciliation_tests {
         let InventoryDbOperation::Upsert(rows) = db_rx.recv().await.unwrap() else {
             panic!("expected next upsert")
         };
-        assert_eq!(rows, [inventory(3).into_active_model()]);
+        assert_eq!(rows, [inventory(3)]);
         worker.flush_messages().await;
         worker.flush_changes().await;
         worker.flush_deletes().await;
@@ -1129,12 +1188,12 @@ mod initial_reconciliation_tests {
                 model.region = (round % 3) as i16;
                 model.inventory_index = round as i32;
                 worker.pending_upsert(model.clone());
-                expected.insert(id, Some(model.into_active_model()));
+                expected.insert(id, Some(model));
             }
             assert_eq!(worker.message_positions.len(), worker.messages.len());
             assert_eq!(worker.delete_positions.len(), worker.messages_delete.len());
             for (index, row) in worker.messages.iter().enumerate() {
-                let id = *row.entity_id.as_ref();
+                let id = row.entity_id;
                 assert_eq!(worker.message_positions.get(&id), Some(&index));
                 assert_eq!(expected[&id].as_ref(), Some(row));
                 assert!(!worker.delete_positions.contains_key(&id));
@@ -1163,7 +1222,7 @@ mod initial_reconciliation_tests {
         worker.db_tx = db_tx;
 
         worker.handle_insert(raw_inventory(1), 1).await;
-        worker.handle_update(raw_inventory(2), raw_inventory(2), 1).await;
+        worker.handle_update(raw_inventory(2), 1).await;
         worker.handle_remove(raw_inventory(3), 1).await;
         assert!(notifications.try_recv().is_err());
         worker.flush().await;
@@ -1173,7 +1232,7 @@ mod initial_reconciliation_tests {
         let _subscriber = state.subscribe_test_client(&[("inventory_insert_owner", Some(10))]).await;
         worker.handle_insert(raw_inventory(4), 1).await;
         assert!(matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::InventoryInsert { resolved_inventory, .. } if resolved_inventory.entity_id == 4));
-        worker.handle_update(raw_inventory(4), raw_inventory(4), 1).await;
+        worker.handle_update(raw_inventory(4), 1).await;
         worker.handle_remove(raw_inventory(4), 1).await;
         assert!(notifications.try_recv().is_err(), "insert interest must not enable updates/removes");
         assert_eq!(worker.messages_delete, [4]);
@@ -1182,6 +1241,7 @@ mod initial_reconciliation_tests {
     #[tokio::test]
     async fn persistence_coalesces_without_dropping_notifications_or_changelog_entries() {
         use crate::inventory::resolution_tests::{cargo_description, item_description};
+        use crate::websocket::ListenerRow;
         let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(DatabaseConnection::default(), tx, Default::default());
         let _subscriber = state.subscribe_test_client(&[
@@ -1207,18 +1267,29 @@ mod initial_reconciliation_tests {
         worker
             .messages_changed
             .extend([first.clone(), second.clone()]);
-        worker.handle_insert(raw_inventory(1), 1).await;
-        worker.handle_insert(raw_inventory(2), 1).await;
+        let sender = worker.tx();
+        let insert = |row: &InventoryState, database_name| sender.send(InventoryMessage::Insert {
+            event: None, new: ListenerRow::live(row), database_name,
+        }).unwrap();
+        let remove = |row: &InventoryState, database_name| sender.send(InventoryMessage::Remove {
+            event: None, delete: ListenerRow::live(row), database_name,
+        }).unwrap();
+        insert(&raw_inventory(1), 1);
+        insert(&raw_inventory(2), 1);
         let mut updated = raw_inventory(1);
         updated.pockets[0].contents.as_mut().unwrap().quantity = 7;
-        worker
-            .handle_update(updated.clone(), raw_inventory(1), 2)
-            .await;
-        worker.handle_remove(updated.clone(), 2).await;
-        worker.handle_remove(updated.clone(), 2).await;
+        sender.send(InventoryMessage::Update {
+            event: None, old: ListenerRow::old(&raw_inventory(1)),
+            new: ListenerRow::live(&updated), database_name: 2,
+        }).unwrap();
+        remove(&updated, 2);
+        remove(&updated, 2);
         updated.pockets[0].contents.as_mut().unwrap().quantity = 9;
-        worker.handle_insert(updated.clone(), 3).await;
-        worker.handle_remove(raw_inventory(2), 1).await;
+        insert(&updated, 3);
+        remove(&raw_inventory(2), 1);
+        while let Ok(msg) = worker.rx.try_recv() {
+            worker.process_message(msg).await;
+        }
 
         let mut observed = Vec::new();
         while let Ok(event) = notifications.try_recv() {
@@ -1258,8 +1329,7 @@ mod initial_reconciliation_tests {
                 rows,
                 [::entity::inventory::ModelBuilder::new(updated)
                     .with_region(3)
-                    .build()
-                    .into_active_model()]
+                    .build()]
             ),
             _ => panic!("upserts must precede changelog and deletes"),
         }

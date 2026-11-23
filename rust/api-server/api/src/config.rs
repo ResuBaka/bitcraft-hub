@@ -145,7 +145,7 @@ pub(crate) struct DatabaseConfig {
     pub(crate) url: String,
     /// Maximum live ingestion batching window. Full batches and closed queues flush early.
     pub(crate) worker_flush_ms: u64,
-    /// Estimated bind payload per inventory snapshot write, in addition to its row limit.
+    /// Estimated bind payload per inventory upsert statement (snapshot and live).
     pub(crate) inventory_snapshot_write_bytes: std::num::NonZeroUsize,
     pub(crate) max_connections: u32,
     pub(crate) min_connections: u32,

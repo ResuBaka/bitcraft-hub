@@ -51,6 +51,49 @@ fn partial_writes_respect_the_byte_boundary_and_keep_oversize_rows() {
     assert_eq!(next_write(&rows[3..], cap).0, 1);
 }
 
+#[tokio::test]
+#[ignore = "requires INVENTORY_LIVE_TEST_URL (PostgreSQL); uses a session-local table"]
+async fn split_live_flush_commits_or_rolls_back_as_a_unit() {
+    let mut opts = ConnectOptions::new(std::env::var("INVENTORY_LIVE_TEST_URL").unwrap());
+    opts.max_connections(1);
+    let db = Database::connect(opts).await.unwrap();
+    db.execute_unprepared(
+        "CREATE TEMP TABLE inventory (entity_id bigint PRIMARY KEY,
+        pockets jsonb NOT NULL, inventory_index integer NOT NULL CHECK (inventory_index >= 0),
+        cargo_index integer NOT NULL, owner_entity_id bigint NOT NULL,
+        player_owner_entity_id bigint NOT NULL, region smallint NOT NULL)",
+    )
+    .await
+    .unwrap();
+
+    let seed = row(1, vec![]);
+    let cap = NonZeroUsize::MIN; // one row per statement, even for empty pockets
+    write_live(&db, vec![seed.clone()], cap).await.unwrap();
+    let mut update = seed.clone();
+    update.inventory_index = 7;
+    let insert = row(2, vec![]);
+    let mut invalid = row(3, vec![]);
+    invalid.inventory_index = -1;
+    assert!(
+        write_live(&db, vec![update.clone(), insert.clone(), invalid], cap)
+            .await
+            .is_err()
+    );
+    assert_eq!(Entity::find().all(&db).await.unwrap(), [seed]);
+
+    write_live(&db, vec![update.clone(), insert.clone()], cap)
+        .await
+        .unwrap();
+    assert_eq!(
+        Entity::find()
+            .order_by_asc(Column::EntityId)
+            .all(&db)
+            .await
+            .unwrap(),
+        [update, insert]
+    );
+}
+
 /// Writer-only replay. Use an isolated Postgres instance for comparable WAL
 /// deltas; the test creates a private schema and uses ordinary logged tables.
 #[tokio::test]

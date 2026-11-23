@@ -1,9 +1,13 @@
 use entity::inventory::Model;
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, Statement};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, DbErr, Statement, TransactionTrait};
 use std::num::NonZeroUsize;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../benches/live-inventory-writes/replay.rs"]
+mod live_replay;
 
 // Upper estimates for compact JSON, including a separator. A pocket has only
 // fixed field names, integers, booleans and a two-variant enum (no free text).
@@ -63,6 +67,39 @@ fn upsert_statement(rows: impl ExactSizeIterator<Item = Model>) -> Result<Statem
     ))
 }
 
+fn take_upsert(
+    remaining: &mut std::vec::Drain<'_, Model>,
+    limit: NonZeroUsize,
+) -> Result<(Statement, usize), DbErr> {
+    let (count, bytes) = next_write(remaining.as_slice(), limit);
+    Ok((upsert_statement(remaining.by_ref().take(count))?, bytes))
+}
+
+/// A live flush used to be a single INSERT; keep that atomic boundary even
+/// when the byte budget requires more than one statement.
+pub(super) async fn write_live(
+    db: &DatabaseConnection,
+    mut rows: Vec<Model>,
+    limit: NonZeroUsize,
+) -> Result<(), DbErr> {
+    if rows.is_empty() {
+        return Ok(());
+    }
+    let mut remaining = rows.drain(..);
+    let (first, _) = take_upsert(&mut remaining, limit)?;
+    if remaining.len() == 0 {
+        db.execute_raw(first).await?;
+        return Ok(());
+    }
+    let txn = db.begin().await?;
+    txn.execute_raw(first).await?;
+    while remaining.len() != 0 {
+        let (statement, _) = take_upsert(&mut remaining, limit)?;
+        txn.execute_raw(statement).await?;
+    }
+    txn.commit().await
+}
+
 /// `changes` is the output of one row-limited comparison batch. Consume it
 /// in order without cloning pockets or retaining an encoded copy to size it.
 pub(super) async fn write_changes(
@@ -72,12 +109,11 @@ pub(super) async fn write_changes(
 ) -> Result<(), DbErr> {
     let mut remaining = changes.drain(..);
     while !remaining.as_slice().is_empty() {
-        let (count, bytes) = next_write(remaining.as_slice(), limit);
+        let (statement, bytes) = take_upsert(&mut remaining, limit)?;
         if bytes > limit.get() {
             metrics::counter!("inventory_snapshot_oversize_rows_total").increment(1);
         }
-        db.execute_raw(upsert_statement(remaining.by_ref().take(count))?)
-            .await?;
+        db.execute_raw(statement).await?;
     }
     Ok(())
 }

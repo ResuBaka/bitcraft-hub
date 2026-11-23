@@ -1,5 +1,14 @@
 # Live PostgreSQL upserts: `progressive_action_state`
 
+**Live policy: use `UNNEST` at 144 or more distinct pending upserts; keep
+`insert_many` below that.** One flush in the nine-region capture had 144
+rows; the other 87 had 412–486. The cutoff is the observed floor, not an
+estimated crossover. A newer live sample had a median of 538 rows per flush;
+only 0.70% of rows were inserts. The
+[worker](../../src/crafting/bitcraft.rs) chooses after coalescing; repeated
+events and pending deletes do not inflate the count.
+Either path writes the upserts in one statement. Deletes still follow separately.
+
 **No small-batch latency win.** In a live region-13 capture, 38 flushes had
 one row and 15 had two. Replaying them with `UNNEST` saved about **19 µs of
 client CPU per flush** but did not reduce median or p95 time to acknowledgment.
@@ -21,6 +30,21 @@ client CPU **52%** (133.46 → 64.50 ms; 12/12). `VALUES` needed 41 distinct
 statement shapes in this capture, versus just two in region 13. These two
 captures do not locate a row-count threshold or establish an end-to-end API
 speedup.
+
+### Replay after integrating the live writer
+
+Rerunning the same fixtures against disposable PostgreSQL 18.3, with the
+current ORM arm and 12 alternating pairs, confirmed the size distinction:
+
+| Fixture | Writer CPU, `VALUES` → `UNNEST` | Total write time, `VALUES` → `UNNEST` | Flush p50 / p95, `VALUES` → `UNNEST` |
+|---|---:|---:|---:|
+| Nine regions | 137.57 → 68.45 ms | 1,753 → 1,651 ms | 17.99 / 26.83 → 17.23 / 24.95 ms |
+| Region 13 | 7.84 → 7.26 ms | 696 → 730 ms | 10.20 / 22.29 → 10.69 / 22.65 ms |
+
+On the nine-region fixture `UNNEST` used **50% less writer CPU** (12/12
+pairs) and **6% less wall time** (9/12). On region 13 it won wall time in
+only 3/12 pairs. These are same-host writer measurements; the newer
+538-row median is live workload evidence, not a replay input.
 
 ## Inputs and measurements
 
@@ -45,14 +69,21 @@ speedup.
 ## What was timed
 
 Each timed flush starts with the same coalesced `PendingActions` map and ends
-when PostgreSQL acknowledges the upsert. The baseline calls the worker's
-`flush`: convert to ActiveModels, `insert_many(iter().cloned())`, update all
-ten non-key columns on conflict, `.exec()` with `RETURNING`. The candidate
-drains the same models into a reusable vector and calls the existing
+when PostgreSQL acknowledges the upsert. In the original measurements above,
+the baseline converted to ActiveModels and called `insert_many(iter().cloned())`,
+updating all ten non-key columns on conflict, `.exec()` with `RETURNING`. The
+candidate drained the same models into a reusable vector and called the existing
 `Writer::Fixed(snapshot_write::progressive_actions)`: eleven typed array binds,
 the same conflict updates, no returned IDs. This compares the two usable
 writers, including binding, transfer and commit. It does not attribute the
 difference solely to the SQL syntax.
+
+The current replay forces each arm through the live worker's write path so
+the comparison stays meaningful after rollout. Both now drain the coalesced
+models into a reusable vector; the ORM arm converts the drained models to
+ActiveModels without cloning them. The fixed arm uses the same
+[statement](../../src/websocket/snapshot_write/regional.rs) as snapshot
+reconciliation.
 
 Both arms use the same key iteration order, starting rows, interleaved deletes,
 primary key and two secondary indexes (building and owner). Deletes restore
@@ -60,6 +91,12 @@ the observed conflict mix but are outside the timer. The warm-up reads back
 every flushed row, including JSONB `lock_expiration`; every pass verifies the
 entire final table. Queue waits, callbacks and notifications are outside the
 measurement.
+
+Only four columns changed during conflict updates in the nine-region
+fixture: `progress`, `lock_expiration`, `preparation` and `last_crit_outcome`.
+As a separate correctness check, the `progressive_rows` PostgreSQL test varied
+all ten non-key columns on 12,019 rows. The ORM and fixed writers produced
+identical PostgreSQL row digests after both insert and update.
 
 ## Reproduce
 
@@ -77,6 +114,11 @@ CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_DEBUG=0 \
   --lib compare_progressive_writers -- --ignored --nocapture > replay.log
 python3 "$bench/summary.py" replay.log
 ```
+
+For the full-column check, use the same disposable URL in
+`SNAPSHOT_WRITER_TEST_URL` and replace `compare_progressive_writers` with
+`progressive_rows`. Run with `SNAPSHOT_WRITER_BASELINE=0` and `=1` and
+compare the `snapshot_digest` lines on stderr.
 
 For a fresh capture, wait for the API's regional startup to complete.
 Run `python3 "$bench/capture.py" capture.json.gz 180 -- psql -XqAt "$SOURCE_URL"`

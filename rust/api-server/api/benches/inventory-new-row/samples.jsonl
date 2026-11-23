@@ -1,0 +1,28 @@
+{"pair": 0, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 31950910}
+{"pair": 0, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25291004}
+{"pair": 1, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25182233}
+{"pair": 1, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 31797599}
+{"pair": 2, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 31668379}
+{"pair": 2, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25257354}
+{"pair": 3, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25103273}
+{"pair": 3, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 31743790}
+{"pair": 4, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 32540080}
+{"pair": 4, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25597234}
+{"pair": 5, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 27025355}
+{"pair": 5, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 33205182}
+{"pair": 6, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 33725351}
+{"pair": 6, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 26368475}
+{"pair": 7, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 26903005}
+{"pair": 7, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 32113370}
+{"pair": 8, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 32288120}
+{"pair": 8, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25931734}
+{"pair": 9, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25636064}
+{"pair": 9, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 32558110}
+{"pair": 10, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 31827460}
+{"pair": 10, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25364843}
+{"pair": 11, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "new", "thread_ns": 25419534}
+{"pair": 11, "rows": 1912, "repeats": 131, "case": "cpu", "variant": "both", "thread_ns": 33696331}
+{"pair": 0, "rows": 1912, "repeats": 131, "case": "count", "variant": "both", "allocations": 496753, "requested_bytes": 239539200}
+{"pair": 0, "rows": 1912, "repeats": 131, "case": "count", "variant": "new", "allocations": 250473, "requested_bytes": 122691392}
+{"pair": 1, "rows": 1912, "repeats": 131, "case": "count", "variant": "new", "allocations": 250473, "requested_bytes": 122691392}
+{"pair": 1, "rows": 1912, "repeats": 131, "case": "count", "variant": "both", "allocations": 496753, "requested_bytes": 239539200}
