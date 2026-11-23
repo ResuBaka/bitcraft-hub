@@ -1,0 +1,85 @@
+diff --git i/sdks/rust/benches/streaming_decompression/tests.rs w/sdks/rust/benches/streaming_decompression/tests.rs
+index 12b52967a..8b264af8f 100644
+--- i/sdks/rust/benches/streaming_decompression/tests.rs
++++ w/sdks/rust/benches/streaming_decompression/tests.rs
+@@ -89,6 +89,30 @@ fn truncated_and_malformed_frames() {
+     }
+ }
+ 
++#[test]
++fn small_gzip_crosses_scratch_boundary_and_still_validates_trailer() {
++    for size in [8191, 8192, 8193, 131072] {
++        let msg = ServerMessage::SubscriptionError(SubscriptionError {
++            request_id: None,
++            query_set_id: QuerySetId::new(3),
++            error: "".into(),
++        });
++        let overhead = bsatn::to_vec(&msg).unwrap().len();
++        let ServerMessage::SubscriptionError(mut error) = msg else {
++            unreachable!()
++        };
++        error.error = "x".repeat(size - overhead).into();
++        let raw = bsatn::to_vec(&ServerMessage::SubscriptionError(error)).unwrap();
++        assert_eq!(raw.len(), size);
++        let mut wire = fixture::compress(&raw, SERVER_MSG_COMPRESSION_TAG_GZIP);
++        assert!(wire.len() <= 4096);
++        assert_eq!(bsatn::to_vec(&streaming(&wire).unwrap()).unwrap(), raw);
++        let crc = wire.len() - 8;
++        wire[crc] ^= 1;
++        assert!(streaming(&wire).unwrap_err().contains("decompress"));
++    }
++}
++
+ #[test]
+ fn trailing_bytes_and_members_match_baseline() {
+     let mut bytes = bsatn::to_vec(&fixture::message(256, false)).unwrap();
+diff --git i/sdks/rust/src/streaming_decompression.rs w/sdks/rust/src/streaming_decompression.rs
+index b5adbd364..094ac154e 100644
+--- i/sdks/rust/src/streaming_decompression.rs
++++ w/sdks/rust/src/streaming_decompression.rs
+@@ -20,11 +20,44 @@ pub(crate) fn decode(raw: &[u8]) -> Result<ServerMessage, WsError> {
+         [SERVER_MSG_COMPRESSION_TAG_BROTLI, bytes @ ..] => {
+             decode_reader(brotli::Decompressor::new(bytes, 4096), "brotli")
+         }
+-        [SERVER_MSG_COMPRESSION_TAG_GZIP, bytes @ ..] => decode_reader(flate2::read::GzDecoder::new(bytes), "gzip"),
++        [SERVER_MSG_COMPRESSION_TAG_GZIP, bytes @ ..] => {
++            let gzip = flate2::bufread::GzDecoder::new(bytes);
++            if raw.len() <= 4096 {
++                decode_small_gzip(gzip)
++            } else {
++                decode_reader(gzip, "gzip")
++            }
++        }
+         [scheme, ..] => Err(WsError::UnknownCompressionScheme { scheme: *scheme }),
+     }
+ }
+ 
++// Small transactions usually fit in one slice. Never size this buffer from
++// the wire, and never return a decoded message before checking the trailer.
++fn decode_small_gzip(mut gzip: impl Read) -> Result<ServerMessage, WsError> {
++    let mut scratch = [0; 8192];
++    let mut n = 0;
++    while n < scratch.len() {
++        match gzip.read(&mut scratch[n..]) {
++            Ok(0) => {
++                return spacetimedb_sats::bsatn::from_slice(&scratch[..n])
++                    .map_err(|source| WsError::DeserializeMessage { source })
++            }
++            Ok(count) => n += count,
++            Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
++            Err(e) => {
++                return Err(WsError::Decompress {
++                    scheme: "gzip",
++                    source: Arc::new(e),
++                })
++            }
++        }
++    }
++    // A small compressed input may expand into a large snapshot. Feed the
++    // prefix to the ordinary streaming decoder and continue the same member.
++    decode_reader(scratch.as_slice().chain(gzip), "gzip")
++}
++
+ pub(crate) fn decode_reader(reader: impl Read, scheme: &'static str) -> Result<ServerMessage, WsError> {
+     let mut reader = BufReader::with_capacity(16 * 1024, reader);
+     let mut decoder = Decoder {

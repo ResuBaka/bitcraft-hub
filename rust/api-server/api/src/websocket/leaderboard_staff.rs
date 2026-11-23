@@ -20,6 +20,7 @@ pub(super) fn start(config: &Config, state: AppState) {
     let database = config.spacetimedb.database.trim().to_owned();
     let host = config.global_spacetimedb_url();
     let token = config.spacetimedb.password.clone();
+    let compression = config.spacetimedb.compression.into();
     initialize_connection_metrics(&database);
     state.connection_state.insert(database.clone(), false);
     let stop = state.shutdown.stop.clone();
@@ -28,7 +29,7 @@ pub(super) fn start(config: &Config, state: AppState) {
         while !stop.is_cancelled() {
             let timing = ConnectionTiming::default();
             let result = match connect_to_db(
-                DbConnection::builder(), state.clone(), token.clone(), &database, &host, timing.clone(), None,
+                DbConnection::builder().with_compression(compression), state.clone(), token.clone(), &database, &host, timing.clone(), None,
             ) {
                 Ok(ctx) => sync(&ctx, state.ranking_system.clone(), stop.child_token()).await,
                 Err(error) => Err(error.into()),

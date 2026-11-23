@@ -132,6 +132,13 @@ cargo build --release --locked --no-default-features
 
 Run only one ingestion process against the benchmark database at a time.
 
+Upstream SpacetimeDB message compression defaults to `gzip`. On a fast link,
+set `BITCRAFT_HUB_API__SPACETIMEDB__COMPRESSION=none` to trade bandwidth for
+lower decoder CPU (`gzip`, `none`, and `brotli` are accepted). This applies
+to global and regional connections, including reconnects; TLS is independent.
+The [region-14 decoder replay](rust/api-server/api/benches/sdk-decode/README.md)
+measured 1.90× the application payload bytes with `none`.
+
 For a BSATN replay fixture, create a private directory (`mkdir -m 700`) and
 set `BITCRAFT_HUB_API__SPACETIMEDB__REGION_CAPTURE_DIR` to its absolute path.
 Each regional connection writes a separate `region-<number>-*.capture` file

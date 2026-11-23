@@ -38,7 +38,7 @@ use game_module::module_bindings::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::{self as __sdk};
-use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
+use spacetimedb_sdk::{DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 use tokio::time::Duration;
@@ -214,7 +214,6 @@ fn connect_to_db(
         // Set the URI of the SpacetimeDB host that's running our database.
         .with_uri(db_host)
         // Finalize configuration and connect!
-        .with_compression(Compression::Gzip)
         .build()
 }
 
@@ -422,7 +421,7 @@ async fn connect_to_db_logic(
         .unwrap()
         .parse::<entity::shared::Region>()?;
 
-    let mut builder = DbConnection::builder();
+    let mut builder = DbConnection::builder().with_compression(config.spacetimedb.compression.into());
     if let Some(dir) = &config.spacetimedb.region_capture_dir {
         // The SDK requires a fresh file for each connection, including retries.
         let path = dir.join(format!("region-{region_number}-{:016x}.capture", rand::random::<u64>()));

@@ -169,9 +169,29 @@ impl Default for DatabaseConfig {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Default)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum UpstreamCompression {
+    None,
+    #[default]
+    Gzip,
+    Brotli,
+}
+
+impl From<UpstreamCompression> for spacetimedb_sdk::Compression {
+    fn from(value: UpstreamCompression) -> Self {
+        match value {
+            UpstreamCompression::None => Self::None,
+            UpstreamCompression::Gzip => Self::Gzip,
+            UpstreamCompression::Brotli => Self::Brotli,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct SpacetimeDbConfig {
+    pub(crate) compression: UpstreamCompression,
     /// Application-side initial snapshot chunks for inventory/vault only.
     /// Zero restores the original single-vector handoff for A/B comparisons.
     pub(crate) initial_batch_rows: usize,
@@ -198,6 +218,7 @@ impl Default for SpacetimeDbConfig {
             // TEMPORARY: zero subscriptions by default while diagnosing sync RSS.
             skip_state_tables: false,
             initial_batch_rows: 1_000,
+            compression: UpstreamCompression::default(),
             domain: "localhost".to_string(),
             protocol: "https://".to_string(),
             base_port: None,

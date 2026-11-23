@@ -1,5 +1,7 @@
 # Ranking benchmarks
 
+For the next stage, see [gzip and BSATN decoder CPU](sdk-decode/README.md).
+
 For the standalone DashMap, ClashMap, Papaya, and SCC Heaptrack comparison, see
 [cache-map profiling](cache-maps/README.md).
 
