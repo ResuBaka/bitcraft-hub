@@ -506,6 +506,8 @@ async fn connect_to_db_logic(
     if !*remove_desc {
         let desc_tx = &placeables.desc;
         let interactions_tx = &placeables.interactions;
+        let growth_tx = &placeables.growth;
+        setup_spacetime_db_listeners!(ctx, placeable_growth_desc, growth_tx, PlaceableGrowthDesc, database, region_number, "placeable_growth_desc");
         setup_spacetime_db_listeners!(ctx, placeable_desc, desc_tx, PlaceableDesc, database, region_number, "placeable_desc");
         setup_spacetime_db_listeners!(ctx, placeable_interaction_desc, interactions_tx, PlaceableInteractionDesc, database, region_number, "placeable_interaction_desc");
     }
@@ -768,6 +770,7 @@ async fn connect_to_db_logic(
         "placeable_growth_timer",
         "placeable_desc",
         "placeable_interaction_desc",
+        "placeable_growth_desc",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run

@@ -18,5 +18,6 @@ macro_rules! model {
 }
 model!(placeable_state, "placeable_state", entity_id: i64, region: i16, owner_entity_id: i64, placeable_id: i32);
 model!(placeable_growth_timer, "placeable_growth_timer", entity_id: i64, region: i16, ends_at_ms: Option<i64>);
-model!(placeable_desc, "placeable_desc", id: i32, name: String, tier: i32);
-model!(placeable_interaction_desc, "placeable_interaction_desc", id: i32, placeable_id: i32, verb_phrase: String);
+model!(placeable_desc, "placeable_desc", id: i32, name: String, tier: i32, tag: String);
+model!(placeable_interaction_desc, "placeable_interaction_desc", id: i32, placeable_id: i32, verb_phrase: String, next_ids: Vec<i32>, reward_keys: Vec<i64>);
+model!(placeable_growth_desc, "placeable_growth_desc", id: i32, placeable_id: i32, next_ids: Vec<i32>);

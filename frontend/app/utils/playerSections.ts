@@ -11,6 +11,7 @@ export const playerSections = [
   equipmentPlayerSection,
   { value: "deployables", slug: "deployables", label: "Deployables", icon: "i-lucide-box" },
   { value: "placeables", slug: "placeables", label: "Placeables", icon: "i-lucide-sprout" },
+  { value: "farming", slug: "farming", label: "Farming", icon: "i-lucide-wheat" },
   { value: "crafting", slug: "crafting", label: "Crafting projects", icon: "i-lucide-hammer" },
   { value: "xp_history", slug: "xp-history", label: "XP history", icon: "i-lucide-chart-no-axes-combined" },
   { value: "skills", slug: "skills", label: "Skills", icon: "i-lucide-award" },

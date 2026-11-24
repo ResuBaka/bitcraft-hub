@@ -29,6 +29,12 @@ export const accountOverviewBlocks = [
     description: "Owned placeables, growth timers and interactions",
     icon: "i-lucide-sprout",
   },
+  {
+    id: "farming",
+    name: "Farming",
+    description: "Owned crops, harvests and next growth stages",
+    icon: "i-lucide-wheat",
+  },
 ] as const;
 
 export type AccountOverviewBlockId = (typeof accountOverviewBlocks)[number]["id"];

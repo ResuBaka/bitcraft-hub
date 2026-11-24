@@ -800,7 +800,9 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         </div>
 
         <BitcraftPlayerPlaceables
-          v-if="selectedSection === 'placeables'"
+          v-if="selectedSection === 'placeables' || selectedSection === 'farming'"
+          :key="selectedSection"
+          :farming="selectedSection === 'farming'"
           :player-id="String(route.params.id)"
         />
 

@@ -35,6 +35,7 @@ const components = {
   "active-crafts": ActiveCraftBlock,
   "passive-crafts": PassiveCraftBlock,
   placeables: PlayerPlaceables,
+  farming: PlayerPlaceables,
 };
 const toast = useToast();
 const gridElement = ref<HTMLElement | null>(null);
@@ -67,6 +68,7 @@ const passiveClaims = props.shared
     });
 
 function blockBindings(id: AccountOverviewBlockId) {
+  if (id === "farming") return { compact: true, farming: true };
   if (id === "placeables") return { compact: true };
   const filter =
     id === "active-crafts" ? activeClaims : id === "passive-crafts" ? passiveClaims : null;

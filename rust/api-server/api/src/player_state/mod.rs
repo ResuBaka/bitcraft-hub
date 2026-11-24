@@ -39,6 +39,8 @@ pub(crate) fn get_routes() -> AppRouter {
         )
         .route("/api/bitcraft/players/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::player_crafts).into())
         .route("/api/bitcraft/players/{id}/placeables", axum_codec::routing::get(placeables::player_placeables).into())
+        .route("/api/bitcraft/players/{id}/farming", axum_codec::routing::get(placeables::player_farming).into())
+        .route("/api/bitcraft/players/{id}/placeable-summary", axum_codec::routing::get(placeables::summary).into())
         .route("/api/bitcraft/players/{id}/stats", axum_codec::routing::get(player_stats).into())
         .route(
             "/api/bitcraft/players/{id}/equipment",

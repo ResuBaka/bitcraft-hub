@@ -67,6 +67,8 @@ mod m20261124_000002_watchtower_history;
 mod m20261124_000003_empire_decay_parameters;
 mod m20261124_000004_resource_health;
 mod m20261124_000005_placeables;
+mod m20261124_000006_placeable_tag;
+mod m20261124_000007_placeable_outcomes;
 
 pub struct Migrator;
 
@@ -141,6 +143,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20261124_000003_empire_decay_parameters::Migration),
             Box::new(m20261124_000004_resource_health::Migration),
             Box::new(m20261124_000005_placeables::Migration),
+            Box::new(m20261124_000006_placeable_tag::Migration),
+            Box::new(m20261124_000007_placeable_outcomes::Migration),
         ]
     }
 }
