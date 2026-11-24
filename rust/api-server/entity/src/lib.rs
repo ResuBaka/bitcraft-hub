@@ -22,6 +22,7 @@ pub mod crafting_recipe_desc;
 pub mod deployable_state;
 pub mod dimension_description_state;
 pub mod equipment;
+pub mod empire;
 pub mod experience_state;
 pub mod extraction_recipe_desc;
 pub mod interior_network_desc;

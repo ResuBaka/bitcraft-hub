@@ -62,6 +62,9 @@ mod m20261115_000003_passive_craft_state;
 mod m20261115_000004_progressive_action_building_index;
 mod m20261115_000005_craft_owner_indexes;
 mod m20261117_000001_extraction_xp;
+mod m20261124_000001_empire;
+mod m20261124_000002_watchtower_history;
+mod m20261124_000003_empire_decay_parameters;
 
 pub struct Migrator;
 
@@ -131,6 +134,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20261115_000004_progressive_action_building_index::Migration),
             Box::new(m20261115_000005_craft_owner_indexes::Migration),
             Box::new(m20261117_000001_extraction_xp::Migration),
+            Box::new(m20261124_000001_empire::Migration),
+            Box::new(m20261124_000002_watchtower_history::Migration),
+            Box::new(m20261124_000003_empire_decay_parameters::Migration),
         ]
     }
 }

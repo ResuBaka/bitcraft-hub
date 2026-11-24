@@ -53,6 +53,7 @@ mod metric_handles;
 pub(super) mod outbound;
 mod claim_locations;
 mod leaderboard_staff;
+mod empire;
 mod global;
 mod global_usernames;
 mod shared_tables;

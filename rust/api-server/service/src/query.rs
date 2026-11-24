@@ -26,6 +26,9 @@ use sea_orm::sea_query::{Alias, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
 use sea_orm::sqlx::types::chrono::{DateTime, Utc};
 use sea_orm::*;
 
+mod empires;
+mod watchtowers;
+
 pub struct Query;
 
 fn player_name_search(

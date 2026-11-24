@@ -11,6 +11,7 @@ mod config;
 mod crafting;
 mod crafting_recipe_desc;
 mod deployable_state;
+mod empires;
 mod extraction_recipe_desc;
 mod houses;
 mod inventory;
@@ -1156,6 +1157,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         )
         .merge(player_state::get_routes())
         .merge(claims::get_routes())
+        .merge(empires::get_routes())
         .merge(buildings::get_routes())
         .merge(inventory::get_routes())
         .merge(recipes::get_routes())

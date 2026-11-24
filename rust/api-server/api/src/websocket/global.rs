@@ -1,5 +1,5 @@
 use super::{
-    ConnectionTiming, MAX_RECONNECT_RETRIES, connect_to_db, global_usernames,
+    ConnectionTiming, MAX_RECONNECT_RETRIES, connect_to_db, empire, global_usernames,
     initialize_connection_metrics, leaderboard_staff, next_reconnect_failure_count,
     reconnect_delay, run_connection_until_shutdown, shared_tables,
 };
@@ -122,6 +122,7 @@ async fn sync(
 ) -> anyhow::Result<()> {
     let drain = || run_connection_until_shutdown(ctx, ctx.run_async(), &stop);
     let staff = leaderboard_staff::listen(ctx, state.ranking_system.clone());
+    let changes = empire::Changes::listen(ctx);
     // Include old partitions even if their last row disappeared while offline.
     let regions = previous_partitions(&state.conn).await?;
     let names = global_usernames::Directory::listen(ctx);
@@ -137,6 +138,7 @@ async fn sync(
         .map(|t| format!("SELECT * FROM {t}"))
         .into(),
     );
+    let empire_outcome = subscribe(ctx, empire::QUERIES.iter().map(|q| q.to_string()).collect());
     let shared_outcome = subscribe(
         ctx,
         shared_tables::TABLES
@@ -147,6 +149,7 @@ async fn sync(
     );
 
     let mut directory_ready = false;
+    let mut ready = false;
     let result = loop {
         tokio::select! { biased;
             _ = stop.cancelled() => return drain().await,
@@ -171,6 +174,20 @@ async fn sync(
             Some(Err(err)) => break Err(err.into()),
             None if directory_ready => names.lock().publish(usernames, &regions, false),
             None => {}
+        }
+        let snapshot = match empire_outcome.lock().take() {
+            Some(Ok(())) => {
+                ready = true;
+                true
+            }
+            Some(Err(err)) => break Err(err.into()),
+            None => false,
+        };
+        if ready {
+            let batch = std::mem::take(&mut *changes.lock());
+            if let Err(err) = batch.persist(&state.conn, snapshot).await {
+                break Err(err);
+            }
         }
     };
     stop.cancel();

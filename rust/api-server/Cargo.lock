@@ -1675,6 +1675,7 @@ dependencies = [
  "anyhow",
  "axum-codec",
  "chrono",
+ "game_global_module",
  "game_module",
  "sea-orm",
  "serde",
@@ -4593,9 +4594,13 @@ dependencies = [
 name = "service"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "entity",
+ "migration",
+ "rand 0.10.3",
  "sea-orm",
+ "tokio",
 ]
 
 [[package]]

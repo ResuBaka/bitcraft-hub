@@ -76,6 +76,8 @@ domain = "localhost"
 protocol = "https://"
 # Optional: add the region number to this base port. If omitted, no port is appended.
 # base_port = 3000
+# Set this to the global module name (no regional port offset).
+# database = "idc-global"
 databases = []
 password = ""
 websocket_protocol = "wss://"
@@ -134,6 +136,52 @@ than all buildings and locations, and `claim_set_member_permissions.rs`
 writes permission edits only in the region. Buildings, locations, claim
 membership, and claim-local supplies, research and events are therefore read
 from the regions.
+
+#### Empire read models
+
+Browse `/empires` to search by empire or capital and sort by territory,
+membership, or name. `/empires/{id}` shows the roster, settlements, resources,
+and the 15 latest notifications. The corresponding read endpoints are
+`GET /api/bitcraft/empires` and `GET /api/bitcraft/empires/{id}`. They return
+entity IDs as decimal strings so links retain their full precision.
+
+The Watchtowers section on each empire profile links to `/watchtowers/{id}`
+(`GET /api/bitcraft/watchtowers/{id}`). It shows energy, upkeep per decay
+tick, controlled versus assigned chunks, siege marks, and the forces on each
+side of an active siege. Former towers stay accessible after transfer or removal.
+The time-to-empty estimate assumes no refills and unchanged upkeep. It uses
+`ceil(energy / upkeep)` ticks at the global `parameters_desc` version 0 decay
+interval. “Empty by” shows the estimated date and time in the viewer’s local time zone from the latest
+reading. It is an upper bound because the next tick may be imminent.
+Inactive towers and towers under active siege do not pay upkeep.
+
+`watchtower_history` records a baseline when the migration runs, then records
+changes to tower and siege rows in the same transaction as the mirror write.
+Observation times are local ingestion times, not inferred game-event times.
+Unchanged reconnect snapshots add no entries. Request older observations with
+`?before={next_before}`. The separate location feed shows up to 25 retained
+game reports for the same large map tile; those reports do not carry a tower ID.
+
+With live updates enabled, `[spacetimedb].database` selects the authoritative
+global module. Each successful subscription reconciles the PostgreSQL mirror,
+including rows removed while offline. Under `rust/api-server`, `entity/src/empire.rs`
+defines the mirror tables, `entity/src/empire/views.rs` defines the response
+types, and `service/src/query/{empires,watchtowers}.rs` contains their read queries.
+Useful joins for the frontend:
+
+| Feature | Tables and keys |
+| --- | --- |
+| Identity and emblem | `empire_state.entity_id` → `empire_emblem_state.entity_id` and `empire_directive_state.entity_id`. Icon and shape both reference `empire_icon_desc`; the two colors reference `empire_color_desc`. |
+| Roster | Join `empire_player_data_state.entity_id` to `player_username_state.entity_id` for names. Join `empire_rank_state` on **both** `empire_entity_id` and `rank`; `empire_rank_desc` supplies defaults. Rank 0 is emperor. |
+| Settlements | `empire_settlement_state` is keyed by `building_entity_id`. Join `claim_entity_id` to `claim_state.entity_id` for the settlement name and region. |
+| Territory | `empire_chunk_state.chunk_index` identifies the chunk; `watchtower_entity_id` joins to `empire_node_state.entity_id`. An owner of 0 means unclaimed. `empire_territory_desc` defines territory thresholds. |
+| Sieges and supplies | `empire_node_siege_state.building_entity_id` identifies the contested building; `empire_siege_engine_state` maps the deployed engine to that building. `empire_foundry_state` tracks production and `empire_supplies_desc` gives energy by cargo ID. |
+| Activity feed | Join `empire_notification_state` to `empire_notification_desc` by `notification_type` for the text template and replacement values. |
+
+The mirror covers gameplay and display data. Server timers, name reservations
+and per-player notification read cursors are not needed for these views.
+BitCraftPublic also defines a membership blacklist, which is absent from this
+project's checked-in global bindings.
 
 #### Upstream WebSocket TLS
 
