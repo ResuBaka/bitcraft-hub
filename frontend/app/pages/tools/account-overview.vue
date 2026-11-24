@@ -10,11 +10,6 @@ import {
   type TrackedPlayer,
 } from "~/utils/accountOverviewShare";
 
-useSeoMeta({
-  title: "Account Overview",
-  description: "Monitor your account's status and crafting activity.",
-});
-
 const playerSearch = ref("");
 const editMode = ref(false);
 const showBlocks = ref(false);
@@ -47,6 +42,14 @@ const monitoredPlayers = useLocalStorage<TrackedPlayer[]>("bitcraft-hub@monitore
 const displayedPlayers = computed(() =>
   setupHash.value ? (sharedSetup.value ?? []) : monitoredPlayers.value,
 );
+const { preferences: alertPreferences, unseenCount } = provideAccountOverviewAlerts(displayedPlayers);
+useSeoMeta({
+  title: () => unseenCount.value ? `(${unseenCount.value}) Account Overview` : "Account Overview",
+  description: "Monitor your account's status and crafting activity.",
+});
+useHead(() => ({
+  link: unseenCount.value ? [{ key: "favicon", rel: "icon", href: "/overview-alert.svg" }] : [],
+}));
 const dashboardGrid = ref<InstanceType<typeof DashboardGrid> | null>(null);
 const shareOpen = ref(false);
 const shareLink = ref("");
@@ -145,63 +148,67 @@ watch(selectedPlayer, (id) => {
           Enable WebSocket updates for live crafting data.
         </p>
       </div>
-      <UButton
-        v-if="setupHash"
-        :to="{ path: route.path }"
-        label="My dashboard"
-        icon="i-lucide-layout-dashboard"
-        variant="soft"
-      />
-      <div v-else class="flex w-full flex-wrap items-end gap-2 sm:w-auto">
-        <UFormField label="Add player" class="w-full sm:w-72">
-          <UInputMenu
-            v-model="selectedPlayer"
-            v-model:search-term="playerSearch"
-            :items="playerOptions"
-            :loading="mounted && pending"
-            value-key="value"
-            label-key="label"
-            icon="i-lucide-search"
-            placeholder="Search players"
-            ignore-filter
-            class="w-full"
-          />
-        </UFormField>
-        <div v-if="editMode" class="relative">
+      <div class="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+        <AccountOverviewAlertSettings v-model="alertPreferences" :players="displayedPlayers" />
+        <AccountOverviewAlertHistory />
+        <UButton
+          v-if="setupHash"
+          :to="{ path: route.path }"
+          label="My dashboard"
+          icon="i-lucide-layout-dashboard"
+          variant="soft"
+        />
+        <template v-else>
+          <UFormField label="Add player" class="w-full sm:w-72">
+            <UInputMenu
+              v-model="selectedPlayer"
+              v-model:search-term="playerSearch"
+              :items="playerOptions"
+              :loading="mounted && pending"
+              value-key="value"
+              label-key="label"
+              icon="i-lucide-search"
+              placeholder="Search players"
+              ignore-filter
+              class="w-full"
+            />
+          </UFormField>
+          <div v-if="editMode" class="relative">
+            <UButton
+              icon="i-lucide-blocks"
+              label="Add blocks"
+              color="neutral"
+              variant="soft"
+              :aria-expanded="showBlocks"
+              aria-controls="block-picker"
+              @click="showBlocks = !showBlocks"
+            />
+            <div
+              v-if="showBlocks"
+              id="block-picker"
+              class="absolute right-0 top-full z-50 mt-2 max-h-[min(80dvh,40rem)] w-64 max-w-[90vw] overflow-auto rounded-lg bg-default shadow-lg"
+              @keydown.esc.stop="showBlocks = false"
+            >
+              <AccountOverviewBlockSidebar :players="monitoredPlayers" @add="addBlock" />
+            </div>
+          </div>
           <UButton
-            icon="i-lucide-blocks"
-            label="Add blocks"
+            icon="i-lucide-share-2"
+            label="Share setup"
             color="neutral"
             variant="soft"
-            :aria-expanded="showBlocks"
-            aria-controls="block-picker"
-            @click="showBlocks = !showBlocks"
+            :disabled="!monitoredPlayers.length"
+            @click="shareSetup"
           />
-          <div
-            v-if="showBlocks"
-            id="block-picker"
-            class="absolute right-0 top-full z-50 mt-2 max-h-[min(80dvh,40rem)] w-64 max-w-[90vw] overflow-auto rounded-lg bg-default shadow-lg"
-            @keydown.esc.stop="showBlocks = false"
-          >
-            <AccountOverviewBlockSidebar :players="monitoredPlayers" @add="addBlock" />
-          </div>
-        </div>
-        <UButton
-          icon="i-lucide-share-2"
-          label="Share setup"
-          color="neutral"
-          variant="soft"
-          :disabled="!monitoredPlayers.length"
-          @click="shareSetup"
-        />
-        <UButton
-          :icon="editMode ? 'i-lucide-check' : 'i-lucide-pencil'"
-          :label="editMode ? 'Done editing' : 'Edit layout'"
-          :aria-pressed="editMode"
-          :color="editMode ? 'primary' : 'neutral'"
-          variant="soft"
-          @click="editMode = !editMode"
-        />
+          <UButton
+            :icon="editMode ? 'i-lucide-check' : 'i-lucide-pencil'"
+            :label="editMode ? 'Done editing' : 'Edit layout'"
+            :aria-pressed="editMode"
+            :color="editMode ? 'primary' : 'neutral'"
+            variant="soft"
+            @click="editMode = !editMode"
+          />
+        </template>
       </div>
     </div>
     <p v-if="!setupHash && error" class="mb-4 text-sm text-error">

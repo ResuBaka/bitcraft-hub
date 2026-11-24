@@ -1,58 +1,38 @@
 <script setup lang="ts">
-import { watchDebounced } from "@vueuse/core";
-import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { formatFoodTimer, meterValue, summarizeFoodBuffs } from "~/utils/monitorBars";
-import type { StatsSnapshot } from "~/types/StatsSnapshot";
-import { SnapshotRevision } from "~/utils/snapshotRevision";
-import { hasSubscribedTopic } from "~/utils/websocketTopicRegistry";
-import { statsMessageAction } from "~/utils/statsMessage";
+import { overviewStatsKey, useOverviewStats } from "~/composables/useOverviewStats";
+import { FoodExpiryTracker, vitalAlerts } from "~/utils/accountOverviewAlerts";
+import { overviewActivityKey } from "~/composables/useOverviewActivity";
 
 const props = defineProps<{ playerId: string; title?: string }>();
-const revisions = new SnapshotRevision();
-let responseRevision = revisions.capture();
-const requestRevisions = new WeakMap<object, number>();
-const data = shallowRef<StatsSnapshot | null>(null);
-const {
-  data: fetched,
-  pending,
-  error,
-  refresh,
-} = useLazyFetchMsPack<StatsSnapshot>(
-  () => `/api/bitcraft/players/${encodeURIComponent(props.playerId)}/stats`,
-  {
-    server: false,
-    onRequest: ({ options }) => {
-      requestRevisions.set(options, revisions.capture());
-    },
-    onResponse: ({ options }) => {
-      responseRevision = requestRevisions.get(options) ?? -1;
-    },
-  },
-);
 const websocket = useWebsocketStore();
+const { data, receivedAt, pending, error, refreshStats } =
+  inject(overviewStatsKey, null) ?? useOverviewStats(() => props.playerId);
+const now = ref(Date.now());
+let timer: ReturnType<typeof setInterval> | undefined;
+const notify = useOverviewNotify();
+const activity = inject(overviewActivityKey, null);
+const foodExpiry = new FoodExpiryTracker();
+const lastVitals = new Map<string, boolean>();
 watch(
-  fetched,
-  (snapshot) => {
-    if (
-      snapshot &&
-      snapshot.player_id === props.playerId &&
-      revisions.isCurrent(responseRevision)
-    ) {
-      data.value = snapshot;
+  data,
+  (next) => {
+    now.value = Date.now();
+    if (!notify || !next) return;
+    for (const event of vitalAlerts(next, activity?.current.value.recipeKind)) {
+      if (lastVitals.get(event.type) !== event.active) {
+        lastVitals.set(event.type, event.active);
+        notify(props.playerId, event);
+      }
     }
+    for (const event of foodExpiry.snapshot(next, receivedAt.value)) notify(props.playerId, event);
   },
   { immediate: true },
 );
-const receivedAt = ref(Date.now());
-const now = ref(Date.now());
-let timer: ReturnType<typeof setInterval> | undefined;
-watch(data, () => {
-  receivedAt.value = Date.now();
-  now.value = receivedAt.value;
-});
 onMounted(() => {
   timer = setInterval(() => {
     now.value = Date.now();
+    for (const event of foodExpiry.tick(now.value)) notify?.(props.playerId, event);
   }, 1000);
 });
 onBeforeUnmount(() => {
@@ -63,73 +43,10 @@ const foodSummary = computed(() =>
   summarizeFoodBuffs(
     (data.value?.buffs ?? []).map((buff) => ({
       ...buff,
-      is_food_associated: buff.is_food_associated ?? null,
+      remaining_seconds: buff.remaining_seconds == null ? null : Number(buff.remaining_seconds),
     })),
     Math.max(0, Math.floor((now.value - receivedAt.value) / 1000)),
   ),
-);
-const changes = ref(0);
-let refreshing = false;
-let dirty = false;
-async function refreshStats() {
-  dirty = true;
-  if (refreshing) return;
-  refreshing = true;
-  try {
-    while (dirty) {
-      dirty = false;
-      // Let an initial or earlier snapshot finish, then request a fresh one.
-      if (pending.value) await refresh({ dedupe: "defer" });
-      await refresh({ dedupe: "defer" });
-    }
-  } finally {
-    refreshing = false;
-  }
-}
-registerWebsocketMessageHandler(
-  "PlayerStatsChanged",
-  () => ["player_stats", `player_stats.${props.playerId}`],
-  (message) => {
-    const action = statsMessageAction(props.playerId, message);
-    if (action.type === "ignore") return;
-    revisions.invalidate();
-    if (action.type === "snapshot") {
-      data.value = action.snapshot;
-    } else {
-      // Global invalidation, or an older server without snapshot payloads.
-      changes.value++;
-    }
-  },
-);
-let lastSignedIn: boolean | undefined;
-registerWebsocketMessageHandler(
-  "PlayerPresenceChanged",
-  () => [`player_presence.${props.playerId}`],
-  (player) => {
-    if (player.player_id !== props.playerId) return;
-    if (lastSignedIn !== player.signed_in) {
-      lastSignedIn = player.signed_in;
-      revisions.invalidate();
-      changes.value++;
-    }
-  },
-);
-watchDebounced(changes, () => void refreshStats(), { debounce: 400, maxWait: 2000 });
-let awaitingAck = true;
-registerWebsocketMessageHandler("SubscribedTopics", [], (topics) => {
-  if (awaitingAck && hasSubscribedTopic(topics, "player_stats", props.playerId)) {
-    awaitingAck = false;
-    revisions.invalidate();
-    changes.value++;
-  }
-});
-websocket.sendMessage({ t: "ListSubscribedTopics" });
-watch(
-  () => websocket.isConnected,
-  (connected) => {
-    awaitingAck = true;
-    if (connected) changes.value++;
-  },
 );
 </script>
 

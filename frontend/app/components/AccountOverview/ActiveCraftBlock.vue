@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { isCraftVisible } from "~/utils/claimCraftFilter";
 import { getTierColor } from "~/utils";
 import type { PlayerCraft } from "~/types/PlayerCraft";
 
@@ -9,8 +8,12 @@ const { data, pending, error, refresh, liveConnected } = usePlayerCraftSnapshot(
   () => props.playerId,
   "Active",
 );
+const { seen, acknowledge } = useCraftAcknowledgements(props.playerId, "Active", data);
 const activeCrafts = computed(() =>
-  (data.value ?? []).filter((craft) => isCraftVisible(craft, true, false, false)),
+  (data.value ?? []).filter(
+    (craft) =>
+      craft.kind === "Active" && (craft.status !== "Complete" || !seen.value.has(craft.id)),
+  ),
 );
 const { options, filtered: crafts } = useCraftClaimFilter(selected, activeCrafts);
 const numberFormat = new Intl.NumberFormat();
@@ -31,7 +34,7 @@ function progressPercent(craft: PlayerCraft): number | null {
         <slot name="handle" />
         <h3
           class="truncate text-base font-semibold"
-          title="Unfinished projects owned by this player"
+          title="Active projects and finished projects you haven't marked as seen"
         >
           Active Crafts
         </h3>
@@ -68,7 +71,11 @@ function progressPercent(craft: PlayerCraft): number | null {
       <p v-if="pending && !data" class="mt-1 text-sm text-muted">Loading…</p>
       <template v-else-if="data">
         <p v-if="!crafts.length" class="mt-1 text-sm text-muted">
-          {{ selected.length ? "No crafts match the selected claims" : "No unfinished crafts" }}
+          {{
+            selected.length
+              ? "No crafts match the selected claims"
+              : "No active projects or new completions"
+          }}
         </p>
         <ul v-else class="grid grid-cols-1 gap-x-2 gap-y-1 @lg:grid-cols-2 @4xl:grid-cols-3">
           <li
@@ -96,12 +103,22 @@ function progressPercent(craft: PlayerCraft): number | null {
                   :title="`${craft.recipe_name ?? `Recipe #${craft.recipe_id}`} · ${craft.building_name} · Quantity ${numberFormat.format(craft.quantity)}`"
                   >{{ craft.recipe_name ?? `Recipe #${craft.recipe_id}` }}</NuxtLink
                 >
-                <span v-if="craft.status !== 'Active'" class="shrink-0 text-xs text-warning">{{
+                <span v-if="craft.status === 'Complete'" class="shrink-0 text-xs text-success"
+                  >Finished</span
+                >
+                <span v-else-if="craft.status !== 'Active'" class="shrink-0 text-xs text-warning">{{
                   craft.status
                 }}</span>
               </div>
+              <AccountOverviewCraftCompletionBar
+                v-if="craft.status === 'Complete'"
+                :value="100"
+                :max="100"
+                :description="`Mark finished ${craft.recipe_name ?? `recipe #${craft.recipe_id}`} as seen`"
+                @acknowledge="acknowledge([craft.id])"
+              />
               <progress
-                v-if="progressPercent(craft) !== null"
+                v-else-if="progressPercent(craft) !== null"
                 :value="progressPercent(craft)!"
                 max="100"
                 :aria-label="`Progress for ${craft.recipe_name ?? `recipe ${craft.recipe_id}`}`"

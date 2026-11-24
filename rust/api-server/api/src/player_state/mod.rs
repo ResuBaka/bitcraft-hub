@@ -71,27 +71,31 @@ async fn player_activity(
 }
 
 #[derive(Serialize)]
-struct ActivityRecipe { kind: String, id: i32, name: Option<String> }
+struct ActivityRecipe { kind: String, id: i32, name: Option<String>, stamina_requirement: Option<f32> }
 
 async fn activity_recipe(
     State(state): State<AppState>,
     Path((kind, id)): Path<(String, i32)>,
 ) -> Result<axum_codec::Codec<ActivityRecipe>, (StatusCode, &'static str)> {
-    let name = match kind.as_str() {
-        "craft" => state.crafting_recipe_desc.get(&id).map(|recipe| crate::crafting::claim::recipe_name(&state, &recipe)),
+    let (name, stamina_requirement) = match kind.as_str() {
+        "craft" => state.crafting_recipe_desc.get(&id)
+            .map(|recipe| (Some(crate::crafting::claim::recipe_name(&state, &recipe)), Some(recipe.stamina_requirement)))
+            .unwrap_or_default(),
         "gather" => {
             let recipe = entity::extraction_recipe_desc::Entity::find_by_id(id).one(&state.conn).await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load extraction recipe"))?;
-            match recipe {
+            let stamina = recipe.as_ref().map(|r| r.stamina_requirement);
+            let name = match recipe {
                 Some(recipe) if recipe.cargo_id.is_some_and(|id| id != 0) => recipe.cargo_id.and_then(|id| state.cargo_desc.get(&id).map(|cargo| cargo.name.clone())),
                 Some(recipe) => entity::resource_desc::Entity::find_by_id(recipe.resource_id).one(&state.conn).await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load resource"))?.map(|resource| resource.name),
                 None => None,
-            }
+            };
+            (name, stamina)
         }
         _ => return Err((StatusCode::BAD_REQUEST, "Unknown activity recipe kind")),
     };
-    Ok(axum_codec::Codec(ActivityRecipe { kind, id, name }))
+    Ok(axum_codec::Codec(ActivityRecipe { kind, id, name, stamina_requirement }))
 }
 
 async fn player_stats(

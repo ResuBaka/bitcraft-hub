@@ -2,6 +2,7 @@ import type { PlayerActivitySnapshot } from "~/types/PlayerActivitySnapshot";
 import type { PlayerCraft } from "~/types/PlayerCraft";
 
 export type CurrentActivity = {
+  actionStart?: number;
   label: string;
   icon: string;
   recipeKind: "craft" | "gather" | null;
@@ -13,13 +14,14 @@ export function currentPlayerActivity(
   snapshot: PlayerActivitySnapshot | null,
   now: number,
 ): CurrentActivity {
+  let actionStart: number | undefined;
   const result = (
     label: string,
     icon: string,
     recipeKind: CurrentActivity["recipeKind"] = null,
     recipeId: number | null = null,
     targetId: string | null = null,
-  ): CurrentActivity => ({ label, icon, recipeKind, recipeId, targetId });
+  ): CurrentActivity => ({ label, icon, recipeKind, recipeId, targetId, actionStart });
   if (!snapshot) return result("Loading…", "i-lucide-loader-circle");
   if (!snapshot.signed_in) return result("Offline", "i-lucide-circle-off");
   if (!snapshot.available || snapshot.actions === null)
@@ -50,6 +52,7 @@ export function currentPlayerActivity(
   );
   const action = active[0];
   if (!action) return result("Idle", "i-lucide-pause");
+  actionStart = Number(action.start_ms);
   if (action.action_type === "Craft")
     return result(
       "Crafting",

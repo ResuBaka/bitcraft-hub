@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import BlockGrid from "./BlockGrid.client.vue";
 import { blockDragType, type AddBlockRequest } from "~/utils/accountOverviewBlocks";
-import { registerWebsocketMessageHandler } from "~/composables/websocket";
-import type { PlayerActivitySnapshot } from "~/types/PlayerActivitySnapshot";
-import { hasSubscribedTopic } from "~/utils/websocketTopicRegistry";
+import { overviewActivityKey, useOverviewActivity } from "~/composables/useOverviewActivity";
+import { overviewStatsKey, useOverviewStats } from "~/composables/useOverviewStats";
 import { parsePlayerLayout } from "~/utils/accountOverviewLayout";
 import type { SharedDashboard, TrackedPlayer } from "~/utils/accountOverviewShare";
 
@@ -61,56 +60,13 @@ async function applyLayout() {
     applyingLayout.value = false;
   }
 }
-const signedIn = ref<boolean | null>(null);
-const websocket = useWebsocketStore();
-let liveRevision = 0;
-let responseRevision = 0;
-const requestRevisions = new WeakMap<object, number>();
-const { data: activity, refresh } = useLazyFetchMsPack<PlayerActivitySnapshot>(
-  () => `/api/bitcraft/players/${encodeURIComponent(props.player.id)}/activity`,
-  {
-    server: false,
-    getCachedData: () => undefined,
-    onRequest: ({ options }) => {
-      requestRevisions.set(options, liveRevision);
-    },
-    onResponse: ({ options }) => {
-      responseRevision = requestRevisions.get(options) ?? -1;
-    },
-  },
+const activity = useOverviewActivity(props.player.id);
+provide(overviewActivityKey, activity);
+provide(
+  overviewStatsKey,
+  useOverviewStats(() => props.player.id),
 );
-watch(
-  activity,
-  (value) => {
-    if (value?.player_id === props.player.id && responseRevision === liveRevision)
-      signedIn.value = value.signed_in;
-  },
-  { immediate: true },
-);
-registerWebsocketMessageHandler(
-  "PlayerPresenceChanged",
-  () => [`player_presence.${props.player.id}`],
-  (player) => {
-    if (player.player_id !== props.player.id) return;
-    liveRevision++;
-    signedIn.value = player.signed_in;
-  },
-);
-let awaitingAck = true;
-registerWebsocketMessageHandler("SubscribedTopics", [], (topics) => {
-  if (awaitingAck && hasSubscribedTopic(topics, "player_presence", props.player.id)) {
-    awaitingAck = false;
-    void refresh();
-  }
-});
-websocket.sendMessage({ t: "ListSubscribedTopics" });
-watch(
-  () => websocket.isConnected,
-  (connected) => {
-    awaitingAck = true;
-    if (connected) void refresh();
-  },
-);
+const { signedIn } = activity;
 
 function onDragOver(event: DragEvent) {
   if (!props.editMode || !event.dataTransfer?.types.includes(blockDragType)) return;
@@ -179,8 +135,10 @@ watch(
             >
           </h2>
         </div>
-        <div v-if="editMode" class="flex shrink-0 items-center">
+        <div class="flex shrink-0 items-center">
+          <AccountOverviewMuteButton :player-id="player.id" :scope-label="player.name" />
           <UButton
+            v-if="editMode"
             icon="i-lucide-copy"
             color="neutral"
             variant="ghost"
@@ -206,6 +164,7 @@ watch(
         <BlockGrid
           ref="blockGrid"
           :player-id="player.id"
+          :player-name="player.name"
           :add-request="addRequest"
           :edit-mode="editMode"
           :shared="shared"

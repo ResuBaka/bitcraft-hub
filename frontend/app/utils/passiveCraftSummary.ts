@@ -11,6 +11,7 @@ export type PassiveCraftSummary = {
   name: string;
   item: PlayerCraft["outputs"][number] | null;
   ready: number;
+  readyIds: string[];
   total: number;
   buildingId: string | null;
   nextFinish: number | null;
@@ -36,6 +37,7 @@ export function summarizePassiveCrafts(crafts: PassiveCraft[]): PassiveCraftSumm
           name: item?.name ?? craft.recipe_name ?? `Recipe #${craft.recipe_id}`,
           item,
           ready: 0,
+          readyIds: [],
           total: 0,
           buildingId: craft.building_id,
           nextFinish: null,
@@ -47,7 +49,10 @@ export function summarizePassiveCrafts(crafts: PassiveCraft[]): PassiveCraftSumm
         group.buildingId = null;
       }
       group.total++;
-      if (craft.status === "Complete") group.ready++;
+      if (craft.status === "Complete") {
+        group.ready++;
+        group.readyIds.push(craft.id);
+      }
       if (craft.status === "Queued") group.queued++;
       if (craft.status === "Processing") {
         const start = craft.timestamp ? Date.parse(craft.timestamp) : NaN;

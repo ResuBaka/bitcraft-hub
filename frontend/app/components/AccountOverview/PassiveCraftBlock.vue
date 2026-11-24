@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { passiveSummaryTiming, summarizePassiveCrafts } from "~/utils/passiveCraftSummary";
 import { getTierColor } from "~/utils";
+import { passiveReadyAlerts } from "~/utils/accountOverviewAlerts";
 
 const props = defineProps<{ playerId: string }>();
 const selected = defineModel<string[]>("claims", { required: true });
@@ -12,8 +13,22 @@ const passiveCrafts = computed(() =>
   (data.value ?? []).filter((craft) => craft.kind === "Passive"),
 );
 const { options, filtered: crafts } = useCraftClaimFilter(selected, passiveCrafts);
+const notify = useOverviewNotify();
+watch(data, (next, previous) => {
+  for (const event of passiveReadyAlerts(previous, next, selected.value))
+    notify?.(props.playerId, event);
+});
 
 const summaries = computed(() => summarizePassiveCrafts(crafts.value));
+const { seen, acknowledge } = useCraftAcknowledgements(props.playerId, "Passive", data);
+const unseenSummaries = computed(
+  () =>
+    new Set(
+      summaries.value
+        .filter((summary) => summary.readyIds.some((id) => !seen.value.has(id)))
+        .map((summary) => summary.key),
+    ),
+);
 const now = ref(Date.now());
 let clock: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
@@ -115,7 +130,15 @@ onBeforeUnmount(() => {
                   >{{ summary.ready }}/{{ summary.total }} ready</span
                 >
               </div>
+              <AccountOverviewCraftCompletionBar
+                v-if="unseenSummaries.has(summary.key)"
+                :value="summary.ready"
+                :max="summary.total"
+                :description="`Mark ready ${summary.name} projects as seen (${summary.ready} of ${summary.total} ready)`"
+                @acknowledge="acknowledge(summary.readyIds)"
+              />
               <progress
+                v-else
                 :value="summary.ready"
                 :max="summary.total"
                 :aria-label="`${summary.name} projects ready to collect`"

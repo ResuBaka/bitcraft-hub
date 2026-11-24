@@ -7,6 +7,7 @@ import ActiveCraftBlock from "./ActiveCraftBlock.vue";
 import PassiveCraftBlock from "./PassiveCraftBlock.vue";
 import type { GridPosition, SharedLayout } from "~/utils/accountOverviewLayout";
 import type { SharedDashboard } from "~/utils/accountOverviewShare";
+import { overviewAlertTypes } from "~/utils/accountOverviewAlerts";
 import {
   accountOverviewBlocks,
   blockDropPosition,
@@ -18,11 +19,15 @@ import {
 
 const props = defineProps<{
   playerId: string;
+  playerName: string;
   addRequest: AddBlockRequest | null;
   editMode: boolean;
   shared?: SharedDashboard;
 }>();
 const emit = defineEmits<{ dropped: [] }>();
+const blocksWithAlerts = new Set<AccountOverviewBlockId>(
+  Object.values(overviewAlertTypes).map((type) => type.block),
+);
 const components = {
   stats: StatsBlock,
   activity: ActivityBlock,
@@ -274,6 +279,12 @@ onBeforeUnmount(() => {
             </span>
           </template>
           <template #actions>
+            <AccountOverviewMuteButton
+              v-if="blocksWithAlerts.has(block.id)"
+              :player-id="playerId"
+              :block-id="block.id"
+              :scope-label="`${playerName}'s ${block.name} block`"
+            />
             <UButton
               v-if="editMode"
               icon="i-lucide-x"

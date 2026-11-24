@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
 export default defineNuxtConfig({
+  app: { head: { link: [{ key: "favicon", rel: "icon", href: "/favicon.ico" }] } },
   devtools: { enabled: process.env.NUXT_DEVTOOLS_ENABLED === "true" },
   experimental: {
     defaults: {
