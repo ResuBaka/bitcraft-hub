@@ -17,7 +17,6 @@ pub struct Model {
     pub tech_type: ClaimTechType,
     pub supplies_cost: i32,
     pub research_time: i32,
-    #[sea_orm(column_type = "Json")]
     pub requirements: Vec<i32>,
     #[sea_orm(column_type = "Json")]
     pub input: Vec<crate::shared::item_stack::ItemStack>,

@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::initial_sync::{
-    flush_before_snapshot, reconcile_global, update_cache_if_changed,
+    flush_before_snapshot, reconcile_cached, update_cache_if_changed,
 };
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
@@ -64,10 +64,10 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                                     tracing::error!(%error, "Could not flush crafting_recipe before snapshot");
                                     continue;
                                 }
-                                if let Err(error) = reconcile_global::<::entity::crafting_recipe::Entity, _, _, _, _, _>(
+                                if let Err(error) = reconcile_cached::<::entity::crafting_recipe::Entity, _>(
                                     &global_app_state.conn, &on_conflict, batch_size,
                                     data.into_iter().map(Into::into), |model| model.id, filter,
-                                    |model, _| update_cache_if_changed(&global_app_state.crafting_recipe_desc, model.id, model),
+                                    &global_app_state.crafting_recipe_desc, sea_orm::Condition::all(), |_| true,
                                 ).await {
                                     tracing::error!(%error, "Could not reconcile crafting_recipe snapshot");
                                 }

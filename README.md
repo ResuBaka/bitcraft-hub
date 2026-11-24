@@ -143,6 +143,12 @@ to `user_state` and `user_region_state` so their region follows transfers.
 With only regional databases configured, the first region supplies the
 descriptions and each region supplies its own state.
 
+After a reconnect, a complete snapshot of a shared table removes rows deleted
+while offline from its PostgreSQL mirror and corresponding API cache. For
+claims, building nicknames and regional housing, removal is limited to the
+region being synced.
+Claim-tech changes refresh the API cache without a restart.
+
 Table declarations alone do not establish replication: BitCraftPublic's
 `global_module/src/messages/components.rs` links to the regional definitions.
 `game/src/game/reducer_helpers/building_helpers.rs` shares waystones rather

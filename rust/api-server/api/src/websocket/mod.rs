@@ -57,6 +57,7 @@ mod empire;
 mod global;
 mod global_usernames;
 mod shared_tables;
+pub(crate) use shared_tables::GLOBAL as GLOBAL_REGION;
 pub(crate) mod player_stats;
 mod player_activity;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]

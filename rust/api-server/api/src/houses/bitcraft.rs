@@ -93,6 +93,73 @@ fn interior_payload_bytes(model: &::entity::interior_network_desc::ActiveModel) 
     }
 }
 
+/// Preserve the housing writer's byte budget. Only prune after every snapshot
+/// batch succeeds; one typed array bind also handles an empty snapshot.
+#[allow(clippy::too_many_arguments)]
+async fn housing_snapshot<E: EntityTrait, K: Copy + Into<sea_orm::Value> + Send + Sync>(
+    db: &DatabaseConnection,
+    conflict: &OnConflict,
+    batch: usize,
+    pending: &mut Vec<E::ActiveModel>,
+    deletes: &mut Vec<K>,
+    rows: impl Iterator<Item = (K, E::ActiveModel)> + Send,
+    pk: E::Column,
+    scope: sea_orm::Condition,
+    estimate: impl Fn(&E::ActiveModel) -> usize + Send + Sync,
+) -> Result<(), DbErr>
+where
+    Vec<K>: Into<sea_orm::Value>,
+{
+    write_housing_batches::<E>(
+        db,
+        conflict,
+        pending,
+        &estimate,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
+    pending.clear();
+    for ids in deletes.chunks(1000) {
+        E::delete_many()
+            .filter(pk.is_in(ids.iter().copied()))
+            .exec(db)
+            .await?;
+    }
+    deletes.clear();
+
+    let mut seen = Vec::new();
+    let mut chunk = Vec::new();
+    for (id, model) in rows {
+        seen.push(id);
+        chunk.push(model);
+        if chunk.len() >= batch {
+            write_housing_batches::<E>(
+                db,
+                conflict,
+                &chunk,
+                &estimate,
+                WRITE_BATCH_ESTIMATED_BYTES,
+            )
+            .await?;
+            chunk.clear();
+        }
+    }
+    write_housing_batches::<E>(db, conflict, &chunk, estimate, WRITE_BATCH_ESTIMATED_BYTES).await?;
+    let absent = sea_query::Expr::cust_with_exprs(
+        "$1 <> ALL($2)",
+        [
+            sea_query::Expr::col(pk.as_column_ref()),
+            sea_query::Expr::val(Into::<sea_orm::Value>::into(seen)),
+        ],
+    );
+    E::delete_many()
+        .filter(scope)
+        .filter(absent)
+        .exec(db)
+        .await?;
+    Ok(())
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Interior Network Desc Worker
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,37 +194,16 @@ pub(crate) fn start_worker_interior_network_desc(
                         receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                for entry in data {
-                                    let model = ::entity::interior_network_desc::ModelBuilder::new(entry)
-                                        .with_region(database_name)
-                                        .build();
-                                    if let Some(index) = local_messages.iter().position(|value: &::entity::interior_network_desc::ActiveModel| value.building_id.as_ref() == &model.building_id) {
-                                        local_messages.remove(index);
-                                    }
-                                    local_messages.push(model.into_active_model());
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_interior_network_desc(
-                                            &global_app_state,
-                                            &on_conflict,
-                                            &mut local_messages,
-                                        )
-                                        .await;
-                                        if let Err(e) = insert {
-                                            tracing::error!("Error inserting InteriorNetworkDesc: {}", e);
-                                        }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_interior_network_desc(
-                                        &global_app_state,
-                                        &on_conflict,
-                                        &mut local_messages,
-                                    )
-                                    .await;
-                                    if let Err(e) = insert {
-                                        tracing::error!("Error inserting InteriorNetworkDesc: {}", e);
-                                    }
+                                use ::entity::interior_network_desc as table;
+                                let scope = sea_orm::Condition::all();
+                                if let Err(error) = housing_snapshot::<table::Entity, _>(
+                                    &global_app_state.conn, &on_conflict, batch_size, &mut messages, &mut messages_delete,
+                                    data.into_iter().map(|row| {
+                                        let model = table::ModelBuilder::new(row).with_region(database_name).build();
+                                        (model.building_id, model.into_active_model())
+                                    }), table::Column::BuildingId, scope, interior_payload_bytes,
+                                ).await {
+                                    tracing::error!(%error, "Could not reconcile interior_network_desc snapshot");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -454,6 +500,15 @@ async fn insert_many_dimension_description_state(
 // Player Housing State Worker
 // ─────────────────────────────────────────────────────────────────────────────
 
+fn housing_scope(source: entity::shared::Region) -> sea_orm::Condition {
+    let scope = sea_orm::Condition::all();
+    if source == crate::websocket::GLOBAL_REGION {
+        scope
+    } else {
+        scope.add(entity::player_housing_state::Column::RegionIndex.eq(i32::from(source)))
+    }
+}
+
 pub(crate) fn start_worker_player_housing_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerHousingState>>,
@@ -487,37 +542,17 @@ pub(crate) fn start_worker_player_housing_state(
                         timer.start();
                         receive_metrics.record(1);
                         match msg {
-                            SpacetimeUpdateMessages::Initial { data, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                for entry in data {
-                                    let model = ::entity::player_housing_state::ModelBuilder::new(entry)
-                                        .build();
-                                    if let Some(index) = local_messages.iter().position(|value: &::entity::player_housing_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                        local_messages.remove(index);
-                                    }
-                                    local_messages.push(model.into_active_model());
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_player_housing_state(
-                                            &global_app_state,
-                                            &on_conflict,
-                                            &mut local_messages,
-                                        )
-                                        .await;
-                                        if let Err(e) = insert {
-                                            tracing::error!("Error inserting PlayerHousingState: {}", e);
-                                        }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_player_housing_state(
-                                        &global_app_state,
-                                        &on_conflict,
-                                        &mut local_messages,
-                                    )
-                                    .await;
-                                    if let Err(e) = insert {
-                                        tracing::error!("Error inserting PlayerHousingState: {}", e);
-                                    }
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                use ::entity::player_housing_state as table;
+                                let scope = housing_scope(database_name);
+                                if let Err(error) = housing_snapshot::<table::Entity, _>(
+                                    &global_app_state.conn, &on_conflict, batch_size, &mut messages, &mut messages_delete,
+                                    data.into_iter().map(|row| {
+                                        let model = table::ModelBuilder::new(row).build();
+                                        (model.entity_id, model.into_active_model())
+                                    }), table::Column::EntityId, scope, |_| 0,
+                                ).await {
+                                    tracing::error!(%error, "Could not reconcile player_housing_state snapshot");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
@@ -983,6 +1018,90 @@ async fn insert_many_portal_state(
 mod write_batch_tests {
     use super::*;
     use sea_orm::{DbBackend, MockDatabase, MockExecResult, QueryTrait, Set, Transaction};
+
+    #[tokio::test]
+    async fn housing_reconnect_deletes_only_absent_keys_in_the_snapshot_scope() {
+        use entity::player_housing_state::{ActiveModel, Column, Entity};
+        let conflict = OnConflict::column(Column::EntityId)
+            .update_column(Column::Rank)
+            .to_owned();
+        for (region, ids) in [(7, vec![9i64]), (crate::websocket::GLOBAL_REGION, vec![])] {
+            let db = MockDatabase::new(DbBackend::Postgres)
+                .append_exec_results((0..=ids.len()).map(|_| MockExecResult {
+                    last_insert_id: 0,
+                    rows_affected: 1,
+                }))
+                .into_connection();
+            housing_snapshot::<Entity, _>(
+                &db,
+                &conflict,
+                1,
+                &mut vec![],
+                &mut vec![],
+                ids.iter().map(|id| {
+                    (
+                        *id,
+                        ActiveModel {
+                            entity_id: Set(*id),
+                            ..Default::default()
+                        },
+                    )
+                }),
+                Column::EntityId,
+                housing_scope(region),
+                |_| 0,
+            )
+            .await
+            .unwrap();
+            let log = db.into_transaction_log();
+            let delete = &log.last().unwrap().statements()[0];
+            assert!(delete.sql.starts_with("DELETE"));
+            assert!(delete.sql.contains("<> ALL("));
+            assert_eq!(delete.sql.contains("region_index"), region == 7);
+            let binds = &delete.values.as_ref().unwrap().0;
+            assert_eq!(binds.last(), Some(&sea_orm::Value::from(ids)));
+            if region == 7 {
+                assert_eq!(binds[0], 7i32.into());
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn failed_housing_batch_does_not_prune() {
+        use entity::interior_network_desc::{ActiveModel, Column, Entity};
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 1,
+            }])
+            .append_exec_errors([DbErr::Custom("write failed".into())])
+            .into_connection();
+        let conflict = OnConflict::column(Column::BuildingId)
+            .update_column(Column::Region)
+            .to_owned();
+        let result = housing_snapshot::<Entity, _>(
+            &db,
+            &conflict,
+            1,
+            &mut vec![],
+            &mut vec![],
+            [1, 2].into_iter().map(|id| {
+                (
+                    id,
+                    ActiveModel {
+                        building_id: Set(id),
+                        ..Default::default()
+                    },
+                )
+            }),
+            Column::BuildingId,
+            sea_orm::Condition::all(),
+            interior_payload_bytes,
+        )
+        .await;
+        assert!(result.is_err());
+        assert!(!format!("{:?}", db.into_transaction_log()).contains("DELETE"));
+    }
 
     // Exercise the real helpers: failed writes keep the exact batch for retry,
     // successful retries clear it without releasing its reusable allocation.

@@ -43,18 +43,19 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                         receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::extraction_recipe_desc::Model = value.into();
-                                    model
-                                }) {
-                                    local_messages.push(model);
-                                    if local_messages.len() >= batch_size {
-                                       write_snapshot(&global_app_state, &mut local_messages).await;
-                                    }
+                                use crate::websocket::initial_sync::{flush_before_snapshot, reconcile_global};
+                                let filter = |ids: &[i32]| sea_orm::Condition::all().add(extraction_recipe_desc::Column::Id.is_in(ids.iter().copied()));
+                                if let Err(error) = flush_before_snapshot::<extraction_recipe_desc::Entity, _>(
+                                    &global_app_state.conn, &on_conflict, &mut messages, &mut messages_delete, filter,
+                                ).await {
+                                    tracing::error!(%error, "Could not flush extraction_recipe_desc before snapshot");
+                                    continue;
                                 }
-                                if !local_messages.is_empty() {
-                                    write_snapshot(&global_app_state, &mut local_messages).await;
+                                if let Err(error) = reconcile_global::<extraction_recipe_desc::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn, crate::websocket::snapshot_write::extraction_writer(), batch_size, data.into_iter().map(Into::into),
+                                    |row| row.id, filter, |_, _| {},
+                                ).await {
+                                    tracing::error!(%error, "Could not reconcile extraction_recipe_desc snapshot");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
@@ -62,6 +63,7 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
                                     messages_delete.remove(index);
                                 }
+                                messages.retain(|row: &extraction_recipe_desc::ActiveModel| row.id.as_ref() != &model.id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -72,6 +74,7 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
                                     messages_delete.remove(index);
                                 }
+                                messages.retain(|row: &extraction_recipe_desc::ActiveModel| row.id.as_ref() != &model.id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -148,10 +151,4 @@ async fn insert_multiple(
     }
 
     messages.clear();
-}
-
-async fn write_snapshot(state: &AppState, rows: &mut Vec<extraction_recipe_desc::Model>) {
-    if let Err(error) = crate::websocket::snapshot_write::extraction_writer().write(&state.conn, rows).await {
-        tracing::error!(%error, "Could not write extraction recipe snapshot batch");
-    }
 }

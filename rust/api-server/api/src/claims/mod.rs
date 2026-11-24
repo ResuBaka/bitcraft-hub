@@ -1,4 +1,5 @@
 pub(crate) mod bitcraft;
+mod cached_claim_worker;
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_location;
 pub(crate) mod claim_member_state;
@@ -566,18 +567,6 @@ pub(crate) async fn get_claim(
         QueryCore::find_claim_tech_state_by_ids(&state.conn, vec![claim.entity_id])
             .await
             .expect("Cannot find claim tech states");
-
-    if state.claim_tech_desc.is_empty() {
-        let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
-            .await
-            .expect("Cannot find claim tech descs");
-
-        for claim_tech_desc in claim_tech_descs {
-            state
-                .claim_tech_desc
-                .insert(claim_tech_desc.id, claim_tech_desc);
-        }
-    }
 
     let claim_tech_state = claim_tech_states
         .iter()

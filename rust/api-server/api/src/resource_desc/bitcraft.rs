@@ -41,26 +41,19 @@ pub(crate) fn start_worker_resource_desc(
                         receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                // let currently_known = ::entity::resource_desc::Entity::find()
-                                //     .all(&global_app_state.conn)
-                                //     .await
-                                //     .map_or(vec![], |aa| aa)
-                                //     .into_iter()
-                                //     .map(|value| (value.id, value))
-                                //     .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::resource_desc::Model = value.into();
-                                    model
-                                }) {
-                                    local_messages.push(model.into_active_model());
-                                    if local_messages.len() >= batch_size {
-                                       insert_multiple(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
+                                use crate::websocket::initial_sync::{flush_before_snapshot, reconcile_global};
+                                let filter = |ids: &[i32]| sea_orm::Condition::all().add(resource_desc::Column::Id.is_in(ids.iter().copied()));
+                                if let Err(error) = flush_before_snapshot::<resource_desc::Entity, _>(
+                                    &global_app_state.conn, &on_conflict, &mut messages, &mut messages_delete, filter,
+                                ).await {
+                                    tracing::error!(%error, "Could not flush resource_desc before snapshot");
+                                    continue;
                                 }
-                                if !local_messages.is_empty() {
-                                    insert_multiple(&global_app_state, &on_conflict, &mut local_messages).await;
+                                if let Err(error) = reconcile_global::<resource_desc::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn, &on_conflict, batch_size, data.into_iter().map(Into::into),
+                                    |row| row.id, filter, |_, _| {},
+                                ).await {
+                                    tracing::error!(%error, "Could not reconcile resource_desc snapshot");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
@@ -68,6 +61,7 @@ pub(crate) fn start_worker_resource_desc(
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
                                     messages_delete.remove(index);
                                 }
+                                messages.retain(|row: &resource_desc::ActiveModel| row.id.as_ref() != &model.id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -78,6 +72,7 @@ pub(crate) fn start_worker_resource_desc(
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
                                     messages_delete.remove(index);
                                 }
+                                messages.retain(|row: &resource_desc::ActiveModel| row.id.as_ref() != &model.id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;

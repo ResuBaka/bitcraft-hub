@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use spacetimedb_sdk::{Event, Table, TableWithPrimaryKey};
 use std::{collections::BTreeMap, sync::Arc};
 
-pub(super) const GLOBAL: Region = 0;
+pub(crate) const GLOBAL: Region = 0;
 
 // The two SDK modules give distinct Rust types to BitCraft's shared wire
 // definitions. Decode through BSATN at this boundary, keeping existing workers
@@ -350,4 +350,60 @@ pub(super) fn regional_metadata(
     };
     metadata_listeners!(ctx, state, region, &mut snapshot, copy);
     snapshot
+}
+
+#[cfg(test)]
+#[tokio::test]
+#[ignore = "requires SHARED_SYNC_TEST_URL; uses PostgreSQL temporary tables"]
+async fn reconnect_prunes_postgres_through_workers() -> anyhow::Result<()> {
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, Statement};
+    use std::time::Duration;
+    let mut options = ConnectOptions::new(std::env::var("SHARED_SYNC_TEST_URL")?);
+    options.max_connections(1).set_schema_search_path("pg_temp");
+    let db = Database::connect(options).await?;
+    db.execute_unprepared(
+        "
+        CREATE TEMP TABLE resource_desc (id integer PRIMARY KEY);
+        CREATE TEMP TABLE extraction_recipe_desc (id integer PRIMARY KEY);
+        CREATE TEMP TABLE interior_network_desc (building_id integer PRIMARY KEY);
+        CREATE TEMP TABLE player_housing_state (entity_id bigint PRIMARY KEY, region_index integer);
+        INSERT INTO resource_desc VALUES (1);
+        INSERT INTO extraction_recipe_desc VALUES (2);
+        INSERT INTO interior_network_desc VALUES (3);
+        INSERT INTO player_housing_state VALUES (4,7), (5,8);
+    ",
+    )
+    .await?;
+    for source in [7, GLOBAL] {
+        let (out, _) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db.clone(), out, Default::default());
+        macro_rules! empty_snapshot {
+            ($worker:ident, $source:expr) => {{
+                let (tx, rx) = super::worker_channel::shutdown_channel(&state.shutdown);
+                super::$worker(state.clone(), rx, 10, Duration::from_secs(1));
+                tx.send(Message::Initial {
+                    data: vec![],
+                    batches: None,
+                    database_name: $source,
+                })
+                .unwrap();
+            }};
+        }
+        empty_snapshot!(start_worker_resource_desc, GLOBAL);
+        empty_snapshot!(start_worker_extraction_recipe_desc, GLOBAL);
+        empty_snapshot!(start_worker_interior_network_desc, GLOBAL);
+        empty_snapshot!(start_worker_player_housing_state, source);
+        state.shutdown.drain().await;
+        let result = db.query_one_raw(Statement::from_string(DbBackend::Postgres, "
+            SELECT (SELECT count(*) FROM resource_desc) + (SELECT count(*) FROM extraction_recipe_desc)
+                + (SELECT count(*) FROM interior_network_desc) AS descriptions,
+                ARRAY(SELECT entity_id FROM player_housing_state) AS houses"
+        )).await?.unwrap();
+        assert_eq!(result.try_get::<i64>("", "descriptions")?, 0);
+        assert_eq!(
+            result.try_get::<Vec<i64>>("", "houses")?,
+            if source == 7 { vec![5] } else { vec![] }
+        );
+    }
+    Ok(())
 }

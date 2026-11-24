@@ -44,9 +44,9 @@ pub(crate) fn update_cache_if_changed<K: Eq + Hash, M: Clone + PartialEq>(
 /// Global description tables have no region column. Only complete table
 /// snapshots may use this entry point; regional state must use `reconcile`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) async fn reconcile_global<E, K, I, Key, Filter, Observe>(
+pub(crate) async fn reconcile_global<'a, E, K, I, Key, Filter, Observe>(
     conn: &DatabaseConnection,
-    on_conflict: &OnConflict,
+    writer: impl Into<Writer<'a, E>>,
     batch_size: usize,
     incoming: I,
     key: Key,
@@ -65,7 +65,7 @@ where
     reconcile_scoped::<E, _, _, _, _, _>(
         conn,
         Condition::all(),
-        on_conflict.into(),
+        writer.into(),
         batch_size,
         stream::iter(incoming.map(Ok)),
         key,
@@ -73,6 +73,46 @@ where
         observe,
     )
     .await
+}
+
+/// A cache can have keys that PostgreSQL no longer has. Evict from the
+/// authoritative snapshot, not from the set of rows deleted by SQL. Do this
+/// only after a successful reconciliation and only within this snapshot's scope.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn reconcile_cached<E, K>(
+    conn: &DatabaseConnection,
+    conflict: &OnConflict,
+    batch_size: usize,
+    incoming: impl Iterator<Item = E::Model> + Send,
+    key: impl Fn(&E::Model) -> K + Send + Sync,
+    filter: impl Fn(&[K]) -> Condition + Send + Sync,
+    cache: &dashmap::DashMap<K, E::Model>,
+    scope: Condition,
+    in_scope: impl Fn(&E::Model) -> bool + Send,
+) -> Result<(), DbErr>
+where
+    E: EntityTrait,
+    E::Model: Sync + PartialEq + IntoActiveModel<E::ActiveModel>,
+    K: TryGetableMany + Eq + Hash + Copy + Send + Sync,
+{
+    let mut seen = HashSet::new();
+    reconcile_scoped::<E, _, _, _, _, _>(
+        conn,
+        scope,
+        conflict.into(),
+        batch_size,
+        stream::iter(incoming.map(Ok)),
+        &key,
+        filter,
+        |row, _| {
+            let id = key(row);
+            seen.insert(id);
+            update_cache_if_changed(cache, id, row);
+        },
+    )
+    .await?;
+    cache.retain(|id, row| !in_scope(row) || seen.contains(id));
+    Ok(())
 }
 
 /// Flush older live writes/deletes before comparing a newer complete snapshot.

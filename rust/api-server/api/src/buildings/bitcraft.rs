@@ -230,7 +230,7 @@ pub(crate) fn start_worker_building_desc(
                         receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
-                                use crate::websocket::initial_sync::{flush_before_snapshot, reconcile_global, update_cache_if_changed};
+                                use crate::websocket::initial_sync::{flush_before_snapshot, reconcile_cached};
                                 let filter = |keys: &[i64]| sea_orm::Condition::all().add(::entity::building_desc::Column::Id.is_in(keys.iter().copied()));
                                 if let Err(error) = flush_before_snapshot::<::entity::building_desc::Entity, _>(
                                     &global_app_state.conn, &on_conflict, &mut messages, &mut messages_delete, filter,
@@ -238,10 +238,10 @@ pub(crate) fn start_worker_building_desc(
                                     tracing::error!(%error, "Could not flush building_desc before snapshot");
                                     continue;
                                 }
-                                if let Err(error) = reconcile_global::<::entity::building_desc::Entity, _, _, _, _, _>(
+                                if let Err(error) = reconcile_cached::<::entity::building_desc::Entity, _>(
                                     &global_app_state.conn, &on_conflict, batch_size,
                                     data.into_iter().map(Into::into), |model| model.id, filter,
-                                    |model, _| update_cache_if_changed(&global_app_state.building_desc, model.id, model),
+                                    &global_app_state.building_desc, sea_orm::Condition::all(), |_| true,
                                 ).await {
                                     tracing::error!(%error, "Could not reconcile building_desc snapshot");
                                 }
@@ -387,49 +387,16 @@ pub(crate) fn start_worker_building_nickname_state(
                                     tracing::error!(%error, "Could not flush building nicknames before snapshot");
                                     continue;
                                 }
-                                let mut currently_known_building_nickname_state = ::entity::building_nickname_state::Entity::find()
-                                    .filter(::entity::building_nickname_state::Column::Region.eq(database_name))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .unwrap_or_else(|error| {
-                                        tracing::error!(
-                                            error = error.to_string(),
-                                            "Error while query whole building_nickname_state state"
-                                        );
-                                        vec![]
-                                    })
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(value).with_region(database_name).build();
-
-                                    model
-                                }) {
-                                    global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
-                                    if currently_known_building_nickname_state.remove(&model.entity_id).as_ref() != Some(&model) {
-                                        pending.insert(model.entity_id, Some(model));
-                                    }
-                                    if pending.len() >= batch_size
-                                        && let Err(error) = flush_building_nicknames(&global_app_state, &on_conflict, &mut pending).await {
-                                        tracing::error!(%error, "Could not persist building nickname snapshot");
-                                    }
-                                };
-                                if let Err(error) = flush_building_nicknames(&global_app_state, &on_conflict, &mut pending).await {
-                                    tracing::error!(%error, "Could not persist building nickname snapshot");
-                                }
-
-                                for chunk_ids in currently_known_building_nickname_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::building_nickname_state::Entity::delete_many()
-                                        .filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::building_nickname_state::Column::Region.eq(database_name))
-                                        .exec(&global_app_state.conn).await
-                                    {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(BuildingNicknameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingNicknameState");
-                                    }
+                                let mut unique = std::collections::HashSet::new();
+                                if let Err(error) = crate::websocket::initial_sync::reconcile_cached::<nickname::Entity, _>(
+                                    &global_app_state.conn, &on_conflict, batch_size,
+                                    data.into_iter().rev().filter(|v| unique.insert(v.entity_id))
+                                        .map(|v| nickname::ModelBuilder::new(v).with_region(database_name).build()),
+                                    |m| m.entity_id, |ids| crate::websocket::initial_sync::bigint_keys_filter(nickname::Column::EntityId, ids),
+                                    &global_app_state.building_nickname_state,
+                                    sea_orm::Condition::all().add(nickname::Column::Region.eq(database_name)), |m| m.region == database_name,
+                                ).await {
+                                    tracing::error!(%error, "Could not reconcile building nickname snapshot");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. }
@@ -512,6 +479,12 @@ mod tests {
             .into_connection();
         let (out, _) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db.clone(), out, Default::default());
+        for (id, region) in [(100, 1), (200, 2)] {
+            let model = nickname::ModelBuilder::new(BuildingNicknameState {
+                entity_id: id, nickname: "cache only".into(),
+            }).with_region(region).build();
+            state.building_nickname_state.insert(model.entity_id, model);
+        }
         let (tx, rx) = crate::websocket::worker_channel::shutdown_channel(&state.shutdown);
         for msg in [
             SpacetimeUpdateMessages::Insert {
@@ -536,6 +509,9 @@ mod tests {
         start_worker_building_nickname_state(state.clone(), rx, 100, Duration::from_secs(60));
         state.shutdown.drain().await;
 
+        assert_eq!(state.building_nickname_state.get(&42).unwrap().nickname, "latest");
+        assert!(!state.building_nickname_state.contains_key(&100));
+        assert!(state.building_nickname_state.contains_key(&200));
         let log = db.into_transaction_log();
         assert_eq!(log.len(), 3);
         assert!(log[1].statements()[0].sql.starts_with("SELECT"));

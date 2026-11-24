@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::initial_sync::{
-    flush_before_snapshot, reconcile_global, update_cache_if_changed,
+    flush_before_snapshot, reconcile_cached, update_cache_if_changed,
 };
 use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
@@ -46,10 +46,10 @@ pub(crate) fn start_worker_item_list_desc(
                                     tracing::error!(%error, "Could not flush item_list_desc before snapshot");
                                     continue;
                                 }
-                                if let Err(error) = reconcile_global::<item_list_desc::Entity, _, _, _, _, _>(
+                                if let Err(error) = reconcile_cached::<item_list_desc::Entity, _>(
                                     &global_app_state.conn, &on_conflict, batch_size,
                                     data.into_iter().map(Into::into), |model| model.id, filter,
-                                    |model, _| update_cache_if_changed(&global_app_state.item_list_desc, model.id, model),
+                                    &global_app_state.item_list_desc, sea_orm::Condition::all(), |_| true,
                                 ).await {
                                     tracing::error!(%error, "Could not reconcile item_list_desc snapshot");
                                 }

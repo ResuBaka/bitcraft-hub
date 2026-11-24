@@ -15,7 +15,7 @@ type Names = super::worker_channel::UnboundedSender<
 >;
 
 async fn previous_partitions(
-    db: &sea_orm::DatabaseConnection,
+    state: &AppState,
 ) -> Result<Vec<entity::shared::Region>, sea_orm::DbErr> {
     use sea_orm::{DbBackend, FromQueryResult, Statement};
     #[derive(FromQueryResult)]
@@ -28,12 +28,16 @@ async fn previous_partitions(
          UNION SELECT region FROM building_nickname_state
          UNION SELECT region FROM player_username_state",
     );
-    Ok(Partition::find_by_statement(query)
-        .all(db)
+    let mut regions: std::collections::BTreeSet<_> = Partition::find_by_statement(query)
+        .all(&state.conn)
         .await?
         .into_iter()
         .map(|p| p.region)
-        .collect())
+        .collect();
+    // A region can have cached rows even if its last DB write failed.
+    regions.extend(state.claim_state.iter().map(|row| row.region));
+    regions.extend(state.building_nickname_state.iter().map(|row| row.region));
+    Ok(regions.into_iter().collect())
 }
 
 pub(super) fn start(
@@ -130,7 +134,7 @@ async fn sync(
     let staff = leaderboard_staff::listen(ctx, state.ranking_system.clone());
     let changes = empire::Changes::listen(ctx);
     // Include old partitions even if their last row disappeared while offline.
-    let regions = previous_partitions(&state.conn).await?;
+    let regions = previous_partitions(state).await?;
     let names = global_usernames::Directory::listen(ctx);
     let mut shared = workers.listen(ctx, &regions, state);
     let directory_outcome = subscribe(
