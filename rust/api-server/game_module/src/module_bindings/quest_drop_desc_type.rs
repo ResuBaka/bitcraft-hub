@@ -54,14 +54,20 @@ impl __sdk::__query_builder::HasCols for QuestDropDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct QuestDropDescIxCols {
+    pub enemy_id: __sdk::__query_builder::IxCol<QuestDropDesc, i32>,
+    pub extraction_id: __sdk::__query_builder::IxCol<QuestDropDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<QuestDropDesc, i32>,
+    pub item_list_id: __sdk::__query_builder::IxCol<QuestDropDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for QuestDropDesc {
     type IxCols = QuestDropDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         QuestDropDescIxCols {
+            enemy_id: __sdk::__query_builder::IxCol::new(table_name, "enemy_id"),
+            extraction_id: __sdk::__query_builder::IxCol::new(table_name, "extraction_id"),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            item_list_id: __sdk::__query_builder::IxCol::new(table_name, "item_list_id"),
         }
     }
 }
