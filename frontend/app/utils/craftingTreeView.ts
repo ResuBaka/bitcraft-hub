@@ -1,6 +1,7 @@
 import type { CargoDesc } from "../types/CargoDesc";
 import type { ItemDesc } from "../types/ItemDesc";
-import type { CraftingPlanNode, ItemType } from "./craftingPlan";
+import type { ItemType } from "../types/ItemType";
+import type { CraftingPlanNode } from "./craftingPlan";
 
 export type CraftingTreeItem = {
   path: string;

@@ -1,7 +1,8 @@
 import type { RecipesAllResponse } from "../types/RecipesAllResponse";
+import type { ItemType } from "../types/ItemType";
 import { itemKey } from "./craftingPlan";
 import { resolveDropOutcomes } from "./dropEstimates";
-import type { CraftingGraph, InventoryQuantities, ItemType } from "./craftingPlan";
+import type { CraftingGraph, InventoryQuantities } from "./craftingPlan";
 
 export type OperationRequirement = {
   id: number;

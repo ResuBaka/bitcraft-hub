@@ -1,10 +1,10 @@
 import type { RecipesAllResponse } from "../types/RecipesAllResponse";
 import type { ExtractionRecipeResponse } from "../types/ExtractionRecipeResponse";
 import type { ItemStack } from "../types/ItemStack";
+import type { ItemType } from "../types/ItemType";
 import { resolveDropOutcomes } from "./dropEstimates";
 import type { ExperienceStackF32 } from "../types/ExperienceStackF32";
 
-export type ItemType = "Item" | "Cargo";
 export type ResourceEffort = Record<string, number>;
 export type InventoryQuantities = Record<ItemType, Record<number, number>>;
 export const itemKey = (type: ItemType, id: number) => `${type}:${id}`;

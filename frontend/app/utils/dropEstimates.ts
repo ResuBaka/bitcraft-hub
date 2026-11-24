@@ -1,5 +1,6 @@
 import type { RecipesAllResponse } from "../types/RecipesAllResponse";
-import type { CraftingIngredient, ItemType } from "./craftingPlan";
+import type { ItemType } from "../types/ItemType";
+import type { CraftingIngredient } from "./craftingPlan";
 // Keep this resolver independent of the planner (which also consumes its odds).
 const itemKey = (type: ItemType, id: number) => `${type}:${id}`;
 

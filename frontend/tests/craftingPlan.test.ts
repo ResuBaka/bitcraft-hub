@@ -3,7 +3,8 @@ import { computed, markRaw, reactive, ref, shallowRef, watch } from "vue";
 import type { CraftingRecipe } from "../app/types/CraftingRecipe";
 import type { RecipesAllResponse } from "../app/types/RecipesAllResponse";
 import type { ExtractionRecipeResponse } from "../app/types/ExtractionRecipeResponse";
-import type { ItemType, CraftingPlanNode } from "../app/utils/craftingPlan";
+import type { ItemType } from "../app/types/ItemType";
+import type { CraftingPlanNode } from "../app/utils/craftingPlan";
 import * as crafting from "../app/utils/craftingPlan";
 import { getItemOperationRecipes } from "../app/utils/itemOperations";
 

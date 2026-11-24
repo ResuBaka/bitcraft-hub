@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type {
-  CraftingGraph,
-  GraphRecipe,
-  InventoryQuantities,
-  ItemType,
-} from "~/utils/craftingPlan";
+import type { ItemType } from "~/types/ItemType";
+import type { CraftingGraph, GraphRecipe, InventoryQuantities } from "~/utils/craftingPlan";
 import { itemKey } from "~/utils/craftingPlan";
 import { buildItemOperation } from "~/utils/itemOperations";
 import { estimateDrop } from "~/utils/dropEstimates";
