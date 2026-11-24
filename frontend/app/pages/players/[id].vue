@@ -799,6 +799,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         <UEmpty v-else icon="i-lucide-package" title="No deployables" />
         </div>
 
+        <BitcraftPlayerPlaceables
+          v-if="selectedSection === 'placeables'"
+          :player-id="String(route.params.id)"
+        />
+
         <UCard v-if="selectedSection === 'crafting'" :ui="{ body: 'p-4' }">
           <template #header><h2 class="text-lg font-semibold">Crafting projects</h2></template>
           <ClaimTabCrafting :player-id="String(route.params.id)" />

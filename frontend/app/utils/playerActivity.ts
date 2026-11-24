@@ -8,6 +8,8 @@ export type CurrentActivity = {
   recipeKind: "craft" | "gather" | null;
   recipeId: number | null;
   targetId: string | null;
+  craftOwnerId?: string;
+  craftId?: string;
 };
 
 export function currentPlayerActivity(
@@ -26,6 +28,7 @@ export function currentPlayerActivity(
   if (!snapshot.signed_in) return result("Offline", "i-lucide-circle-off");
   if (!snapshot.available || snapshot.actions === null)
     return result("Activity unavailable", "i-lucide-circle-help");
+  const isWork = (type: string) => type === "Craft" || type === "Extract";
   const active = snapshot.actions.filter((action) => {
     const start = Number(action.start_ms);
     const duration = Number(action.duration_ms);
@@ -36,31 +39,46 @@ export function currentPlayerActivity(
       Number.isFinite(start) &&
       Number.isFinite(duration) &&
       duration > 0 &&
-      start <= now + 500 &&
+      start <= now + (isWork(action.action_type) ? 1000 : 500) &&
       start + duration > now
     );
   });
   const priority = (type: string) =>
-    type === "Craft" || type === "Extract"
-      ? 2
-      : type === "PlayerMove" || type === "DeployableMove"
-        ? 0
-        : 1;
+    isWork(type) ? 2 : type === "PlayerMove" || type === "DeployableMove" ? 0 : 1;
   active.sort(
     (a, b) =>
       priority(b.action_type) - priority(a.action_type) || Number(b.start_ms) - Number(a.start_ms),
   );
-  const action = active[0];
+  // Hit timestamps come from the game client. BitCraft accepts requests up to
+  // 8s late or 1s early, so a valid hit can already look expired on arrival.
+  // For consumed hits the game moves start_ms to approximately the hit's end.
+  // Only bridge a freshly sampled hit; ticking an unchanged snapshot must
+  // still lead to Idle, and a genuinely active action always wins.
+  const sampled = Number(snapshot.server_time_ms);
+  const action =
+    active[0] ??
+    snapshot.actions
+      .filter((a) => {
+        const ageAtSample = sampled - Number(a.start_ms);
+        const sinceSample = now - sampled;
+        return (
+          isWork(a.action_type) &&
+          a.successful &&
+          ageAtSample >= -1000 &&
+          ageAtSample <= 8000 &&
+          sinceSample >= 0 &&
+          sinceSample < Math.min(Number(a.duration_ms), 1500)
+        );
+      })
+      .sort((a, b) => Number(b.start_ms) - Number(a.start_ms))[0];
   if (!action) return result("Idle", "i-lucide-pause");
   actionStart = Number(action.start_ms);
   if (action.action_type === "Craft")
-    return result(
-      "Crafting",
-      "i-lucide-hammer",
-      "craft",
-      action.recipe_id,
-      action.target_id ?? null,
-    );
+    return {
+      ...result("Crafting", "i-lucide-hammer", "craft", action.recipe_id, action.target_id ?? null),
+      craftOwnerId: action.craft_owner_id ?? undefined,
+      craftId: action.craft_id ?? undefined,
+    };
   if (action.action_type === "Extract")
     return result(
       "Gathering",
@@ -100,21 +118,24 @@ export class ActivityLinger {
   }
 }
 
-export function activityCraftProgress(
-  activity: CurrentActivity,
-  crafts: PlayerCraft[] | null | undefined,
-) {
-  if (activity.recipeKind !== "craft" || activity.targetId === null || activity.recipeId === null)
-    return null;
-  const matches = (crafts ?? []).filter(
+export function activityCraft(activity: CurrentActivity, crafts: PlayerCraft[] | null | undefined) {
+  if (activity.recipeKind !== "craft" || activity.targetId === null) return null;
+  const matches = crafts?.filter(
     (craft) =>
       craft.kind === "Active" &&
       craft.building_id === activity.targetId &&
-      craft.recipe_id === activity.recipeId,
+      (activity.recipeId === null || craft.recipe_id === activity.recipeId),
   );
-  if (matches.length !== 1) return null;
-  const craft = matches[0]!;
-  if (craft.progress == null || craft.progress_total == null) return null;
+  if (activity.craftId) return matches?.find((c) => c.id === activity.craftId) ?? null;
+  // Freshly initiated projects don't have a continue-start event. Ignore
+  // collected-later completions and suspended projects at the same station.
+  if (activity.recipeId === null) return null;
+  const active = matches?.filter((c) => c.status === "Active" || c.status === "Unknown");
+  return active?.length === 1 ? active[0]! : null;
+}
+
+export function activityCraftProgress(craft: PlayerCraft | null) {
+  if (craft?.progress == null || craft.progress_total == null) return null;
   const total = Number(craft.progress_total);
   if (!Number.isFinite(craft.progress) || !Number.isFinite(total) || total <= 0) return null;
   return {

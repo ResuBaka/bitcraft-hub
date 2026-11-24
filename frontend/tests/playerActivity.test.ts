@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   ActivityLinger,
+  activityCraft,
   activityCraftProgress,
   currentPlayerActivity,
 } from "../app/utils/playerActivity";
@@ -58,19 +59,70 @@ test("only shows progress for a unique matching building and recipe", () => {
   );
   const craft = {
     kind: "Active",
+    status: "Active",
     building_id: "9007199254740993",
     recipe_id: 7,
     progress: 5,
     progress_total: 20,
   } as PlayerCraft;
-  expect(activityCraftProgress(activity, [craft])).toEqual({ progress: 5, total: 20, percent: 25 });
-  expect(activityCraftProgress(activity, [])).toBeNull();
-  expect(activityCraftProgress(activity, [craft, craft])).toBeNull();
-  expect(activityCraftProgress(activity, [{ ...craft, building_id: "1" }])).toBeNull();
-  expect(activityCraftProgress(activity, [{ ...craft, progress_total: null }])).toBeNull();
+  expect(activityCraftProgress(activityCraft(activity, [craft]))).toEqual({
+    progress: 5,
+    total: 20,
+    percent: 25,
+  });
+  expect(activityCraft(activity, [])).toBeNull();
+  expect(activityCraft(activity, [craft, craft])).toBeNull();
+  expect(activityCraft(activity, [{ ...craft, status: "Complete" }, craft])).toBe(craft);
+  expect(activityCraft(activity, [{ ...craft, building_id: "1" }])).toBeNull();
+  expect(activityCraftProgress({ ...craft, progress_total: null })).toBeNull();
+});
+
+test("resolves the owner's exact project even when several projects use the same recipe", () => {
+  const target = "9007199254740993";
+  const activity = currentPlayerActivity(
+    {
+      ...snapshot,
+      actions: [{ ...action("Craft", 7), target_id: "2", craft_id: target, craft_owner_id: "43" }],
+    },
+    1500,
+  );
+  const craft = { kind: "Active", id: target, building_id: "2", recipe_id: 7 } as PlayerCraft;
+  const other = { ...craft, id: "9007199254740992" };
+  expect(activity.craftOwnerId).toBe("43");
+  expect(activityCraft(activity, [other, craft])).toBe(craft);
+  expect(activityCraft({ ...activity, recipeId: null }, [other, craft])).toBe(craft);
+  expect(activityCraft(activity, [other])).toBeNull();
+  expect(activityCraft(activity, [{ ...craft, recipe_id: 8 }])).toBeNull();
+  expect(activityCraft(activity, [{ ...craft, kind: "Passive" }])).toBeNull();
 });
 
 describe("player activity", () => {
+  test("recognizes a delayed public-project hit without keeping stale work active", () => {
+    const hit = {
+      ...action("Craft", 203006),
+      start_ms: 2000,
+      duration_ms: 1190,
+      craft_owner_id: "43",
+    };
+    const sample = { ...snapshot, server_time_ms: 9296, actions: [hit] };
+    expect(currentPlayerActivity(sample, 9296)).toMatchObject({
+      label: "Crafting",
+      craftOwnerId: "43",
+    });
+    expect(currentPlayerActivity(sample, 11000).label).toBe("Idle");
+    expect(currentPlayerActivity({ ...sample, server_time_ms: 11000 }, 11000).label).toBe("Idle");
+    const consumed = { ...hit, consumed: true };
+    expect(currentPlayerActivity({ ...sample, actions: [consumed] }, 9296).label).toBe("Crafting");
+    expect(
+      currentPlayerActivity(
+        {
+          ...sample,
+          actions: [consumed, { ...action("PlayerMove"), start_ms: 9200 }],
+        },
+        9296,
+      ).label,
+    ).toBe("Running");
+  });
   test("distinguishes unknown, offline and idle", () => {
     expect(currentPlayerActivity({ ...snapshot, available: false }, 1500).label).toBe(
       "Activity unavailable",
@@ -110,7 +162,7 @@ describe("player activity", () => {
     expect(
       currentPlayerActivity(
         { ...snapshot, actions: [{ ...action("Extract"), consumed: true }] },
-        1500,
+        3000,
       ).label,
     ).toBe("Idle");
     expect(

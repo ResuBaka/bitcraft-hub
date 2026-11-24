@@ -8,6 +8,14 @@ type CraftProgress = {
 };
 type ProgressUpdate = { craft_id: string; progress: number; lock_expiration: string };
 
+/** A player snapshot is complete or not yet available; a foreign snapshot isn't an empty list. */
+export function ownedCraftSnapshot<T extends { owner_id: string }>(
+  rows: T[] | null | undefined,
+  ownerId: string,
+) {
+  return rows?.every((row) => row.owner_id === ownerId) ? rows : undefined;
+}
+
 export function applyCraftProgress<T extends CraftProgress>(
   crafts: T[],
   update: ProgressUpdate,

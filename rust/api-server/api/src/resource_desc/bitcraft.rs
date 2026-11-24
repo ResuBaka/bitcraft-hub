@@ -18,6 +18,7 @@ pub(crate) fn start_worker_resource_desc(
         let on_conflict = sea_query::OnConflict::column(resource_desc::Column::Id)
             .update_columns([
                 resource_desc::Column::Name,
+                resource_desc::Column::MaxHealth,
                 resource_desc::Column::Description,
                 resource_desc::Column::Tier,
                 resource_desc::Column::Tag,

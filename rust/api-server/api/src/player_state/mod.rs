@@ -1,6 +1,7 @@
 pub(crate) mod bitcraft;
 pub(crate) mod activity;
 pub(crate) mod equipment;
+mod placeables;
 pub(crate) mod stats;
 
 use crate::{AppRouter, AppState};
@@ -37,6 +38,7 @@ pub(crate) fn get_routes() -> AppRouter {
             axum_codec::routing::get(player_location).into(),
         )
         .route("/api/bitcraft/players/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::player_crafts).into())
+        .route("/api/bitcraft/players/{id}/placeables", axum_codec::routing::get(placeables::player_placeables).into())
         .route("/api/bitcraft/players/{id}/stats", axum_codec::routing::get(player_stats).into())
         .route(
             "/api/bitcraft/players/{id}/equipment",
@@ -56,6 +58,7 @@ pub(crate) fn get_routes() -> AppRouter {
         )
         .route("/api/bitcraft/players/{id}/activity", axum_codec::routing::get(player_activity).into())
         .route("/api/bitcraft/activity/recipe/{kind}/{id}", axum_codec::routing::get(activity_recipe).into())
+        .route("/api/bitcraft/resources/{id}/health", axum_codec::routing::get(resource_health).into())
         .route(
             "/api/bitcraft/players/all",
             axum_codec::routing::get(get_all).into(),
@@ -71,31 +74,65 @@ async fn player_activity(
 }
 
 #[derive(Serialize)]
-struct ActivityRecipe { kind: String, id: i32, name: Option<String>, stamina_requirement: Option<f32> }
+struct ActivityRecipe {
+    kind: String,
+    id: i32,
+    name: Option<String>,
+    tier: Option<i32>,
+    stamina_requirement: Option<f32>,
+    max_health: Option<i32>,
+}
+
+#[derive(Serialize)]
+struct ResourceHealth { health: Option<i32> }
+
+async fn resource_health(
+    State(state): State<AppState>, Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<ResourceHealth>, StatusCode> {
+    let row = entity::resource_health_state::Entity::find_by_id(id).one(&state.conn).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(axum_codec::Codec(ResourceHealth { health: row.map(|row| row.health) }))
+}
 
 async fn activity_recipe(
     State(state): State<AppState>,
     Path((kind, id)): Path<(String, i32)>,
 ) -> Result<axum_codec::Codec<ActivityRecipe>, (StatusCode, &'static str)> {
-    let (name, stamina_requirement) = match kind.as_str() {
-        "craft" => state.crafting_recipe_desc.get(&id)
-            .map(|recipe| (Some(crate::crafting::claim::recipe_name(&state, &recipe)), Some(recipe.stamina_requirement)))
-            .unwrap_or_default(),
+    let mut details = ActivityRecipe {
+        kind, id, name: None, tier: None, stamina_requirement: None, max_health: None,
+    };
+    match details.kind.as_str() {
+        "craft" => {
+            if let Some(recipe) = state.crafting_recipe_desc.get(&id) {
+                use entity::inventory::ItemType;
+                details.name = Some(crate::crafting::claim::recipe_name(&state, &recipe));
+                details.stamina_requirement = Some(recipe.stamina_requirement);
+                details.tier = recipe.crafted_item_stacks.first().and_then(|output| match output.item_type {
+                    ItemType::Item => state.item_desc.get(&output.item_id).map(|item| item.tier),
+                    ItemType::Cargo => state.cargo_desc.get(&output.item_id).map(|cargo| cargo.tier),
+                });
+            }
+        }
         "gather" => {
-            let recipe = entity::extraction_recipe_desc::Entity::find_by_id(id).one(&state.conn).await
-                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load extraction recipe"))?;
-            let stamina = recipe.as_ref().map(|r| r.stamina_requirement);
-            let name = match recipe {
-                Some(recipe) if recipe.cargo_id.is_some_and(|id| id != 0) => recipe.cargo_id.and_then(|id| state.cargo_desc.get(&id).map(|cargo| cargo.name.clone())),
-                Some(recipe) => entity::resource_desc::Entity::find_by_id(recipe.resource_id).one(&state.conn).await
-                    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load resource"))?.map(|resource| resource.name),
-                None => None,
-            };
-            (name, stamina)
+            if let Some(recipe) = entity::extraction_recipe_desc::Entity::find_by_id(id).one(&state.conn).await
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load extraction recipe"))? {
+                details.stamina_requirement = Some(recipe.stamina_requirement);
+                if let Some(id) = recipe.cargo_id.filter(|id| *id != 0) {
+                    if let Some(cargo) = state.cargo_desc.get(&id) {
+                        details.name = Some(cargo.name.clone());
+                        details.tier = Some(cargo.tier);
+                    }
+                } else if let Some(resource) = entity::resource_desc::Entity::find_by_id(recipe.resource_id).one(&state.conn).await
+                    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load resource"))? {
+                    details.name = Some(resource.name);
+                    details.tier = Some(resource.tier);
+                    details.max_health = resource.max_health;
+                }
+            }
         }
         _ => return Err((StatusCode::BAD_REQUEST, "Unknown activity recipe kind")),
     };
-    Ok(axum_codec::Codec(ActivityRecipe { kind, id, name, stamina_requirement }))
+    Ok(axum_codec::Codec(details))
 }
 
 async fn player_stats(

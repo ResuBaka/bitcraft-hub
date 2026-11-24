@@ -47,6 +47,8 @@ pub mod passive_craft_state;
 pub mod craft_activity;
 pub mod raw_event_data;
 pub mod resource_desc;
+pub mod resource_health_state;
+pub mod placeables;
 pub mod shared;
 pub mod skill_desc;
 pub mod trade_order;

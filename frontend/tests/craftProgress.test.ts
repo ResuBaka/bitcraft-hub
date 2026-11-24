@@ -1,5 +1,16 @@
 import { expect, test } from "bun:test";
-import { applyCraftProgress, applyPassiveCraftUpdate } from "../app/utils/craftProgress";
+import { applyCraftProgress, applyPassiveCraftUpdate, ownedCraftSnapshot } from "../app/utils/craftProgress";
+
+test("switching back from a shared project never exposes its owner's carried-over rows", () => {
+  const player = "9007199254740992";
+  const owner = "9007199254740993";
+  const shared = [{ owner_id: owner, id: "12" }];
+  expect(ownedCraftSnapshot(shared, owner)).toBe(shared);
+  expect(ownedCraftSnapshot(shared, player)).toBeUndefined();
+  expect(ownedCraftSnapshot([], player)).toEqual([]);
+  const own = [{ owner_id: player, id: "13" }];
+  expect(ownedCraftSnapshot(own, player)).toBe(own);
+});
 
 test("applies websocket progress without modifying the original snapshot", () => {
   const rows = [{ id: "1", kind: "Active", progress: 2, progress_total: 10, status: "Active", timestamp: null }];

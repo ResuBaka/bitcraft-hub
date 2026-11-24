@@ -16,6 +16,8 @@ const dashboard: SharedDashboard = {
       { id: "stats", x: 0, y: 0, w: 6, h: 3 },
       { id: "active-crafts", x: 6, y: 0, w: 6, h: 3 },
       { id: "passive-crafts", x: 0, y: 3, w: 12, h: 3 },
+      { id: "activity", x: 0, y: 6, w: 6, h: 3 },
+      { id: "placeables", x: 6, y: 6, w: 6, h: 3 },
     ],
   },
   activeClaims: ["claim:360287970367149240", "unclaimed"],

@@ -1,5 +1,6 @@
 export type PlayerCraft = {
   id: string;
+  owner_id: string;
   kind: "Active" | "Passive";
   status: string;
   public: boolean | null;

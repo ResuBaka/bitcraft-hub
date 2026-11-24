@@ -1,21 +1,36 @@
 <script setup lang="ts">
 import { overviewActivityKey } from "~/composables/useOverviewActivity";
 import { overviewStatsKey } from "~/composables/useOverviewStats";
-import { activityCraftProgress } from "~/utils/playerActivity";
+import { activityCraft, activityCraftProgress } from "~/utils/playerActivity";
 import { IdleAlertTimer } from "~/utils/accountOverviewAlerts";
+import { getTierColor } from "~/utils";
 
 const props = defineProps<{ playerId: string }>();
 const websocket = useWebsocketStore();
 const { raw, current, snapshot, pending, error, refreshActivity } = inject(overviewActivityKey)!;
 const { data: stats } = inject(overviewStatsKey)!;
-const { data: crafts } = usePlayerCraftSnapshot(() => props.playerId, "Active");
-const craftProgress = computed(() => activityCraftProgress(current.value, crafts.value));
+const {
+  data: crafts,
+  pending: loadingCrafts,
+  refresh: refreshCrafts,
+} = usePlayerCraftSnapshot(() => current.value.craftOwnerId ?? props.playerId, "Active");
+const project = computed(() => activityCraft(current.value, crafts.value));
+const craftProgress = computed(() => activityCraftProgress(project.value));
+const resourceHealth = useTemplateRef("resourceHealth");
+
+function refresh() {
+  void refreshActivity();
+  void resourceHealth.value?.refresh();
+  if (current.value.recipeKind === "craft") void refreshCrafts();
+}
 
 type RecipeDetails = {
   kind: "craft" | "gather";
   id: number;
   name: string | null;
+  tier?: number | null;
   stamina_requirement?: number | null;
+  max_health?: number | null;
 };
 const recipeKey = computed(() =>
   current.value.recipeKind && current.value.recipeId != null
@@ -38,7 +53,10 @@ watch(
   },
   { immediate: true },
 );
-const recipeName = computed(() => recipeKey.value && recipes.value[recipeKey.value]?.name);
+const currentRecipe = computed(() =>
+  recipeKey.value ? recipes.value[recipeKey.value] : undefined,
+);
+const tier = computed(() => project.value?.outputs?.[0]?.tier ?? currentRecipe.value?.tier);
 const idleTimer = new IdleAlertTimer();
 const notify = useOverviewNotify();
 let lastRecipe: string | null = null;
@@ -73,7 +91,7 @@ watchEffect(() => {
           variant="ghost"
           :loading="pending"
           aria-label="Refresh activity"
-          @click="refreshActivity"
+          @click="refresh"
         />
         <slot name="actions" />
       </div>
@@ -87,15 +105,25 @@ watchEffect(() => {
         <div class="min-w-0 flex-1">
           <p class="break-words leading-tight">
             <span class="font-medium">{{ current.label }}</span>
-            <span v-if="current.recipeKind" class="text-muted">
-              ·
-              {{
-                recipeName ??
-                (current.recipeId == null ? "Recipe unavailable" : `Recipe #${current.recipeId}`)
-              }}
-            </span>
+            <template v-if="current.recipeKind">
+              <span class="text-muted"> · </span>
+              <span :class="tier != null && tier > 0 ? getTierColor(tier) : 'text-muted'">
+                {{
+                  project?.recipe_name ??
+                  currentRecipe?.name ??
+                  (current.recipeId == null ? "Recipe unavailable" : `Recipe #${current.recipeId}`)
+                }}
+              </span>
+            </template>
           </p>
           <template v-if="current.recipeKind === 'craft'">
+            <NuxtLink
+              v-if="project"
+              :to="`/buildings/${project.building_id}`"
+              class="text-xs text-muted hover:underline"
+            >
+              {{ project.building_name }} · Quantity {{ project.quantity }}
+            </NuxtLink>
             <template v-if="craftProgress">
               <div class="mt-0.5 flex items-center gap-1.5">
                 <progress
@@ -109,8 +137,20 @@ watchEffect(() => {
                 >
               </div>
             </template>
-            <p v-else class="text-xs text-muted">Progress unavailable</p>
+            <p v-else-if="project?.progress != null" class="text-xs text-muted">
+              {{ project.progress }} progress · Total unknown
+            </p>
+            <p v-else class="text-xs text-muted">
+              {{ loadingCrafts ? "Loading active craft…" : "Progress unavailable" }}
+            </p>
           </template>
+          <AccountOverviewResourceHealth
+            v-else-if="current.recipeKind === 'gather' && current.targetId"
+            ref="resourceHealth"
+            :key="current.targetId"
+            :target-id="current.targetId"
+            :max-health="currentRecipe?.max_health"
+          />
           <p v-else-if="current.recipeKind === 'gather'" class="text-xs text-muted">
             Resource health unavailable
           </p>

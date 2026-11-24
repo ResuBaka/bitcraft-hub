@@ -23,6 +23,12 @@ export const accountOverviewBlocks = [
     description: "Passive crafting projects",
     icon: "i-lucide-clock",
   },
+  {
+    id: "placeables",
+    name: "Placeables",
+    description: "Owned placeables, growth timers and interactions",
+    icon: "i-lucide-sprout",
+  },
 ] as const;
 
 export type AccountOverviewBlockId = (typeof accountOverviewBlocks)[number]["id"];

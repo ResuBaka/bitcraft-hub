@@ -13,6 +13,8 @@ export type PlayerActivitySnapshot = {
         duration_ms: number | bigint;
         recipe_id: number | null;
         target_id?: string | null;
+        craft_id?: string | null;
+        craft_owner_id?: string | null;
       }[]
     | null;
 };

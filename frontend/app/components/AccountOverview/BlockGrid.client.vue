@@ -5,6 +5,7 @@ import StatsBlock from "./StatsBlock.vue";
 import ActivityBlock from "./ActivityBlock.vue";
 import ActiveCraftBlock from "./ActiveCraftBlock.vue";
 import PassiveCraftBlock from "./PassiveCraftBlock.vue";
+import PlayerPlaceables from "../Bitcraft/PlayerPlaceables.vue";
 import type { GridPosition, SharedLayout } from "~/utils/accountOverviewLayout";
 import type { SharedDashboard } from "~/utils/accountOverviewShare";
 import { overviewAlertTypes } from "~/utils/accountOverviewAlerts";
@@ -33,6 +34,7 @@ const components = {
   activity: ActivityBlock,
   "active-crafts": ActiveCraftBlock,
   "passive-crafts": PassiveCraftBlock,
+  placeables: PlayerPlaceables,
 };
 const toast = useToast();
 const gridElement = ref<HTMLElement | null>(null);
@@ -64,7 +66,8 @@ const passiveClaims = props.shared
       initOnMounted: true,
     });
 
-function craftFilterBindings(id: AccountOverviewBlockId) {
+function blockBindings(id: AccountOverviewBlockId) {
+  if (id === "placeables") return { compact: true };
   const filter =
     id === "active-crafts" ? activeClaims : id === "passive-crafts" ? passiveClaims : null;
   return filter
@@ -264,7 +267,7 @@ onBeforeUnmount(() => {
       <div class="grid-stack-item-content">
         <component
           :is="components[block.id]"
-          v-bind="craftFilterBindings(block.id)"
+          v-bind="blockBindings(block.id)"
           :player-id="playerId"
           class="h-full"
         >

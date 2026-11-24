@@ -1,3 +1,4 @@
+import { accountOverviewBlocks } from "./accountOverviewBlocks";
 import {
   validatePlayerLayout,
   type GridPosition,
@@ -55,7 +56,7 @@ function parseSetup(value: unknown): SharedDashboard[] | null {
       !Array.isArray(box) ||
       box.length !== 4 ||
       !Array.isArray(blocks) ||
-      blocks.length > 4 ||
+      blocks.length > accountOverviewBlocks.length ||
       !validClaims(activeClaims) ||
       !validClaims(passiveClaims)
     )

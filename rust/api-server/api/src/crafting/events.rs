@@ -8,8 +8,8 @@ use entity::craft_activity;
 use entity::shared::Region;
 use game_module::module_bindings::{
     BuildingState, BuildingStateTableAccess, CraftCompletedEvent, CraftCompletedEventTableAccess,
-    CraftEvent, CraftEventTableAccess, DbConnection, ProgressiveActionState,
-    ProgressiveActionStateTableAccess, Reducer,
+    CraftContinueStartEventTableAccess, CraftEvent, CraftEventTableAccess, DbConnection, ProgressiveActionState,
+    ProgressiveActionStateTableAccess, PublicProgressiveActionStateTableAccess, Reducer,
 };
 use sea_orm::{EntityTrait, Set};
 use spacetimedb_sdk::{Event, EventTable, Table, TableWithPrimaryKey};
@@ -20,6 +20,7 @@ use crate::websocket::worker_channel::{self, UnboundedSender};
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Project {
     building: u64,
+    owner: u64,
     recipe: i32,
     count: i32,
 }
@@ -28,6 +29,7 @@ impl From<&ProgressiveActionState> for Project {
     fn from(row: &ProgressiveActionState) -> Self {
         Self {
             building: row.building_entity_id,
+            owner: row.owner_entity_id,
             recipe: row.recipe_id,
             count: row.craft_count,
         }
@@ -136,25 +138,57 @@ pub(crate) fn register_listeners(
     ctx: &DbConnection,
     region: Region,
     tx: UnboundedSender<craft_activity::ActiveModel>,
+    station_projects: Arc<super::station_projects::StationProjects>,
+    on_continue: impl Fn(u64, u64, u64, u64) + Send + Sync + 'static,
 ) {
     // Separate per-connection maps avoid cross-region collisions and are rebuilt on reconnect.
     let context = Arc::new(Context::default());
     let cache = context.clone();
+    EventTable::on_insert(&ctx.db.craft_continue_start_event(), move |_, start| {
+        let id = start.request.progressive_action_entity_id;
+        if let Some(owner) = cache.projects.get(&id).map(|p| p.owner) {
+            on_continue(start.actor_id, start.request.timestamp, id, owner);
+        }
+    });
+    let public = ctx.db.public_progressive_action_state();
+    let stations = station_projects.clone();
+    public.on_initial_rows(move |_, rows| stations.reset_public(rows.iter().map(|r| r.entity_id)));
+    let stations = station_projects.clone();
+    public.on_insert(move |_, row| stations.change_public(None, Some(row.entity_id)));
+    let stations = station_projects.clone();
+    public.on_update(move |_, old, new| stations.change_public(Some(old.entity_id), Some(new.entity_id)));
+    let stations = station_projects.clone();
+    public.on_delete(move |_, row| stations.change_public(Some(row.entity_id), None));
+
+    let cache = context.clone();
+    let stations = station_projects.clone();
     ctx.db.on_initial_owned::<ProgressiveActionState>(
         "progressive_action_state",
-        move |_, rows| cache.reset_projects(&rows),
+        move |_, rows| {
+            cache.reset_projects(&rows);
+            stations.reset(&rows);
+        },
     );
     let cache = context.clone();
+    let stations = station_projects.clone();
     ctx.db
         .progressive_action_state()
-        .on_insert(move |_, row| cache.project(row));
+        .on_insert(move |_, row| {
+            cache.project(row);
+            stations.change(None, Some(row));
+        });
     let cache = context.clone();
+    let stations = station_projects.clone();
     ctx.db
         .progressive_action_state()
-        .on_update(move |_, old, new| cache.update_project(old, new));
+        .on_update(move |_, old, new| {
+            cache.update_project(old, new);
+            stations.change(Some(old), Some(new));
+        });
     let cache = context.clone();
     ctx.db.progressive_action_state().on_delete(move |_, row| {
         cache.projects.remove(&row.entity_id);
+        station_projects.change(Some(row), None);
     });
 
     let cache = context.clone();
@@ -268,6 +302,8 @@ mod tests {
         check(1, Some((20, 50, 3, 4)));
         change(|r| r.recipe_id = 30);
         check(1, Some((20, 50, 30, 4)));
+        change(|r| r.owner_entity_id = 42);
+        assert_eq!(ctx.projects.get(&1).unwrap().owner, 42);
         change(|r| r.craft_count = 40);
         check(1, Some((20, 50, 30, 40)));
         change(|r| r.entity_id = 10);
@@ -287,6 +323,7 @@ mod tests {
             1,
             Project {
                 building: 2,
+                owner: 42,
                 recipe: 3,
                 count: 4,
             },

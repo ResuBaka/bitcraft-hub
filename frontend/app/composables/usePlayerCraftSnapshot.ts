@@ -2,19 +2,21 @@ import { watchDebounced } from "@vueuse/core";
 import type { MaybeRefOrGetter } from "vue";
 import type { PlayerCraft } from "~/types/PlayerCraft";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
-import { applyCraftProgress, applyPassiveCraftUpdate } from "~/utils/craftProgress";
+import { applyCraftProgress, applyPassiveCraftUpdate, ownedCraftSnapshot } from "~/utils/craftProgress";
 import { hasSubscribedTopic } from "~/utils/websocketTopicRegistry";
 
 export function usePlayerCraftSnapshot(
   playerId: MaybeRefOrGetter<string>,
   kind: "Active" | "Passive",
 ) {
-  // Each block owns its snapshot and reconciliation, so removing or refreshing one
-  // cannot cancel the other block's in-flight request.
-  const { data, pending, error, refresh } = useLazyFetchMsPack<PlayerCraft[]>(
+  // Activity can switch to a project's owner. Keep its in-flight requests
+  // and carried-over Nuxt data separate from the dashboard's owned-craft list.
+  const blockId = useId();
+  const { data: fetched, pending, error, refresh } = useLazyFetchMsPack<PlayerCraft[]>(
     () => `/api/bitcraft/players/${encodeURIComponent(toValue(playerId))}/crafting`,
-    { server: false, key: computed(() => `monitor-crafting:${kind}:${toValue(playerId)}`) },
+    { server: false, key: computed(() => `monitor-crafting:${kind}:${blockId}:${toValue(playerId)}`) },
   );
+  const data = computed(() => ownedCraftSnapshot(fetched.value, toValue(playerId)));
   const websocket = useWebsocketStore();
   const liveVersion = ref(0);
   let awaitingAck = true;
@@ -51,7 +53,7 @@ export function usePlayerCraftSnapshot(
       (message) => {
         if (message.player_id !== toValue(playerId)) return;
         const updated = data.value && applyCraftProgress(data.value, message);
-        if (updated) data.value = updated;
+        if (updated) fetched.value = updated;
         if (!updated || pending.value) liveVersion.value++;
       },
     );
@@ -62,7 +64,7 @@ export function usePlayerCraftSnapshot(
       (message) => {
         if (message.player_id !== toValue(playerId)) return;
         const updated = data.value && applyPassiveCraftUpdate(data.value, message);
-        if (updated) data.value = updated;
+        if (updated) fetched.value = updated;
         if (!updated || pending.value) liveVersion.value++;
       },
     );

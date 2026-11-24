@@ -60,6 +60,8 @@ mod shared_tables;
 pub(crate) use shared_tables::GLOBAL as GLOBAL_REGION;
 pub(crate) mod player_stats;
 mod player_activity;
+mod resource_health;
+mod placeables;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
 mod overworld;
 // Only register the dimension listener together with its queue consumer.
@@ -394,6 +396,8 @@ async fn connect_to_db_logic(
     db_ready: &mut tokio::sync::watch::Receiver<bool>,
     claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
     craft_activity_tx: &UnboundedSender<entity::craft_activity::ActiveModel>,
+    resource_health_tx: &UnboundedSender<SpacetimeUpdateMessages<ResourceHealthState>>,
+    placeables: &placeables::Workers,
     passive_craft_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PassiveCraftState>>,
     shared: &shared_tables::Workers,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
@@ -483,7 +487,7 @@ async fn connect_to_db_logic(
     global_app_state.claim_locations.reset(region_number);
     claim_locations::listen(&ctx, region_number, global_app_state.claim_locations.clone());
     global_app_state.player_stats.reset(region_number);
-    global_app_state.player_activity.reset(region_number);
+    let station_projects = global_app_state.player_activity.reset(region_number);
     player_activity::listen(&ctx, region_number, global_app_state.clone());
     player_stats::listen(&ctx, region_number, global_app_state.clone());
     if !config.spacetimedb.skip_state_tables {
@@ -496,7 +500,34 @@ async fn connect_to_db_logic(
         region_number,
         claim_event_tx.clone(),
     );
-    crate::crafting::events::register_listeners(&ctx, region_number, craft_activity_tx.clone());
+    let activity = global_app_state.clone();
+    // The regional and global SDKs have different placeable descriptor layouts.
+    // Read these descriptions once from the designated regional descriptor source.
+    if !*remove_desc {
+        let desc_tx = &placeables.desc;
+        let interactions_tx = &placeables.interactions;
+        setup_spacetime_db_listeners!(ctx, placeable_desc, desc_tx, PlaceableDesc, database, region_number, "placeable_desc");
+        setup_spacetime_db_listeners!(ctx, placeable_interaction_desc, interactions_tx, PlaceableInteractionDesc, database, region_number, "placeable_interaction_desc");
+    }
+    let placeable_tx = &placeables.state;
+    let timer_tx = &placeables.timer;
+    setup_spacetime_db_listeners!(ctx, placeable_state, placeable_tx, PlaceableState, database, region_number, "placeable_state");
+    setup_spacetime_db_listeners!(ctx, placeable_growth_timer, timer_tx, GrowthTimer, database, region_number, "placeable_growth_timer");
+    setup_spacetime_db_listeners!(
+        ctx, resource_health_state, resource_health_tx, ResourceHealthState,
+        database, region_number, "resource_health_state"
+    );
+    crate::crafting::events::register_listeners(
+        &ctx,
+        region_number,
+        craft_activity_tx.clone(),
+        station_projects,
+        move |actor, start, project, owner| {
+            if activity.player_activity.craft_started(region_number, actor, start, project, owner) {
+                player_activity::changed(&activity, Some(actor));
+            }
+        },
+    );
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -728,9 +759,15 @@ async fn connect_to_db_logic(
         "inventory_state",
         "progressive_action_state",
         "public_progressive_action_state",
+        "resource_health_state",
         "craft_event",
+        "craft_continue_start_event",
         "craft_completed_event",
         "passive_craft_state",
+        "placeable_state",
+        "placeable_growth_timer",
+        "placeable_desc",
+        "placeable_interaction_desc",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run
@@ -1014,6 +1051,8 @@ pub(crate) fn start_websocket_bitcraft_logic(
         let (permission_state_tx, permission_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (portal_state_tx, portal_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (resource_desc_tx, resource_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let resource_health_tx = resource_health::start_worker(global_app_state.clone(), db_flush_delay);
+        let placeables = placeables::Workers::new(&global_app_state);
         let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (progressive_action_state_tx, progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (public_progressive_action_state_tx, public_progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
@@ -1080,6 +1119,8 @@ pub(crate) fn start_websocket_bitcraft_logic(
                 let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
                 let tmp_public_progressive_action_state_tx = public_progressive_action_state_tx.clone();
                 let tmp_craft_activity_tx = craft_activity_tx.clone();
+                let tmp_resource_health_tx = resource_health_tx.clone();
+                let placeables = placeables.clone();
                 let tmp_passive_craft_state_tx = passive_craft_state_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
@@ -1145,6 +1186,8 @@ pub(crate) fn start_websocket_bitcraft_logic(
                             &mut db_ready,
                             &claim_event_tx,
                             &tmp_craft_activity_tx,
+                            &tmp_resource_health_tx,
+                            &placeables,
                             &tmp_passive_craft_state_tx,
                             &shared,
                             &tmp_mobile_entity_state_tx,
@@ -1479,6 +1522,7 @@ pub(crate) enum OutboundWebSocketMessages {
     PlayerStatsChanged { player_id: Option<String>, stats: Option<crate::player_state::stats::StatsSnapshot> },
     PlayerCharacterStatsChanged { player_id: Option<String>, delta: Option<crate::player_state::stats::CharacterStatsDelta> },
     PlayerActivityChanged { player_id: Option<String>, activity: Option<crate::player_state::activity::ActivitySnapshot> },
+    ResourceHealthChanged { target_id: Option<String>, health: Option<i32> },
     CraftProgressChanged { claim_id: Option<String>, player_id: String, craft_id: String, progress: i32, lock_expiration: String },
     PassiveCraftChanged { claim_id: Option<String>, player_id: String, craft_id: String, status: String, slot: Option<u32>, timestamp: String },
     Experience {
@@ -1665,6 +1709,7 @@ impl OutboundWebSocketMessages {
             Self::PlayerStatsChanged { .. } => "PlayerStatsChanged",
             Self::PlayerCharacterStatsChanged { .. } => "PlayerCharacterStatsChanged",
             Self::PlayerActivityChanged { .. } => "PlayerActivityChanged",
+            Self::ResourceHealthChanged { .. } => "ResourceHealthChanged",
             Self::CraftProgressChanged { .. } => "CraftProgressChanged",
             Self::PassiveCraftChanged { .. } => "PassiveCraftChanged",
             Self::Experience { .. } => "Experience",
@@ -1779,6 +1824,9 @@ impl OutboundWebSocketMessages {
             ),
             OutboundWebSocketMessages::PlayerActivityChanged { player_id, .. } => Some(
                 BroadcastTopics::new([("player_activity".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            Self::ResourceHealthChanged { target_id, .. } => Some(
+                BroadcastTopics::new([("resource_health".into(), target_id.as_ref().and_then(|id| id.parse().ok()))]),
             ),
             OutboundWebSocketMessages::CraftProgressChanged { claim_id, player_id, .. } => {
                 let player = player_id.parse::<i64>().ok()?;

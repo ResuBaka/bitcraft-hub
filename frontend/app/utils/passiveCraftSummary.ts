@@ -72,6 +72,24 @@ export function summarizePassiveCrafts(crafts: PassiveCraft[]): PassiveCraftSumm
   return [...groups.values()];
 }
 
+export function formatCountdown(milliseconds: number): string {
+  let seconds = Math.ceil(milliseconds / 1000);
+  const days = Math.floor(seconds / 86400);
+  seconds %= 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+  return [
+    days && `${days}d`,
+    hours && `${hours}h`,
+    minutes && `${minutes}m`,
+    seconds && `${seconds}s`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function passiveSummaryTiming(
   summary: PassiveCraftSummary,
   now: number,
@@ -82,21 +100,7 @@ export function passiveSummaryTiming(
         label: "Finishing",
         detail: "Estimated finish reached; awaiting server confirmation.",
       };
-    let seconds = Math.ceil((summary.nextFinish - now) / 1000);
-    const days = Math.floor(seconds / 86400);
-    seconds %= 86400;
-    const hours = Math.floor(seconds / 3600);
-    seconds %= 3600;
-    const minutes = Math.floor(seconds / 60);
-    seconds %= 60;
-    const time = [
-      days && `${days}d`,
-      hours && `${hours}h`,
-      minutes && `${minutes}m`,
-      seconds && `${seconds}s`,
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const time = formatCountdown(summary.nextFinish - now);
     const unknown = summary.unknownProcessing ? " Some project times are unknown." : "";
     const queued = summary.queued ? " Queued projects are not included." : "";
     return { label: time, detail: `Estimated time until the next finish.${unknown}${queued}` };

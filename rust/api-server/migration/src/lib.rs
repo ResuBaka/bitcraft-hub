@@ -65,6 +65,8 @@ mod m20261117_000001_extraction_xp;
 mod m20261124_000001_empire;
 mod m20261124_000002_watchtower_history;
 mod m20261124_000003_empire_decay_parameters;
+mod m20261124_000004_resource_health;
+mod m20261124_000005_placeables;
 
 pub struct Migrator;
 
@@ -137,6 +139,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20261124_000001_empire::Migration),
             Box::new(m20261124_000002_watchtower_history::Migration),
             Box::new(m20261124_000003_empire_decay_parameters::Migration),
+            Box::new(m20261124_000004_resource_health::Migration),
+            Box::new(m20261124_000005_placeables::Migration),
         ]
     }
 }

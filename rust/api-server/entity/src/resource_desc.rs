@@ -12,6 +12,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i32,
     pub name: String,
+    pub max_health: Option<i32>,
     pub description: String,
     pub tier: i32,
     pub tag: String,
@@ -32,6 +33,7 @@ impl From<ResourceDesc> for Model {
         Self {
             id: value.id,
             name: value.name,
+            max_health: Some(value.max_health),
             description: value.description,
             tier: value.tier,
             tag: value.tag,
