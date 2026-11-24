@@ -1,8 +1,34 @@
-//! Hold the shared connection-build slot through the initial snapshot (and any
-//! failed attempts), but never for the lifetime of an established connection.
+//! Pipeline one regional WebSocket handshake ahead of the active initial snapshot.
 use std::{future::Future, sync::Arc};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_util::sync::CancellationToken;
+
+/// Drive the connected SDK while the PostgreSQL baseline is loading. Only an
+/// explicit success opens subscriptions, including for later reconnects.
+pub(super) async fn wait_for_db(
+    ready: &mut tokio::sync::watch::Receiver<bool>,
+    connection: impl Future<Output = anyhow::Result<()>>,
+    stop: &CancellationToken,
+) -> anyhow::Result<bool> {
+    tokio::pin!(connection);
+    tokio::select! { biased;
+        _ = stop.cancelled() => {}
+        result = ready.wait_for(|loaded| *loaded) => {
+            if result.is_ok() {
+                return Ok(true);
+            }
+        }
+        result = &mut connection => {
+            result?;
+            anyhow::ensure!(stop.is_cancelled(), "Connection ended while loading app state");
+            return Ok(false);
+        }
+    }
+    // Shutdown or loader failure: disconnect and drain without subscribing.
+    stop.cancel();
+    connection.await?;
+    Ok(false)
+}
 
 pub(super) async fn wait_previous(
     previous: Option<tokio::sync::oneshot::Receiver<()>>,
@@ -11,13 +37,7 @@ pub(super) async fn wait_previous(
     if let Some(previous) = previous {
         tokio::select! { biased;
             _ = stop.cancelled() => return false,
-            result = previous => {
-                if result.is_err() {
-                    // Preserve the existing finite retry budget: once a region
-                    // gives up entirely, allow later regions to make progress.
-                    tracing::warn!("Previous connection exhausted startup attempts; continuing with the next database");
-                }
-            }
+            _ = previous => {}
         }
     }
     !stop.is_cancelled()
@@ -33,11 +53,23 @@ pub(super) async fn acquire(
     }
 }
 
+pub(super) async fn admit_snapshot(
+    handshake: OwnedSemaphorePermit,
+    snapshots: &Arc<Semaphore>,
+    stop: &CancellationToken,
+) -> Option<OwnedSemaphorePermit> {
+    // Keep the handshake slot while waiting: otherwise every later region
+    // could open an idle socket behind one slow snapshot.
+    let snapshot = acquire(snapshots, stop).await;
+    drop(handshake);
+    snapshot
+}
+
 pub(super) async fn run<F, R>(
     connection: F,
     ready: R,
     stop: &CancellationToken,
-    permit: &mut Option<OwnedSemaphorePermit>,
+    permit: OwnedSemaphorePermit,
 ) -> anyhow::Result<()>
 where
     F: Future<Output = anyhow::Result<()>>,
@@ -53,9 +85,7 @@ where
         result = ready => {
             match result {
                 Ok(()) => {
-                    // The caller keeps retrying with this same slot on failure.
-                    // Only success lets the next database begin building up.
-                    drop(permit.take());
+                    drop(permit);
                     connection.await
                 }
                 Err(error) => {
@@ -79,6 +109,46 @@ mod tests {
     use tokio::time::Duration;
 
     #[tokio::test]
+    async fn preconnected_sockets_are_driven_but_wait_for_the_database_baseline() {
+        let (loader, mut ready) = tokio::sync::watch::channel(false);
+        let mut reconnect = ready.clone();
+        let stop = CancellationToken::new();
+        let (connected, handshake) = oneshot::channel();
+        let driver = async {
+            connected.send(()).unwrap();
+            std::future::pending().await
+        };
+        let waiting = wait_for_db(&mut ready, driver, &stop);
+        tokio::pin!(waiting);
+        assert!(futures::poll!(waiting.as_mut()).is_pending());
+        handshake.await.unwrap();
+        loader.send(true).unwrap();
+        assert!(waiting.await.unwrap());
+        drop(loader);
+        assert!(
+            wait_for_db(&mut reconnect, std::future::pending(), &stop)
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn failed_baseline_drains_waiting_socket_without_subscribing() {
+        let (loader, mut ready) = tokio::sync::watch::channel(false);
+        let stop = CancellationToken::new();
+        let driver = async {
+            stop.cancelled().await;
+            Ok(())
+        };
+        let waiting = wait_for_db(&mut ready, driver, &stop);
+        tokio::pin!(waiting);
+        assert!(futures::poll!(waiting.as_mut()).is_pending());
+        drop(loader);
+        assert!(!waiting.await.unwrap());
+        assert!(stop.is_cancelled());
+    }
+
+    #[tokio::test]
     async fn initial_connections_wait_for_the_previous_configured_database() {
         let stop = CancellationToken::new();
         assert!(wait_previous(None, &stop).await);
@@ -98,21 +168,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn startup_slot_is_available_immediately_after_previous_release() {
-        let gate = Arc::new(Semaphore::new(1));
-        let previous = gate.clone().acquire_owned().await.unwrap();
+    async fn preconnect_one_region_while_previous_snapshot_is_loading() {
+        let handshakes = Arc::new(Semaphore::new(1));
+        let snapshots = Arc::new(Semaphore::new(1));
         let stop = CancellationToken::new();
-        let pending = acquire(&gate, &stop);
+        let first = acquire(&handshakes, &stop).await.unwrap();
+        let loading = admit_snapshot(first, &snapshots, &stop).await.unwrap();
+        let second = acquire(&handshakes, &stop).await.unwrap();
+        let pending = admit_snapshot(second, &snapshots, &stop);
         tokio::pin!(pending);
         assert!(futures::poll!(pending.as_mut()).is_pending());
-        drop(previous);
+        assert!(
+            handshakes.try_acquire().is_err(),
+            "third handshake must wait"
+        );
+        drop(loading);
         let permit = match futures::poll!(pending.as_mut()) {
             std::task::Poll::Ready(Some(permit)) => permit,
             _ => panic!("startup must not add a delay after the slot is released"),
         };
-        assert!(gate.try_acquire().is_err());
+        assert!(snapshots.try_acquire().is_err());
+        assert_eq!(handshakes.available_permits(), 1);
         drop(permit);
-        assert_eq!(gate.available_permits(), 1);
+        assert_eq!(snapshots.available_permits(), 1);
     }
 
     #[tokio::test]
@@ -123,7 +201,6 @@ mod tests {
         let (disconnected, finished) = oneshot::channel();
         let stop = CancellationToken::new();
         let task = tokio::spawn(async move {
-            let mut permit = Some(permit);
             run(
                 async {
                     finished.await?;
@@ -134,11 +211,10 @@ mod tests {
                     Ok(())
                 },
                 &stop,
-                &mut permit,
+                permit,
             )
             .await
             .unwrap();
-            assert!(permit.is_none());
         });
         assert!(gate.try_acquire().is_err());
         applied.send(()).unwrap();
@@ -156,58 +232,46 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn failed_subscription_drains_connection_and_retains_slot_for_retry() {
+    async fn failed_subscription_drains_before_releasing_slot_for_other_regions() {
         let gate = Arc::new(Semaphore::new(1));
-        let mut permit = Some(gate.clone().acquire_owned().await.unwrap());
+        let permit = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
         let mut drained = false;
         let error = run(
             async {
                 stop.cancelled().await;
+                assert!(gate.try_acquire().is_err());
                 drained = true;
                 Ok(())
             },
             async { anyhow::bail!("subscription rejected") },
             &stop,
-            &mut permit,
+            permit,
         )
         .await
         .unwrap_err();
         assert!(error.to_string().contains("subscription rejected"));
         assert!(drained);
-        assert!(permit.is_some());
-        assert!(gate.try_acquire().is_err());
-        // A subsequent successful attempt, not the failure, releases the slot.
-        let retry_stop = CancellationToken::new();
-        let retry = run(
-            std::future::pending(),
-            async { Ok(()) },
-            &retry_stop,
-            &mut permit,
-        );
-        tokio::pin!(retry);
-        assert!(futures::poll!(retry.as_mut()).is_pending());
         assert_eq!(gate.available_permits(), 1);
     }
 
     #[tokio::test]
     async fn early_disconnect_is_not_initial_success() {
         let gate = Arc::new(Semaphore::new(1));
-        let mut permit = Some(gate.clone().acquire_owned().await.unwrap());
+        let permit = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
         assert!(
-            run(async { Ok(()) }, std::future::pending(), &stop, &mut permit)
+            run(async { Ok(()) }, std::future::pending(), &stop, permit)
                 .await
                 .is_err()
         );
-        assert!(permit.is_some());
-        assert!(gate.try_acquire().is_err());
+        assert_eq!(gate.available_permits(), 1);
     }
 
     #[tokio::test]
     async fn sdk_driver_is_polled_while_waiting_for_its_callback() {
         let gate = Arc::new(Semaphore::new(1));
-        let mut permit = Some(gate.clone().acquire_owned().await.unwrap());
+        let permit = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
         let (applied, ready) = oneshot::channel();
         let driven = std::cell::Cell::new(false);
@@ -224,7 +288,7 @@ mod tests {
                 Ok(())
             },
             &stop,
-            &mut permit,
+            permit,
         );
         tokio::pin!(connection);
         assert!(futures::poll!(connection.as_mut()).is_pending());
@@ -237,15 +301,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn shutdown_cancels_slot_wait() {
+    async fn shutdown_releases_handshake_while_waiting_for_snapshot() {
+        let handshakes = Arc::new(Semaphore::new(1));
         let gate = Arc::new(Semaphore::new(1));
         let previous = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
-        let pending = acquire(&gate, &stop);
+        let handshake = acquire(&handshakes, &stop).await.unwrap();
+        let pending = admit_snapshot(handshake, &gate, &stop);
         tokio::pin!(pending);
         assert!(futures::poll!(pending.as_mut()).is_pending());
         stop.cancel();
         assert!(pending.await.is_none());
+        assert_eq!(handshakes.available_permits(), 1);
         drop(previous);
 
         assert!(acquire(&gate, &stop).await.is_none());
@@ -255,10 +322,10 @@ mod tests {
     #[tokio::test]
     async fn shutdown_before_initial_callback_drains_without_reporting_failure() {
         let gate = Arc::new(Semaphore::new(1));
-        let mut permit = Some(gate.clone().acquire_owned().await.unwrap());
+        let permit = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
         stop.cancel();
-        run(async { Ok(()) }, std::future::pending(), &stop, &mut permit)
+        run(async { Ok(()) }, std::future::pending(), &stop, permit)
             .await
             .unwrap();
     }

@@ -388,8 +388,9 @@ async fn connect_to_db_logic(
     database: &str,
     remove_desc: &bool,
     timing: ConnectionTiming,
-    startup_permit: &mut Option<tokio::sync::OwnedSemaphorePermit>,
-    startup_done: &mut Option<tokio::sync::oneshot::Sender<()>>,
+    handshake: tokio::sync::OwnedSemaphorePermit,
+    snapshots: &Arc<tokio::sync::Semaphore>,
+    db_ready: &mut tokio::sync::watch::Receiver<bool>,
     claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
     craft_activity_tx: &UnboundedSender<entity::craft_activity::ActiveModel>,
     passive_craft_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PassiveCraftState>>,
@@ -454,6 +455,28 @@ async fn connect_to_db_logic(
         );
         anyhow::bail!("Connection to {database} is inactive");
     }
+
+    let connection_stop = global_app_state.shutdown.stop.child_token();
+    let connection = run_connection_until_shutdown(&ctx, ctx.run_async(), &connection_stop);
+    tokio::pin!(connection);
+    if !startup::wait_for_db(db_ready, &mut connection, &connection_stop).await? {
+        return Ok(());
+    }
+    let snapshot_wait = Instant::now();
+    // Drive identity/disconnect callbacks even on the preconnected socket.
+    // No table subscriptions are submitted until the snapshot slot is ours.
+    let snapshot = tokio::select! {
+        result = &mut connection => {
+            result?;
+            anyhow::ensure!(connection_stop.is_cancelled(), "Connection ended before subscribing");
+            return Ok(());
+        }
+        slot = startup::admit_snapshot(handshake, snapshots, &connection_stop) => match slot {
+            Some(snapshot) => snapshot,
+            None => return connection.await,
+        },
+    };
+    tracing::debug!(region = database, wait_ms = snapshot_wait.elapsed().as_millis(), "WebSocket ready to subscribe");
 
     let has_global = !config.spacetimedb.database.trim().is_empty();
     global_app_state.claim_locations.reset(region_number);
@@ -847,8 +870,6 @@ async fn connect_to_db_logic(
     let tmp_disconnect_global_app_state = global_app_state.clone();
 
     // The SDK must keep processing events while we wait for subscriptions to apply.
-    let connection_stop = global_app_state.shutdown.stop.child_token();
-    let connection = run_connection_until_shutdown(&ctx, ctx.run_async(), &connection_stop);
     let result = startup::run(
         connection,
         async {
@@ -863,13 +884,10 @@ async fn connect_to_db_logic(
                 timing.wait_connected().await;
             }
             tracing::info!(region = database, "Connection startup complete; releasing startup slot");
-            if let Some(done) = startup_done.take() {
-                let _ = done.send(());
-            }
             Ok::<(), anyhow::Error>(())
         },
         &connection_stop,
-        startup_permit,
+        snapshot,
     )
     .await;
 
@@ -887,7 +905,11 @@ async fn connect_to_db_logic(
     result
 }
 
-pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
+pub(crate) fn start_websocket_bitcraft_logic(
+    config: Config,
+    global_app_state: AppState,
+    db_ready: tokio::sync::watch::Receiver<bool>,
+) {
     let db_flush_delay = Duration::from_millis(config.database.worker_flush_ms);
     tracing::info!(
         backend = worker_channel::BACKEND,
@@ -1016,12 +1038,13 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             player_housing_state: player_housing_state_tx.clone(),
         };
         if !config.spacetimedb.skip_state_tables && !config.spacetimedb.database.trim().is_empty() {
-            global::start(&config, global_app_state.clone(), shared.clone(), player_username_state_worker.tx());
+            global::start(&config, global_app_state.clone(), db_ready.clone(), shared.clone(), player_username_state_worker.tx());
         }
 
         let mut remove_desc = false;
 
-        let startup_gate = Arc::new(tokio::sync::Semaphore::new(1));
+        let handshakes = Arc::new(tokio::sync::Semaphore::new(1));
+        let snapshots = Arc::new(tokio::sync::Semaphore::new(1));
         let mut previous_startup = None;
         // Register every configured region before spawning any connection task,
         // including regions still waiting behind the startup gate.
@@ -1061,15 +1084,17 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
                 let tmp_database = database.clone();
-                let startup_gate = startup_gate.clone();
-                let previous_initial = previous_startup.take();
-                let (startup_done, startup_ready) = tokio::sync::oneshot::channel();
-                previous_startup = Some(startup_ready);
+                let handshakes = handshakes.clone();
+                let snapshots = snapshots.clone();
+                let mut db_ready = db_ready.clone();
+                let previous = previous_startup.take();
+                let (turn, next) = tokio::sync::oneshot::channel();
+                previous_startup = Some(next);
 
                 tmp_global_app_state.shutdown.clone().spawn_connection(async move {
                     let stop = tmp_global_app_state.shutdown.stop.clone();
-                    let mut startup_done = Some(startup_done);
-                    if !startup::wait_previous(previous_initial, &stop).await { return; }
+                    let mut turn = Some(turn);
+                    if !startup::wait_previous(previous, &stop).await { return; }
                     let region = match tmp_database
                         .split('-')
                         .next_back()
@@ -1083,21 +1108,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         }
                     };
 
-                    tracing::debug!(
-                        region = tmp_database,
-                        database_name = tmp_database.clone(),
-                        spacetime_url = tmp_conf.spacetimedb_url(region),
-                        "Waiting for websocket startup slot"
-                    );
-                    let mut startup_permit = startup::acquire(
-                        &startup_gate,
-                        &stop,
-                    ).await;
-                    if startup_permit.is_none() { return; }
-
                     let mut tries = 0;
-
-
                     let claim_event_tx = crate::claims::events::start_persistence_worker(
                         tmp_global_app_state.clone(),
                         region,
@@ -1105,12 +1116,11 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                     );
 
                     loop {
-                        if stop.is_cancelled() { break; }
-                        // Reconnects share the same gate too. Failed initial
-                        // attempts retain their slot across the retry backoff.
-                        if startup_permit.is_none() {
-                            startup_permit = startup::acquire(&startup_gate, &stop).await;
-                            if startup_permit.is_none() { break; }
+                        let Some(handshake) = startup::acquire(&handshakes, &stop).await else { break; };
+                        // Queue first attempts in configured order. Retries
+                        // rejoin the same pipeline after their own backoff.
+                        if let Some(turn) = turn.take() {
+                            let _ = turn.send(());
                         }
                         metrics::gauge!(
                             "bitcraft_database_connected",
@@ -1129,8 +1139,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_database,
                             &tmp_remove_desc,
                             timing.clone(),
-                            &mut startup_permit,
-                            &mut startup_done,
+                            handshake,
+                            &snapshots,
+                            &mut db_ready,
                             &claim_event_tx,
                             &tmp_craft_activity_tx,
                             &tmp_passive_craft_state_tx,

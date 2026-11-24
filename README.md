@@ -122,6 +122,20 @@ a limit on snapshot read buffers or live-update queues. Live inventory upserts
 use the same `UNNEST` statement and byte budget. If a live flush needs multiple
 statements, they commit together or all roll back.
 
+#### WebSocket startup
+
+After migrations, the API opens its configured global and first regional
+SpacetimeDB connections while `fill_state_from_db` loads caches and rankings
+from PostgreSQL. The sockets process handshake and disconnect events during
+that load. Table subscriptions and HTTP serving start only after the load
+succeeds, so live updates cannot be overwritten by the startup reads.
+
+While SpacetimeDB delivers one region's initial snapshot, the API opens the
+next region's WebSocket in configuration order. That socket waits to subscribe
+until the SDK reports the previous snapshot applied. Only one regional snapshot
+and one handshake ahead of it are allowed at a time, including on reconnect.
+A failed region releases its slot before retry backoff so others can start.
+
 When `[spacetimedb].database` is set, the global connection supplies the shared
 description tables (including equipment, tools, food and buffs), player names,
 claim records, building nicknames and player housing. Player names are joined

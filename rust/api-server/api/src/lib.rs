@@ -128,16 +128,11 @@ async fn serve_with_shutdown(
     state.shutdown = shutdown.clone();
 
     tracing::info!("App state initialized");
-    tokio::select! { biased;
-        _ = shutdown.stop.cancelled() => return Ok(()),
-        result = state.fill_state_from_db(None) => result?,
-    }
-    tracing::info!("App state ready");
-
     let server_url = config.server_url()?;
     // Bind before spawning workers: bind failure must not leave sync running.
     let listener = tokio::net::TcpListener::bind(&server_url).await?;
     let mut broadcaster = None;
+    let (db_loaded, db_ready) = tokio::sync::watch::channel(false);
 
     if config.live_updates_ws {
         let has_global = !config.spacetimedb.database.trim().is_empty();
@@ -145,7 +140,7 @@ async fn serve_with_shutdown(
             tracing::warn!("You need to set spacetimedb databases");
             drop(rx);
         } else {
-            tracing::info!("Staring Bitcraft websocket connection");
+            tracing::info!("Starting Bitcraft websocket connections while loading app state");
 
             if !config.spacetimedb.skip_state_tables {
                 state.ranking_system.await_staff_snapshot();
@@ -154,7 +149,6 @@ async fn serve_with_shutdown(
                 }
             }
             broadcaster = Some(tokio::spawn(broadcast_message(state.clone(), rx)));
-            leaderboard::start_live_updates(state.clone());
 
             let tmp_config = config.clone();
 
@@ -167,24 +161,36 @@ async fn serve_with_shutdown(
                         .insert(connection_state.clone(), false);
                 });
 
-            websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
+            websocket::start_websocket_bitcraft_logic(tmp_config, state.clone(), db_ready);
         }
     } else {
         drop(rx);
     }
     drop(tx);
 
-    leaderboard::snapshots::start(state.clone());
-
     let app = create_app(&config, state.clone(), prometheus);
-
-    tracing::info!("Server started on http://{}", server_url);
-
+    let serve_state = state.clone();
+    let live_updates = broadcaster.is_some();
     let stop = shutdown.stop.clone();
     let mut server = tokio::spawn(async move {
+        // Loading errors and shutdown during loading use the same producer and
+        // worker drain as shutdown after the server has started.
+        tokio::select! { biased;
+            _ = stop.cancelled() => return Ok::<(), anyhow::Error>(()),
+            result = serve_state.fill_state_from_db(None) => result?,
+        }
+        tracing::info!("App state ready");
+        if live_updates {
+            leaderboard::start_live_updates(serve_state.clone());
+        }
+        db_loaded.send_replace(true);
+        leaderboard::snapshots::start(serve_state);
+
+        tracing::info!("Server started on http://{}", server_url);
         axum::serve(listener, app)
             .with_graceful_shutdown(stop.cancelled_owned())
-            .await
+            .await?;
+        Ok(())
     });
     let mut server_result = None;
     tokio::select! {

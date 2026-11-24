@@ -39,6 +39,7 @@ async fn previous_partitions(
 pub(super) fn start(
     config: &Config,
     state: AppState,
+    mut db_ready: tokio::sync::watch::Receiver<bool>,
     workers: shared_tables::Workers,
     usernames: Names,
 ) {
@@ -67,6 +68,7 @@ pub(super) fn start(
                         &ctx,
                         &state,
                         stop.child_token(),
+                        &mut db_ready,
                         &workers,
                         &usernames,
                     )
@@ -117,10 +119,14 @@ async fn sync(
     ctx: &DbConnection,
     state: &AppState,
     stop: CancellationToken,
+    db_ready: &mut tokio::sync::watch::Receiver<bool>,
     workers: &shared_tables::Workers,
     usernames: &Names,
 ) -> anyhow::Result<()> {
     let drain = || run_connection_until_shutdown(ctx, ctx.run_async(), &stop);
+    if !super::startup::wait_for_db(db_ready, drain(), &stop).await? {
+        return Ok(());
+    }
     let staff = leaderboard_staff::listen(ctx, state.ranking_system.clone());
     let changes = empire::Changes::listen(ctx);
     // Include old partitions even if their last row disappeared while offline.
