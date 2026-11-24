@@ -120,6 +120,21 @@ a limit on snapshot read buffers or live-update queues. Live inventory upserts
 use the same `UNNEST` statement and byte budget. If a live flush needs multiple
 statements, they commit together or all roll back.
 
+When `[spacetimedb].database` is set, the global connection supplies the shared
+description tables (including equipment, tools, food and buffs), player names,
+claim records, building nicknames and player housing. Player names are joined
+to `user_state` and `user_region_state` so their region follows transfers.
+With only regional databases configured, the first region supplies the
+descriptions and each region supplies its own state.
+
+Table declarations alone do not establish replication: BitCraftPublic's
+`global_module/src/messages/components.rs` links to the regional definitions.
+`game/src/game/reducer_helpers/building_helpers.rs` shares waystones rather
+than all buildings and locations, and `claim_set_member_permissions.rs`
+writes permission edits only in the region. Buildings, locations, claim
+membership, and claim-local supplies, research and events are therefore read
+from the regions.
+
 #### Upstream WebSocket TLS
 
 The SpacetimeDB SDK uses `tokio-websockets`. For `wss://`, the API defaults

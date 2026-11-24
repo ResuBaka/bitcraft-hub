@@ -18,7 +18,7 @@ opt-level = 1
 opt-level = 3
 
 [workspace]
-members = [".", "api", "service", "entity", "migration", "game_module"]
+members = [".", "api", "service", "entity", "migration", "game_module", "game_global_module"]
 
 [workspace.dependencies]
 sea-orm = { version = "2.0.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }

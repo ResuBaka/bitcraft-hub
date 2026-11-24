@@ -51,6 +51,16 @@ pub enum ClaimTechType {
     LargeHouse,
 
     TownMarket,
+
+    Homestead,
+
+    OneWayWaystones,
+
+    DestinationWaystones,
+
+    StarterTech,
+
+    RegionalBank,
 }
 
 impl __sdk::InModule for ClaimTechType {

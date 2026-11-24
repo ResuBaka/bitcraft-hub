@@ -181,6 +181,7 @@ dependencies = [
  "dotenvy",
  "entity",
  "futures",
+ "game_global_module",
  "game_module",
  "hyper",
  "indexmap 2.14.0",
@@ -1963,6 +1964,13 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "game_global_module"
+version = "0.1.0"
+dependencies = [
+ "spacetimedb-sdk",
 ]
 
 [[package]]

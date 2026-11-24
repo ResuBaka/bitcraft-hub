@@ -1,91 +1,9 @@
-use super::{
-    ConnectionTiming, MAX_RECONNECT_RETRIES, connect_to_db, initialize_connection_metrics,
-    next_reconnect_failure_count, reconnect_delay, run_connection_until_shutdown,
-};
-use crate::AppState;
-use crate::config::Config;
 use crate::leaderboard::RankingSystem;
-use game_module::module_bindings::*;
+use game_global_module::module_bindings::*;
 use parking_lot::Mutex;
-use spacetimedb_sdk::{DbContext, Event, Identity, Table, TableWithPrimaryKey};
+use spacetimedb_sdk::{Event, Identity, Table, TableWithPrimaryKey};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-
-const QUERIES: [&str; 2] = [
-    "SELECT * FROM identity_role",
-    "SELECT user_state.* FROM user_state JOIN identity_role ON user_state.identity = identity_role.identity",
-];
-
-pub(super) fn start(config: &Config, state: AppState) {
-    let database = config.spacetimedb.database.trim().to_owned();
-    let host = config.global_spacetimedb_url();
-    let token = config.spacetimedb.password.clone();
-    let compression = config.spacetimedb.compression.into();
-    initialize_connection_metrics(&database);
-    state.connection_state.insert(database.clone(), false);
-    let stop = state.shutdown.stop.clone();
-    state.shutdown.clone().spawn_connection(async move {
-        let mut tries = 0;
-        while !stop.is_cancelled() {
-            let timing = ConnectionTiming::default();
-            let result = match connect_to_db(
-                DbConnection::builder().with_compression(compression), state.clone(), token.clone(), &database, &host, timing.clone(), None,
-            ) {
-                Ok(ctx) => sync(&ctx, state.ranking_system.clone(), stop.child_token()).await,
-                Err(error) => Err(error.into()),
-            };
-            if stop.is_cancelled() {
-                break;
-            }
-            if let Err(error) = result {
-                tracing::warn!(%database, %host, %error, "Global leaderboard staff sync failed");
-            }
-            tries = next_reconnect_failure_count(tries, timing.uptime());
-            if tries > MAX_RECONNECT_RETRIES {
-                tracing::error!(%database, %host, "Global leaderboard staff sync exhausted its retry budget");
-                break;
-            }
-            let wait = reconnect_delay(tries, rand::random_range(15..=45));
-            tokio::select! { biased;
-                _ = stop.cancelled() => break,
-                _ = tokio::time::sleep(wait) => {},
-            }
-        }
-    });
-}
-
-async fn sync(
-    ctx: &DbConnection,
-    ranking: Arc<RankingSystem>,
-    stop: tokio_util::sync::CancellationToken,
-) -> anyhow::Result<()> {
-    let staff = listen(ctx, ranking);
-    let outcome = Arc::new(Mutex::new(None));
-    let applied = outcome.clone();
-    let failed = outcome.clone();
-    ctx.subscription_builder()
-        .on_applied(move |_| *applied.lock() = Some(Ok(())))
-        .on_error(move |_, error| *failed.lock() = Some(Err(error)))
-        .subscribe(QUERIES);
-    loop {
-        tokio::select! { biased;
-            _ = stop.cancelled() => return run_connection_until_shutdown(ctx, &stop).await,
-            result = ctx.advance_one_message_async() => result?,
-        }
-        // on_applied runs before the row callbacks. Wait for the entire SDK
-        // message so an empty table or a reconnect replaces the previous snapshot.
-        let result = outcome.lock().take();
-        match result {
-            Some(Ok(())) => staff.finish_initial(),
-            Some(Err(error)) => {
-                stop.cancel();
-                run_connection_until_shutdown(ctx, &stop).await?;
-                return Err(error.into());
-            }
-            None => {}
-        }
-    }
-}
 
 #[derive(Default)]
 struct RegionRows {
@@ -119,7 +37,7 @@ impl RegionRows {
     }
 }
 
-struct StaffSubscription {
+pub(super) struct StaffSubscription {
     ranking: Arc<RankingSystem>,
     rows: Mutex<RegionRows>,
 }
@@ -132,7 +50,7 @@ impl StaffSubscription {
         }
     }
 
-    fn finish_initial(&self) {
+    pub(super) fn finish_initial(&self) {
         self.apply(|rows| {
             rows.ready = true;
             true
@@ -140,14 +58,14 @@ impl StaffSubscription {
     }
 }
 
-fn listen(ctx: &DbConnection, ranking: Arc<RankingSystem>) -> Arc<StaffSubscription> {
+pub(super) fn listen(ctx: &DbConnection, ranking: Arc<RankingSystem>) -> Arc<StaffSubscription> {
     let target = Arc::new(StaffSubscription {
         ranking,
         rows: Mutex::default(),
     });
     let roles = ctx.db.identity_role();
     let sync = target.clone();
-    roles.on_initial_rows(move |_, initial| {
+    roles.on_initial(move |_, initial| {
         sync.apply(|rows| {
             for row in initial.iter() {
                 rows.role(row.identity, Some(row.role));
@@ -168,7 +86,7 @@ fn listen(ctx: &DbConnection, ranking: Arc<RankingSystem>) -> Arc<StaffSubscript
 
     let users = ctx.db.user_state();
     let sync = target.clone();
-    users.on_initial_rows(move |_, initial| {
+    users.on_initial(move |_, initial| {
         sync.apply(|rows| {
             for row in initial.iter() {
                 rows.user(row.identity, Some(row.entity_id as i64));

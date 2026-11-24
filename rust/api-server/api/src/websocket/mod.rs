@@ -53,6 +53,9 @@ mod metric_handles;
 pub(super) mod outbound;
 mod claim_locations;
 mod leaderboard_staff;
+mod global;
+mod global_usernames;
+mod shared_tables;
 pub(crate) mod player_stats;
 mod player_activity;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
@@ -133,15 +136,15 @@ fn send_worker_message<T>(
     }
 }
 
-fn connect_to_db(
-    builder: __sdk::DbConnectionBuilder<RemoteModule>,
+fn connect_to_db<M: __sdk::SpacetimeModule>(
+    builder: __sdk::DbConnectionBuilder<M>,
     global_app_state: AppState,
     token: String,
     db_name: &str,
     db_host: &str,
     timing: ConnectionTiming,
     region_number: Option<Region>,
-) -> spacetimedb_sdk::Result<DbConnection> {
+) -> spacetimedb_sdk::Result<M::DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
     let tmp_db_name = db_name.to_owned();
@@ -167,7 +170,7 @@ fn connect_to_db(
         })
         .with_row_deduplication(true)
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
-        .on_connect_error(on_connect_error)
+        .on_connect_error(|_, err| tracing::warn!("Connection error: {err:?}"))
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
             if let Some(region_number) = region_number {
@@ -215,12 +218,6 @@ fn connect_to_db(
         .with_uri(db_host)
         // Finalize configuration and connect!
         .build()
-}
-
-/// Our `on_connect_error` callback: print the error, then exit the process.
-fn on_connect_error(_ctx: &ErrorContext, err: Error) {
-    tracing::warn!("Connection error: {:?}", err);
-    // std::process::exit(1);
 }
 
 // The standard envelope uses one row type throughout. Inventory projects its
@@ -336,17 +333,21 @@ macro_rules! setup_spacetime_db_listeners {
     };
 }
 
+use setup_spacetime_db_listeners;
+
 async fn run_connection_until_shutdown(
-    ctx: &DbConnection,
+    ctx: &impl DbContext,
+    runner: impl Future<Output = spacetimedb_sdk::Result<()>>,
     stop: &tokio_util::sync::CancellationToken,
 ) -> anyhow::Result<()> {
+    tokio::pin!(runner);
     tokio::select! { biased;
         _ = stop.cancelled() => {
             // disconnect() queues a mutation; keep driving the SDK to apply it.
             if ctx.is_active() { ctx.disconnect()?; }
-            ctx.run_async().await.map_err(anyhow::Error::from)
+            runner.await.map_err(anyhow::Error::from)
         },
-        result = ctx.run_async() => result.map_err(anyhow::Error::from),
+        result = &mut runner => result.map_err(anyhow::Error::from),
     }
 }
 
@@ -359,6 +360,7 @@ fn subscription_queries(
     sql: &[(&str, &str)],
     remove_desc: bool,
     skip_state_tables: bool,
+    has_global: bool,
 ) -> Vec<String> {
     // Keep the normal subscription path below so skip_state_tables=false still
     // restores full synchronization for comparison.
@@ -367,12 +369,12 @@ fn subscription_queries(
     }
     tables
         .iter()
-        .filter(|table| !remove_desc || !table.contains("_desc"))
-        .filter(|table| !skip_state_tables || table.ends_with("_desc"))
+        .filter(|table| !has_global || !shared_tables::owns(table))
+        .filter(|table| !remove_desc || !table.ends_with("_desc"))
         .map(|table| format!("select * from {table}"))
         .chain(
             sql.iter()
-                .filter(|(table, _)| !skip_state_tables || table.ends_with("_desc"))
+                .filter(|(table, _)| !has_global || !shared_tables::owns(table))
                 .map(|(_, query)| (*query).to_owned()),
         )
         .collect()
@@ -390,44 +392,29 @@ async fn connect_to_db_logic(
     claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
     craft_activity_tx: &UnboundedSender<entity::craft_activity::ActiveModel>,
     passive_craft_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PassiveCraftState>>,
+    shared: &shared_tables::Workers,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
     experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
     inventory_state_tx: &UnboundedSender<inventory_bitcraft::InventoryMessage>,
-    item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
-    cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
     vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
     deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableStateV2>>,
-    claim_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimState>>,
     claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
     claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
-    skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
     claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
-    claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
     building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
-    building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
-    building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
-    crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
-    item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
-    traveler_task_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskDesc>>,
     traveler_task_state_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskState>>,
     trade_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<TradeOrderState>>,
     user_state_tx: &UnboundedSender<SpacetimeUpdateMessages<UserState>>,
-    npc_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<NpcDesc>>,
     buy_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
     sell_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
-    collectible_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CollectibleDesc>>,
-    interior_network_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<InteriorNetworkDesc>>,
     dimension_description_state_tx: &UnboundedSender<
         SpacetimeUpdateMessages<DimensionDescriptionState>,
     >,
-    player_housing_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerHousingState>>,
     permission_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PermissionState>>,
     portal_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PortalState>>,
     location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
-    resource_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ResourceDesc>>,
-    extraction_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ExtractionRecipeDesc>>,
     progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ProgressiveActionState>>,
     public_progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PublicProgressiveActionState>>,
 ) -> anyhow::Result<()> {
@@ -467,15 +454,12 @@ async fn connect_to_db_logic(
         anyhow::bail!("Connection to {database} is inactive");
     }
 
+    let has_global = !config.spacetimedb.database.trim().is_empty();
     global_app_state.claim_locations.reset(region_number);
     claim_locations::listen(&ctx, region_number, global_app_state.claim_locations.clone());
     global_app_state.player_stats.reset(region_number);
     global_app_state.player_activity.reset(region_number);
     player_activity::listen(&ctx, region_number, global_app_state.clone());
-    if !*remove_desc && !config.spacetimedb.skip_state_tables {
-        global_app_state.player_stats.begin_food(region_number);
-        global_app_state.player_stats.begin_tools(region_number);
-    }
     player_stats::listen(&ctx, region_number, global_app_state.clone());
     if !config.spacetimedb.skip_state_tables {
         crate::player_state::equipment::listen(&ctx, region_number, &global_app_state);
@@ -509,15 +493,6 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        player_username_state,
-        player_username_state_tx,
-        PlayerUsernameState,
-        database,
-        region_number,
-        "player_username_state"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         experience_state,
         experience_state_tx,
         ExperienceState,
@@ -537,24 +512,6 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        item_desc,
-        item_desc_tx,
-        ItemDesc,
-        database,
-        region_number,
-        "item_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        cargo_desc,
-        cargo_desc_tx,
-        CargoDesc,
-        database,
-        region_number,
-        "cargo_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         vault_state,
         vault_state_collectibles_tx,
         VaultState,
@@ -562,15 +519,6 @@ async fn connect_to_db_logic(
         region_number,
         "vault_state",
         config.spacetimedb.initial_batch_rows
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        claim_state,
-        claim_state_tx,
-        ClaimState,
-        database,
-        region_number,
-        "claim_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -601,30 +549,12 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        skill_desc,
-        skill_desc_tx,
-        SkillDesc,
-        database,
-        region_number,
-        "skill_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         claim_tech_state,
         claim_tech_state_tx,
         ClaimTechState,
         database,
         region_number,
         "claim_tech_state"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        claim_tech_desc,
-        claim_tech_desc_tx,
-        ClaimTechDesc,
-        database,
-        region_number,
-        "claim_tech_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -637,15 +567,6 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        building_desc,
-        building_desc_tx,
-        BuildingDesc,
-        database,
-        region_number,
-        "building_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         location_state,
         location_state_tx,
         LocationState,
@@ -653,43 +574,7 @@ async fn connect_to_db_logic(
         region_number,
         "location_state"
     );
-    setup_spacetime_db_listeners!(
-        ctx,
-        building_nickname_state,
-        building_nickname_state_tx,
-        BuildingNicknameState,
-        database,
-        region_number,
-        "building_nickname_state"
-    );
 
-    setup_spacetime_db_listeners!(
-        ctx,
-        crafting_recipe_desc,
-        crafting_recipe_desc_tx,
-        CraftingRecipeDesc,
-        database,
-        region_number,
-        "crafting_recipe_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        item_list_desc,
-        item_list_desc_tx,
-        ItemListDesc,
-        database,
-        region_number,
-        "item_list_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        traveler_task_desc,
-        traveler_task_desc_tx,
-        TravelerTaskDesc,
-        database,
-        region_number,
-        "traveler_task_desc"
-    );
     setup_spacetime_db_listeners!(
         ctx,
         traveler_task_state,
@@ -726,15 +611,6 @@ async fn connect_to_db_logic(
         region_number,
         "buy_order_state"
     );
-    setup_spacetime_db_listeners!(
-        ctx,
-        npc_desc,
-        npc_desc_tx,
-        NpcDesc,
-        database,
-        region_number,
-        "npc_desc"
-    );
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -747,39 +623,12 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        collectible_desc,
-        collectible_desc_tx,
-        CollectibleDesc,
-        database,
-        region_number,
-        "collectible_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        interior_network_desc,
-        interior_network_desc_tx,
-        InteriorNetworkDesc,
-        database,
-        region_number,
-        "interior_network_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         dimension_description_state,
         dimension_description_state_tx,
         DimensionDescriptionState,
         database,
         region_number,
         "dimension_description_state"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        player_housing_state,
-        player_housing_state_tx,
-        PlayerHousingState,
-        database,
-        region_number,
-        "player_housing_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -801,24 +650,6 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        resource_desc,
-        resource_desc_tx,
-        ResourceDesc,
-        database,
-        region_number,
-        "resource_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        extraction_recipe_desc,
-        extraction_recipe_desc_tx,
-        ExtractionRecipeDesc,
-        database,
-        region_number,
-        "extraction_recipe_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         progressive_action_state,
         progressive_action_state_tx,
         ProgressiveActionState,
@@ -837,38 +668,39 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(ctx, passive_craft_state, passive_craft_state_tx, PassiveCraftState, database, region_number, "passive_craft_state");
 
-    let tables_to_subscribe = vec![
+    if !has_global {
+        shared.listen_regional(&ctx, database, region_number, !*remove_desc);
+        setup_spacetime_db_listeners!(
+            ctx,
+            player_username_state,
+            player_username_state_tx,
+            PlayerUsernameState,
+            database,
+            region_number,
+            "player_username_state"
+        );
+    }
+
+    let mut tables_to_subscribe = vec![
         // "user_state",
         // "mobile_entity_state",
         "claim_tile_state",
         // "combat_action_desc",
-        "item_desc",
-        "item_list_desc",
-        "cargo_desc",
         // "equipment_desc",
         // "player_action_state",
-        "crafting_recipe_desc",
         // "action_state",
         "player_state",
         // "equipment_state",
-        "skill_desc",
         "player_username_state",
-        "building_desc",
         "building_state",
-        "building_nickname_state",
         "vault_state",
         "experience_state",
         "claim_tech_state",
-        "claim_state",
         "claim_member_state",
         "claim_local_state",
         "deployable_state_v2",
         "claim_treasury_event",
         "inventory_state",
-        "collectible_desc",
-        "claim_tech_desc",
-        "resource_desc",
-        "extraction_recipe_desc",
         "progressive_action_state",
         "public_progressive_action_state",
         "craft_event",
@@ -879,22 +711,19 @@ async fn connect_to_db_logic(
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN building_state ps ON building_state.entity_id = building_state.entity_id", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN deployable_state ps ON deployable_state.entity_id = deployable_state.entity_id", // This currently takes to much cpu to run
-        "traveler_task_desc",
         "traveler_task_state",
         // "trade_order_state",
         "buy_order_state",
         "sell_order_state",
-        "npc_desc",
-        "interior_network_desc",
         "dimension_description_state",
         "dimension_network_state",
-        "player_housing_state",
         "permission_state",
         "portal_state",
     ];
 
+    tables_to_subscribe.extend_from_slice(shared_tables::TABLES);
+
     let sql_subscribe = vec![
-        ("equipment_desc", "SELECT * FROM equipment_desc"),
         ("equipment_state", "SELECT * FROM equipment_state"),
         ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON building_state.entity_id = location_state.entity_id"),
         ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON portal_state.entity_id = location_state.entity_id"),
@@ -946,11 +775,12 @@ async fn connect_to_db_logic(
                 let _ = tx.send(Err(anyhow::anyhow!("Initial subscription failed: {err}")));
             }
         });
-    let queries = subscription_queries(
+    let mut queries = subscription_queries(
         &tables_to_subscribe,
         &sql_subscribe,
         *remove_desc,
         config.spacetimedb.skip_state_tables,
+        has_global,
     );
     if !config.spacetimedb.skip_state_tables {
         crate::player_state::equipment::subscribe_presets(&ctx, region_number, &global_app_state);
@@ -1000,41 +830,11 @@ async fn connect_to_db_logic(
             })
             .subscribe(["SELECT character_stats_state.* FROM character_stats_state JOIN player_state ON player_state.entity_id = character_stats_state.entity_id"]);
     }
-    if !*remove_desc && !config.spacetimedb.skip_state_tables {
-        let stats_on_applied = global_app_state.clone();
-        ctx.subscription_builder()
-            .on_applied(move |_: &SubscriptionEventContext| player_stats::changed(&stats_on_applied, None))
-            .on_error(move |_: &ErrorContext, err: Error| {
-                tracing::warn!(region = region_number, "Buff descriptions subscription failed: {err}");
-            })
-            .subscribe(["SELECT * FROM buff_desc", "SELECT * FROM buff_type_desc"]);
-        let tools_on_applied = global_app_state.clone();
-        let tools_on_error = global_app_state.clone();
-        ctx.subscription_builder()
-            .on_applied(move |_: &SubscriptionEventContext| {
-                tools_on_applied.player_stats.update_tools(region_number, |index| index.ready = true);
-                player_stats::character_changed(&tools_on_applied, None, None);
-            })
-            .on_error(move |_: &ErrorContext, err: Error| {
-                tools_on_error.player_stats.clear_tools(region_number);
-                player_stats::character_changed(&tools_on_error, None, None);
-                tracing::warn!(region = region_number, "Tool descriptions subscription failed: {err}");
-            })
-            .subscribe(["SELECT * FROM tool_desc", "SELECT * FROM tool_type_desc"]);
-        let food_on_applied = global_app_state.clone();
-        let food_on_error = global_app_state.clone();
-        ctx.subscription_builder()
-            .on_applied(move |_: &SubscriptionEventContext| {
-                food_on_applied.player_stats.finish_food(region_number);
-                player_stats::changed(&food_on_applied, None);
-            })
-            .on_error(move |_: &ErrorContext, err: Error| {
-                food_on_error.player_stats.invalidate_food(region_number);
-                player_stats::changed(&food_on_error, None);
-                tracing::warn!(region = region_number, "Food descriptions subscription failed: {err}");
-            })
-            .subscribe(["SELECT * FROM food_desc"]);
-    }
+    let regional_metadata = (!has_global && !*remove_desc && !config.spacetimedb.skip_state_tables)
+        .then(|| {
+            queries.extend(shared_tables::METADATA.iter().map(|table| format!("SELECT * FROM {table}")));
+            shared_tables::regional_metadata(&ctx, &global_app_state, region_number)
+        });
     // Do not send an empty subscription request: keep the connection running
     // without subscriptions when isolating connection/worker RSS.
     let has_subscription = !queries.is_empty();
@@ -1047,7 +847,7 @@ async fn connect_to_db_logic(
 
     // The SDK must keep processing events while we wait for subscriptions to apply.
     let connection_stop = global_app_state.shutdown.stop.child_token();
-    let connection = run_connection_until_shutdown(&ctx, &connection_stop);
+    let connection = run_connection_until_shutdown(&ctx, ctx.run_async(), &connection_stop);
     let result = startup::run(
         connection,
         async {
@@ -1055,6 +855,9 @@ async fn connect_to_db_logic(
                 initial_rx
                     .await
                     .map_err(|_| anyhow::anyhow!("Initial subscription ended before applying"))??;
+                if let Some(mut snapshot) = regional_metadata {
+                    snapshot.finish();
+                }
             } else {
                 timing.wait_connected().await;
             }
@@ -1085,9 +888,6 @@ async fn connect_to_db_logic(
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
     let db_flush_delay = Duration::from_millis(config.database.worker_flush_ms);
-    if !config.spacetimedb.skip_state_tables && !config.spacetimedb.database.trim().is_empty() {
-        leaderboard_staff::start(&config, global_app_state.clone());
-    }
     tracing::info!(
         backend = worker_channel::BACKEND,
         "Starting worker input queues"
@@ -1196,6 +996,28 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let craft_activity_tx = crate::crafting::events::start_worker(global_app_state.clone(), db_flush_delay);
         let (passive_craft_state_tx, passive_craft_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
+        let shared = shared_tables::Workers {
+            item_desc: item_desc_tx.clone(),
+            item_list_desc: item_list_desc_tx.clone(),
+            cargo_desc: cargo_desc_tx.clone(),
+            crafting_recipe_desc: crafting_recipe_desc_tx.clone(),
+            skill_desc: skill_desc_tx.clone(),
+            building_desc: building_desc_tx.clone(),
+            collectible_desc: collectible_desc_tx.clone(),
+            claim_tech_desc: claim_tech_desc_worker.tx(),
+            resource_desc: resource_desc_tx.clone(),
+            extraction_recipe_desc: extraction_recipe_desc_tx.clone(),
+            traveler_task_desc: traveler_task_desc_tx.clone(),
+            npc_desc: npc_desc_tx.clone(),
+            interior_network_desc: interior_network_desc_tx.clone(),
+            claim_state: claim_state_worker.tx(),
+            building_nickname_state: building_nickname_state_tx.clone(),
+            player_housing_state: player_housing_state_tx.clone(),
+        };
+        if !config.spacetimedb.skip_state_tables && !config.spacetimedb.database.trim().is_empty() {
+            global::start(&config, global_app_state.clone(), shared.clone(), player_username_state_worker.tx());
+        }
+
         let mut remove_desc = false;
 
         let startup_gate = Arc::new(tokio::sync::Semaphore::new(1));
@@ -1209,42 +1031,27 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             .spacetimedb
             .regional_databases()
             .for_each(|database| {
+                let shared = shared.clone();
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
                 let tmp_player_state_tx = player_state_worker.tx();
                 let tmp_player_username_state_tx = player_username_state_worker.tx();
                 let tmp_experience_state_tx = experience_state_worker.tx();
                 let tmp_inventory_state_tx = inventory_state_worker.tx();
-                let tmp_item_desc_tx = item_desc_tx.clone();
-                let tmp_cargo_desc_tx = cargo_desc_tx.clone();
                 let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
                 let tmp_deployable_state_tx = deployable_state_tx.clone();
-                let tmp_claim_state_tx = claim_state_worker.tx();
                 let tmp_claim_local_state_tx = claim_local_state_worker.tx();
                 let tmp_claim_member_state_tx = claim_member_state_worker.tx();
-                let tmp_skill_desc_tx = skill_desc_tx.clone();
                 let tmp_claim_tech_state_tx = claim_tech_state_worker.tx();
-                let tmp_claim_tech_desc_tx = claim_tech_desc_worker.tx();
                 let tmp_building_state_tx = building_state_tx.clone();
-                let tmp_building_desc_tx = building_desc_tx.clone();
-                let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
-                let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
-                let tmp_item_list_desc_tx = item_list_desc_tx.clone();
-                let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
                 let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
                 let tmp_trade_order_state_tx = trade_order_state_tx.clone();
                 let tmp_user_state_tx = user_state_tx.clone();
-                let tmp_npc_desc_tx = npc_desc_tx.clone();
                 let tmp_buy_order_state_tx = buy_order_state_tx.clone();
                 let tmp_sell_order_state_tx = sell_order_state_tx.clone();
-                let tmp_collectible_desc_tx = collectible_desc_tx.clone();
-                let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
                 let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
-                let tmp_player_housing_state_tx = player_housing_state_tx.clone();
                 let tmp_permission_state_tx = permission_state_tx.clone();
                 let tmp_portal_state_tx = portal_state_tx.clone();
                 let tmp_location_state_tx = location_state_worker.tx();
-                let tmp_resource_desc_tx = resource_desc_tx.clone();
-                let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
                 let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
                 let tmp_public_progressive_action_state_tx = public_progressive_action_state_tx.clone();
                 let tmp_craft_activity_tx = craft_activity_tx.clone();
@@ -1326,42 +1133,27 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &claim_event_tx,
                             &tmp_craft_activity_tx,
                             &tmp_passive_craft_state_tx,
+                            &shared,
                             &tmp_mobile_entity_state_tx,
                             &tmp_player_state_tx,
                             &tmp_player_username_state_tx,
                             &tmp_experience_state_tx,
                             &tmp_inventory_state_tx,
-                            &tmp_item_desc_tx,
-                            &tmp_cargo_desc_tx,
                             &tmp_vault_state_collectibles_tx,
                             &tmp_deployable_state_tx,
-                            &tmp_claim_state_tx,
                             &tmp_claim_local_state_tx,
                             &tmp_claim_member_state_tx,
-                            &tmp_skill_desc_tx,
                             &tmp_claim_tech_state_tx,
-                            &tmp_claim_tech_desc_tx,
                             &tmp_building_state_tx,
-                            &tmp_building_desc_tx,
-                            &tmp_building_nickname_state_tx,
-                            &tmp_crafting_recipe_desc_tx,
-                            &tmp_item_list_desc_tx,
-                            &tmp_traveler_task_desc_tx,
                             &tmp_traveler_task_state_tx,
                             &tmp_trade_order_state_tx,
                             &tmp_user_state_tx,
-                            &tmp_npc_desc_tx,
                             &tmp_buy_order_state_tx,
                             &tmp_sell_order_state_tx,
-                            &tmp_collectible_desc_tx,
-                            &tmp_interior_network_desc_tx,
                             &tmp_dimension_description_state_tx,
-                            &tmp_player_housing_state_tx,
                             &tmp_permission_state_tx,
                             &tmp_portal_state_tx,
                             &tmp_location_state_tx,
-                            &tmp_resource_desc_tx,
-                            &tmp_extraction_recipe_desc_tx,
                             &tmp_progressive_action_state_tx,
                             &tmp_public_progressive_action_state_tx,
                         )
@@ -2259,8 +2051,23 @@ mod tests {
                 "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
             ),
         ];
-        assert!(subscription_queries(&tables, &sql, false, true).is_empty());
-        assert!(subscription_queries(&tables, &sql, true, true).is_empty());
+        assert!(subscription_queries(&tables, &sql, false, true, false).is_empty());
+        assert!(subscription_queries(&tables, &sql, true, true, false).is_empty());
+    }
+
+    #[test]
+    fn later_regions_keep_dimension_descriptions_and_member_permissions() {
+        let tables = ["claim_state", "building_nickname_state", "player_username_state",
+            "player_housing_state", "item_desc", "claim_member_state", "dimension_description_state"];
+        assert_eq!(
+            subscription_queries(&tables, &[], true, false, true),
+            ["select * from claim_member_state", "select * from dimension_description_state"]
+        );
+        assert_eq!(
+            subscription_queries(&tables, &[], false, false, true),
+            subscription_queries(&tables, &[], true, false, true)
+        );
+        assert_eq!(subscription_queries(&tables, &[], false, false, false).len(), tables.len());
     }
 
     #[test]
@@ -2268,7 +2075,7 @@ mod tests {
         let tables = ["item_desc", "inventory_state"];
         let sql = [("equipment_state", "SELECT * FROM equipment_state")];
         assert_eq!(
-            subscription_queries(&tables, &sql, false, false),
+            subscription_queries(&tables, &sql, false, false, false),
             [
                 "select * from item_desc",
                 "select * from inventory_state",
@@ -2276,7 +2083,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            subscription_queries(&tables, &sql, true, false),
+            subscription_queries(&tables, &sql, true, false, false),
             [
                 "select * from inventory_state",
                 "SELECT * FROM equipment_state",

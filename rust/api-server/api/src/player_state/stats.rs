@@ -264,6 +264,22 @@ impl PlayerStats {
             update(&mut index);
         }
     }
+    pub(crate) fn clear_buff_descriptions(&self) {
+        self.buff_desc.write().clear();
+        self.buff_types.write().clear();
+    }
+
+    pub(crate) fn max_tool_powers(&self) -> HashMap<i32, i32> {
+        let mut powers = HashMap::new();
+        for tool in self.tools.read().descriptions.values() {
+            powers
+                .entry(tool.item_id)
+                .and_modify(|p: &mut i32| *p = (*p).max(tool.power))
+                .or_insert(tool.power);
+        }
+        powers
+    }
+
     pub fn tool_powers(&self) -> Option<ToolPowers> {
         let index = self.tools.read();
         if !index.ready {

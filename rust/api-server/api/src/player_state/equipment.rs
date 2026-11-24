@@ -5,10 +5,9 @@ use dashmap::DashMap;
 use entity::inventory::ItemType;
 use entity::shared::{JsonRarity, Region};
 use game_module::module_bindings::{
-    CsvStatEntry, DbConnection, EquipmentDescTableAccess, EquipmentPresetState,
-    EquipmentPresetStateTableAccess, EquipmentSlot, EquipmentSlotType, EquipmentState,
-    EquipmentStateTableAccess, ErrorContext, ItemType as GameItemType, SubscriptionEventContext,
-    ToolDesc, ToolDescTableAccess,
+    CsvStatEntry, DbConnection, EquipmentPresetState, EquipmentPresetStateTableAccess,
+    EquipmentSlot, EquipmentSlotType, EquipmentState, EquipmentStateTableAccess, ErrorContext,
+    ItemType as GameItemType, SubscriptionEventContext,
 };
 use serde::Serialize;
 use spacetimedb_sdk::{DbContext, Event, Table, TableWithPrimaryKey};
@@ -21,8 +20,6 @@ struct RegionEquipment {
     players: HashMap<u64, Vec<EquipmentSlot>>,
     presets_ready: bool,
     presets: HashMap<u64, HashMap<u64, EquipmentPresetState>>,
-    item_stats: HashMap<i32, Vec<CsvStatEntry>>,
-    tools: HashMap<i32, ToolDesc>,
 }
 
 impl RegionEquipment {
@@ -51,21 +48,36 @@ struct EquipmentSnapshot {
 }
 
 #[derive(Default)]
-pub(crate) struct PlayerEquipment(DashMap<Region, RegionEquipment>);
+pub(crate) struct PlayerEquipment {
+    regions: DashMap<Region, RegionEquipment>,
+    item_stats: DashMap<i32, Vec<CsvStatEntry>>,
+}
 
 impl PlayerEquipment {
+    pub(crate) fn begin_global_metadata(&self) {
+        self.item_stats.clear();
+    }
+
+    pub(crate) fn global_item_stats(&self, key: i32, stats: Option<Vec<CsvStatEntry>>) {
+        if let Some(stats) = stats {
+            self.item_stats.insert(key, stats);
+        } else {
+            self.item_stats.remove(&key);
+        }
+    }
+
     pub(crate) fn ready(&self, region: Region) {
-        if let Some(mut equipment) = self.0.get_mut(&region) {
+        if let Some(mut equipment) = self.regions.get_mut(&region) {
             equipment.ready = true;
         }
     }
 
     pub(crate) fn invalidate(&self, region: Region) {
-        self.0.remove(&region);
+        self.regions.remove(&region);
     }
 
     fn snapshot(&self, region: Region, id: u64) -> Option<EquipmentSnapshot> {
-        let region = self.0.get(&region)?;
+        let region = self.regions.get(&region)?;
         region.ready.then(|| EquipmentSnapshot {
             slots: region.players.get(&id).cloned().unwrap_or_default(),
             presets: region.presets_ready.then(|| {
@@ -82,7 +94,7 @@ impl PlayerEquipment {
     }
 
     fn upsert(&self, region: Region, row: &EquipmentState) {
-        if let Some(mut equipment) = self.0.get_mut(&region) {
+        if let Some(mut equipment) = self.regions.get_mut(&region) {
             equipment
                 .players
                 .insert(row.entity_id, row.equipment_slots.clone());
@@ -90,7 +102,7 @@ impl PlayerEquipment {
     }
 
     fn remove(&self, region: Region, id: u64) {
-        if let Some(mut equipment) = self.0.get_mut(&region) {
+        if let Some(mut equipment) = self.regions.get_mut(&region) {
             equipment.players.remove(&id);
         }
     }
@@ -99,12 +111,12 @@ impl PlayerEquipment {
 pub(crate) fn listen(ctx: &DbConnection, region: Region, state: &AppState) {
     state
         .player_equipment
-        .0
+        .regions
         .insert(region, RegionEquipment::default());
     let table = ctx.db.equipment_state();
     let cache = state.player_equipment.clone();
     table.on_initial_owned(move |_, rows| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
+        if let Some(mut equipment) = cache.regions.get_mut(&region) {
             equipment.players.extend(
                 rows.into_iter()
                     .map(|row| (row.entity_id, row.equipment_slots)),
@@ -121,93 +133,19 @@ pub(crate) fn listen(ctx: &DbConnection, region: Region, state: &AppState) {
     table.on_update(move |_, _, row| cache.upsert(region, row));
     let cache = state.player_equipment.clone();
     table.on_delete(move |_, row| cache.remove(region, row.entity_id));
-
-    let table = ctx.db.equipment_desc();
-    let cache = state.player_equipment.clone();
-    table.on_initial_owned(move |_, rows| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment
-                .item_stats
-                .extend(rows.into_iter().map(|row| (row.item_id, row.stats)));
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_insert(move |ctx, row| {
-        if !matches!(ctx.event, Event::SubscribeApplied)
-            && let Some(mut equipment) = cache.0.get_mut(&region)
-        {
-            equipment.item_stats.insert(row.item_id, row.stats.clone());
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_update(move |_, _, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment.item_stats.insert(row.item_id, row.stats.clone());
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_delete(move |_, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment.item_stats.remove(&row.item_id);
-        }
-    });
-
-    let table = ctx.db.tool_desc();
-    let cache = state.player_equipment.clone();
-    table.on_initial_owned(move |_, rows| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment
-                .tools
-                .extend(rows.into_iter().map(|row| (row.id, row)));
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_insert(move |ctx, row| {
-        if !matches!(ctx.event, Event::SubscribeApplied)
-            && let Some(mut equipment) = cache.0.get_mut(&region)
-        {
-            equipment.tools.insert(row.id, row.clone());
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_update(move |_, _, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment.tools.insert(row.id, row.clone());
-        }
-    });
-    let cache = state.player_equipment.clone();
-    table.on_delete(move |_, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
-            equipment.tools.remove(&row.id);
-        }
-    });
 }
 
 pub(super) async fn tool_powers(
     State(state): State<AppState>,
 ) -> axum_codec::Codec<HashMap<i32, i32>> {
-    let equipment = state
-        .player_equipment
-        .0
-        .iter()
-        .find(|region| !region.tools.is_empty());
-    let mut powers = HashMap::new();
-    if let Some(equipment) = equipment {
-        for tool in equipment.tools.values() {
-            powers
-                .entry(tool.item_id)
-                .and_modify(|power: &mut i32| *power = (*power).max(tool.power))
-                .or_insert(tool.power);
-        }
-    }
-    axum_codec::Codec(powers)
+    axum_codec::Codec(state.player_stats.max_tool_powers())
 }
 
 pub(crate) fn subscribe_presets(ctx: &DbConnection, region: Region, state: &AppState) {
     let table = ctx.db.equipment_preset_state();
     let cache = state.player_equipment.clone();
     table.on_initial_owned(move |_, rows| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
+        if let Some(mut equipment) = cache.regions.get_mut(&region) {
             for row in rows {
                 equipment.save_preset(row);
             }
@@ -216,14 +154,14 @@ pub(crate) fn subscribe_presets(ctx: &DbConnection, region: Region, state: &AppS
     let cache = state.player_equipment.clone();
     table.on_insert(move |ctx, row| {
         if !matches!(ctx.event, Event::SubscribeApplied)
-            && let Some(mut equipment) = cache.0.get_mut(&region)
+            && let Some(mut equipment) = cache.regions.get_mut(&region)
         {
             equipment.save_preset(row.clone());
         }
     });
     let cache = state.player_equipment.clone();
     table.on_update(move |_, old, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
+        if let Some(mut equipment) = cache.regions.get_mut(&region) {
             if old.player_entity_id != row.player_entity_id {
                 equipment.remove_preset(old);
             }
@@ -232,7 +170,7 @@ pub(crate) fn subscribe_presets(ctx: &DbConnection, region: Region, state: &AppS
     });
     let cache = state.player_equipment.clone();
     table.on_delete(move |_, row| {
-        if let Some(mut equipment) = cache.0.get_mut(&region) {
+        if let Some(mut equipment) = cache.regions.get_mut(&region) {
             equipment.remove_preset(row);
         }
     });
@@ -240,12 +178,12 @@ pub(crate) fn subscribe_presets(ctx: &DbConnection, region: Region, state: &AppS
     let failed = state.player_equipment.clone();
     ctx.subscription_builder()
         .on_applied(move |_: &SubscriptionEventContext| {
-            if let Some(mut equipment) = applied.0.get_mut(&region) {
+            if let Some(mut equipment) = applied.regions.get_mut(&region) {
                 equipment.presets_ready = true;
             }
         })
         .on_error(move |_: &ErrorContext, err| {
-            if let Some(mut equipment) = failed.0.get_mut(&region) {
+            if let Some(mut equipment) = failed.regions.get_mut(&region) {
                 equipment.presets_ready = false;
                 equipment.presets.clear();
             }
@@ -297,12 +235,7 @@ struct PlayerEquipmentStat {
     is_pct: bool,
 }
 
-fn resolve_slots(
-    state: &AppState,
-    region: Region,
-    slots: Vec<EquipmentSlot>,
-) -> Vec<PlayerEquipmentSlot> {
-    let equipment = state.player_equipment.0.get(&region);
+fn resolve_slots(state: &AppState, slots: Vec<EquipmentSlot>) -> Vec<PlayerEquipmentSlot> {
     slots
         .into_iter()
         .filter(|slot| slot.primary != EquipmentSlotType::None)
@@ -340,20 +273,17 @@ fn resolve_slots(
                     })
                     .unwrap_or_default();
                 let stats = if item.item_type == GameItemType::Item {
-                    equipment
-                        .as_ref()
-                        .and_then(|source| source.item_stats.get(&id))
-                        .map(|entries| {
-                            entries
-                                .iter()
-                                .filter(|entry| entry.value.is_finite())
-                                .map(|entry| PlayerEquipmentStat {
-                                    stat: format!("{:?}", entry.id),
-                                    value: entry.value,
-                                    is_pct: entry.is_pct,
-                                })
-                                .collect()
-                        })
+                    state.player_equipment.item_stats.get(&id).map(|entries| {
+                        entries
+                            .iter()
+                            .filter(|entry| entry.value.is_finite())
+                            .map(|entry| PlayerEquipmentStat {
+                                stat: format!("{:?}", entry.id),
+                                value: entry.value,
+                                is_pct: entry.is_pct,
+                            })
+                            .collect()
+                    })
                 } else {
                     None
                 };
@@ -385,7 +315,7 @@ pub(super) async fn player_equipment(
         "Player equipment is not available",
     ))?;
     Ok(axum_codec::Codec(PlayerEquipmentResponse {
-        slots: resolve_slots(&state, region, snapshot.slots),
+        slots: resolve_slots(&state, snapshot.slots),
         presets: snapshot.presets.map(|presets| {
             presets
                 .into_iter()
@@ -393,7 +323,7 @@ pub(super) async fn player_equipment(
                     id: row.entity_id.to_string(),
                     index: row.index,
                     active: row.active,
-                    slots: resolve_slots(&state, region, row.equipment_slots),
+                    slots: resolve_slots(&state, row.equipment_slots),
                 })
                 .collect()
         }),
@@ -408,7 +338,7 @@ mod tests {
     #[test]
     fn snapshots_distinguish_missing_rows_from_disconnected_regions() {
         let cache = PlayerEquipment::default();
-        cache.0.insert(1, RegionEquipment::default());
+        cache.regions.insert(1, RegionEquipment::default());
         let mut row = EquipmentState {
             entity_id: 42,
             equipment_slots: vec![EquipmentSlot {
@@ -434,7 +364,7 @@ mod tests {
     #[test]
     fn presets_keep_their_active_flag_and_are_sorted_and_scoped_to_the_player() {
         let cache = PlayerEquipment::default();
-        cache.0.insert(1, RegionEquipment::default());
+        cache.regions.insert(1, RegionEquipment::default());
         cache.ready(1);
         assert!(cache.snapshot(1, 42).unwrap().presets.is_none());
 
@@ -452,7 +382,7 @@ mod tests {
             ..first.clone()
         };
         {
-            let mut region = cache.0.get_mut(&1).unwrap();
+            let mut region = cache.regions.get_mut(&1).unwrap();
             region.save_preset(second.clone());
             region.save_preset(first.clone());
             region.presets_ready = true;
@@ -466,7 +396,7 @@ mod tests {
         first.active = true;
         second.active = false;
         {
-            let mut region = cache.0.get_mut(&1).unwrap();
+            let mut region = cache.regions.get_mut(&1).unwrap();
             region.save_preset(first.clone());
             region.save_preset(second.clone());
             region.remove_preset(&second);
@@ -478,8 +408,7 @@ mod tests {
     fn keeps_empty_slots_and_equipped_ids_without_descriptions() {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(Default::default(), tx, Default::default());
-        let mut equipment = RegionEquipment::default();
-        equipment.item_stats.insert(
+        state.player_equipment.item_stats.insert(
             123,
             vec![CsvStatEntry {
                 id: CharacterStatType::GatheringSpeed,
@@ -487,10 +416,8 @@ mod tests {
                 is_pct: true,
             }],
         );
-        state.player_equipment.0.insert(1, equipment);
         let slots = resolve_slots(
             &state,
-            1,
             vec![
                 EquipmentSlot {
                     primary: EquipmentSlotType::MainHand,
