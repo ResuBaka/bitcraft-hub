@@ -24,24 +24,24 @@ members = [".", "api", "service", "entity", "migration", "game_module", "game_gl
 sea-orm = { version = "2.0.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
 sea-orm-cli = "2.0.4"
 sea-orm-migration = "2.0.4"
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 serde_yml = "0.0.13"
-toml = "1.1.6"
+toml = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.1", features = [ "full" ] }
-log = "0.4.34"
+log = "0.4.35"
 axum = "0.8.9"
-hyper = { version = "1.12", features = ["full"] }
+hyper = { version = "1.13", features = ["full"] }
 rayon = "1.12.0"
-anyhow = "1.0.104"
-clap = { version = "4.6.7", features = ["derive"] }
+anyhow = "1.0.105"
+clap = { version = "4.6.9", features = ["derive"] }
 axum-codec = { version = "0.0.20", features = ["serde", "json", "msgpack"] }
 #spacetimedb-sdk = { path = "../../../SpacetimeDB/sdks/rust", default-features = false, features = ["streaming-decompression"] }
 spacetimedb-sdk = { git = "https://github.com/ResuBaka/SpacetimeDB", branch = "feature/no-client-cache-feature", default-features = false, features = ["streaming-decompression", "native-small-gzip"] }
 ts-rs = "12.0.1"
 tracing = "0.1.44"
 chrono = "0.4.45"
-rand = "0.10.3"
+rand = "0.10.4"
 
 
 [features]
@@ -54,7 +54,7 @@ spacetimedb-tokio-websockets-rustls = ["api/spacetimedb-tokio-websockets-rustls"
 
 [dependencies]
 api = { path = "api", features = ["tokio-worker-queues"] }
-tokio = { version = "1.53.1", features = [ "full" ] }
+tokio = { version = "1.54.1", features = [ "full" ] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-mimalloc-safe = { version = "0.1.67", features = ["v3"] }
+mimalloc-safe = { version = "0.1.71", features = ["v3"] }
