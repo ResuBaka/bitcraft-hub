@@ -14,10 +14,9 @@ COPY --from=planner /usr/src/api-server/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN apt update && apt install cmake binutils -y
 RUN cargo chef cook --release --recipe-path recipe.json
-# Build application
+# Build the application with the dependencies already compiled in target/.
 COPY . .
-RUN --mount=type=cache,target=/usr/src/api-server/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
+RUN --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     cargo build --release --bin bitcraft-hub-api && \
     objcopy --compress-debug-sections=zlib target/release/bitcraft-hub-api && \
