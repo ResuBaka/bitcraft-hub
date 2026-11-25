@@ -1,0 +1,18 @@
+{"arm": "control", "scores": "947a974b0863ea79", "notifications": 113012, "payloads": "6d5c24a6925b78e7"}
+{"arm": "index", "scores": "947a974b0863ea79", "notifications": 113012, "payloads": "6d5c24a6925b78e7"}
+{"pair": 0, "arm": "control", "cpu": 8, "ns_per_update": [462.43, 455.32, 511.6, 488.65, 462.8, 464.52, 465.36], "median": 464.52, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 0, "arm": "index", "cpu": 8, "ns_per_update": [472.52, 460.9, 471.28, 468.95, 501.84, 466.06, 467.27], "median": 468.95, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 1, "arm": "index", "cpu": 8, "ns_per_update": [469.28, 671.4, 499.57, 473.72, 465.11, 479.02, 447.81], "median": 473.72, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 1, "arm": "control", "cpu": 8, "ns_per_update": [508.13, 485.75, 482.65, 543.78, 614.91, 489.08, 622.86], "median": 508.13, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 2, "arm": "control", "cpu": 8, "ns_per_update": [477.31, 502.63, 478.72, 448.73, 453.6, 514.51, 453.81], "median": 477.31, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 2, "arm": "index", "cpu": 8, "ns_per_update": [474.28, 467.44, 456.87, 480.17, 445.79, 479.94, 445.51], "median": 467.44, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 3, "arm": "index", "cpu": 8, "ns_per_update": [464.55, 473.44, 483.42, 520.14, 479.87, 473.34, 503.16], "median": 479.87, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 3, "arm": "control", "cpu": 8, "ns_per_update": [701.35, 649.26, 507.83, 501.48, 605.28, 481.82, 534.64], "median": 534.64, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 4, "arm": "control", "cpu": 8, "ns_per_update": [539.68, 491.29, 491.68, 490.91, 491.06, 498.4, 500.99], "median": 491.68, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 4, "arm": "index", "cpu": 8, "ns_per_update": [476.47, 489.44, 476.26, 466.41, 479.09, 486.62, 486.64], "median": 479.09, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 5, "arm": "index", "cpu": 8, "ns_per_update": [491.66, 514.79, 508.68, 483.65, 502.96, 523.12, 489.25], "median": 502.96, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 5, "arm": "control", "cpu": 8, "ns_per_update": [479.4, 480.14, 501.15, 484.69, 490.28, 454.1, 507.31], "median": 484.69, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 6, "arm": "control", "cpu": 8, "ns_per_update": [478.01, 496.4, 470.01, 473.38, 479.79, 482.57, 505.29], "median": 479.79, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 6, "arm": "index", "cpu": 8, "ns_per_update": [556.75, 471.58, 462.26, 462.47, 455.43, 474.81, 462.37], "median": 462.47, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 7, "arm": "index", "cpu": 8, "ns_per_update": [472.65, 480.83, 488.95, 506.41, 502.56, 492.04, 492.45], "median": 492.04, "history": 37649, "digest": "b7e623ea527650bd"}
+{"pair": 7, "arm": "control", "cpu": 8, "ns_per_update": [495.71, 495.97, 475.32, 460.34, 496.0, 473.38, 442.13], "median": 475.32, "history": 37649, "digest": "b7e623ea527650bd"}

@@ -1048,11 +1048,19 @@ mod initial_tests {
                 .windows(2)
                 .all(|pair| pair[0].1 < pair[1].1)
         );
-        let values = [i64::MIN, -1, 0, 1, i64::MAX].into_iter().chain(
-            EXPERIENCE_PER_LEVEL
-                .iter()
-                .flat_map(|(_, xp)| [xp - 1, *xp, xp + 1]),
-        );
+        // Exercise the bucket transitions between thresholds too. Each group
+        // starts at a power of two and is divided into 16 equal intervals.
+        let bucket_edges = (4..=EXPERIENCE_PER_LEVEL.last().unwrap().1.ilog2())
+            .flat_map(|power| (16..32).map(move |n: i64| n << (power - 4)))
+            .flat_map(|xp| [xp - 1, xp]);
+        let values = [i64::MIN, -1, 0, 1, i64::MAX]
+            .into_iter()
+            .chain(
+                EXPERIENCE_PER_LEVEL
+                    .iter()
+                    .flat_map(|(_, xp)| [xp - 1, *xp, xp + 1]),
+            )
+            .chain(bucket_edges);
         for xp in values {
             let legacy = EXPERIENCE_PER_LEVEL
                 .iter()

@@ -142,3 +142,31 @@ scores and the ordered JSON notifications. Timing uses the existing separate
 subscriber-free replay with mobile positions, claim lookup and queued history.
 This is one region on a shared host, with no database flush or measurement of
 production publisher timing, fallback frequency, or whole-service savings.
+
+## XP to level
+
+The API builds a 325-entry table (5,200 bytes) from its existing thresholds
+at compile time. Sixteen buckets per power-of-two XP range are enough to put
+each threshold in a distinct bucket; the build checks this property when the
+curve changes. A lookup picks a bucket using integer operations and compares
+the original XP against its exact cutoff. There is no per-player cache.
+
+On the captured region-14 stream, the median isolated lookup dropped from
+**5.90 to 1.92 ns**. Across eight alternating-order pairs on CPU 8 (Ryzen 9
+9950X3D), full worker-thread CPU for the 37,649 updates was **482 vs 476
+ns/update** (medians of process medians). The median within-pair reduction
+was **2.3%**, with five of eight pairs faster. The full-worker difference is
+small relative to run-to-run variation. All history, score and notification
+digests matched. [Paired samples](level-lookup-samples.jsonl).
+
+To reproduce, build two release API lib test executables as above, varying
+only the conversion function (the control uses the previous `partition_point`
+search). The isolated benchmark checks and times both conversions on the
+75,298 old/new XP values for changed skills; omit pass zero as warmup. The
+second command measures the full worker and checks score, history and
+notification parity:
+
+```sh
+XP_WIRE="$XP_WIRE" taskset -c 8 "$NEW_BIN" replay_level_lookups --ignored --nocapture
+python3 api/benches/xp-category-index/measure.py "$XP_WIRE" "$CONTROL_BIN" "$NEW_BIN"
+```

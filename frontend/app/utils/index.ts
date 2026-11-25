@@ -1,4 +1,4 @@
-import { levelMap } from "~/consts/exp";
+import { levelMap } from "../consts/exp";
 
 export const levelToColor = (level: number) => {
   const tier = levelToTier(level);
@@ -130,28 +130,21 @@ export const useDelayedPending = (pending: Ref<boolean>, delayMs: number) => {
   return showPending;
 };
 
-const experienceLevels = Object.keys(levelMap).map(Number);
+// Levels are consecutive starting at 1, so the number of thresholds met is the level.
+const xpThresholds = Object.values(levelMap);
 
 export const expToLevel = (experience: number | null) => {
-  if (experience === null || !Number.isFinite(experience) || experience < levelMap[1]) {
+  if (experience === null || !Number.isFinite(experience) || experience < xpThresholds[0]) {
     return 0;
   }
+  if (experience < xpThresholds[1]) return 1;
 
-  let low = 0;
-  let high = experienceLevels.length - 1;
-  let result = 0;
-
-  while (low <= high) {
-    const middle = Math.floor((low + high) / 2);
-    const level = experienceLevels[middle];
-
-    if (levelMap[level] <= experience) {
-      result = level;
-      low = middle + 1;
-    } else {
-      high = middle - 1;
-    }
+  let low = 2;
+  let high = xpThresholds.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (xpThresholds[middle] <= experience) low = middle + 1;
+    else high = middle;
   }
-
-  return result;
+  return low;
 };

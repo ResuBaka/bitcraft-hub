@@ -1646,12 +1646,67 @@ fn ordered_boards<T>(mut boards: IndexMap<String, T>) -> IndexMap<String, T> {
     boards
 }
 
+// Split each power-of-two XP range into 16 equal buckets. These grow with
+// the XP curve, so even at high levels a bucket contains at most one cutoff.
+const fn xp_bucket(xp: i64) -> usize {
+    let shift = xp.ilog2() - 4;
+    (16 * shift as usize) + (xp >> shift) as usize
+}
+
+const FIRST_BUCKET: usize = xp_bucket(EXPERIENCE_PER_LEVEL[1].1);
+const MAX_LEVEL: (i32, i64) = EXPERIENCE_PER_LEVEL[EXPERIENCE_PER_LEVEL.len() - 1];
+const BUCKET_COUNT: usize = xp_bucket(MAX_LEVEL.1) - FIRST_BUCKET + 1;
+
+#[derive(Clone, Copy)]
+struct LevelCutoff {
+    xp: i64,
+    below: i32,
+    at_or_above: i32,
+}
+
+static LEVEL_CUTOFFS: [LevelCutoff; BUCKET_COUNT] = {
+    let mut buckets = [LevelCutoff {
+        xp: 0,
+        below: 0,
+        at_or_above: 0,
+    }; BUCKET_COUNT];
+    let mut end = buckets.len();
+    let mut i = EXPERIENCE_PER_LEVEL.len() - 1;
+    while i > 0 {
+        let (level, xp) = EXPERIENCE_PER_LEVEL[i];
+        let start = xp_bucket(xp) - FIRST_BUCKET;
+        assert!(
+            start < end,
+            "XP cutoffs must be in distinct, ascending buckets"
+        );
+        let cutoff = LevelCutoff {
+            xp,
+            below: EXPERIENCE_PER_LEVEL[i - 1].0,
+            at_or_above: level,
+        };
+        while end > start {
+            end -= 1;
+            buckets[end] = cutoff;
+        }
+        i -= 1;
+    }
+    buckets
+};
+
 pub(crate) fn experience_to_level(experience: i64) -> i32 {
-    let boundary = EXPERIENCE_PER_LEVEL.partition_point(|(_, xp)| *xp <= experience);
-    // Preserve the existing fallback for negative XP as well as exact thresholds.
-    boundary
-        .checked_sub(1)
-        .map_or(100, |index| EXPERIENCE_PER_LEVEL[index].0)
+    if experience < EXPERIENCE_PER_LEVEL[1].1 {
+        let (level, threshold) = EXPERIENCE_PER_LEVEL[0];
+        return if experience < threshold { 100 } else { level };
+    }
+    if experience >= MAX_LEVEL.1 {
+        return MAX_LEVEL.0;
+    }
+    let cutoff = LEVEL_CUTOFFS[xp_bucket(experience) - FIRST_BUCKET];
+    if experience < cutoff.xp {
+        cutoff.below
+    } else {
+        cutoff.at_or_above
+    }
 }
 
 #[derive(Serialize, TS)]

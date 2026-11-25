@@ -173,6 +173,52 @@ fn replay_input(state: &AppState) -> Operations {
     ops
 }
 
+#[tokio::test]
+#[ignore = "isolated level lookups on the private region-14 capture"]
+async fn replay_level_lookups() {
+    use crate::leaderboard::EXPERIENCE_PER_LEVEL;
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+    let state = AppState::new(Default::default(), tx, Default::default());
+    let ops = replay_input(&state);
+    let mut values = Vec::new();
+    for (old, new, _) in &ops.messages {
+        for (a, b) in old.experience_stacks.iter().zip(&new.experience_stacks) {
+            assert_eq!(a.skill_id, b.skill_id);
+            if a.quantity != b.quantity {
+                values.extend([i64::from(a.quantity), i64::from(b.quantity)]);
+            }
+        }
+    }
+    assert_eq!(values.len(), 2 * ops.updates);
+    let binary_search = |xp| {
+        EXPERIENCE_PER_LEVEL
+            .partition_point(|&(_, t)| t <= xp)
+            .checked_sub(1)
+            .map_or(100, |i| EXPERIENCE_PER_LEVEL[i].0)
+    };
+    for &xp in &values {
+        assert_eq!(binary_search(xp), experience_to_level(xp));
+    }
+    fn measure(values: &[i64], convert: impl Fn(i64) -> i32) -> f64 {
+        let start = Instant::now();
+        for _ in 0..128 {
+            black_box(black_box(values).iter().copied().map(&convert).sum::<i32>());
+        }
+        start.elapsed().as_secs_f64() * 1e9 / (values.len() * 128) as f64
+    }
+    for pass in 0..9 {
+        let old = || measure(&values, binary_search);
+        let new = || measure(&values, experience_to_level);
+        let (search, lookup) = if pass % 2 == 0 {
+            (old(), new())
+        } else {
+            let lookup = new();
+            (old(), lookup)
+        };
+        println!("pass={pass} search_ns={search:.3} lookup_ns={lookup:.3}");
+    }
+}
+
 #[cfg(target_os = "linux")]
 #[tokio::test]
 #[ignore = "worker-thread CPU on the private region-14 capture"]
