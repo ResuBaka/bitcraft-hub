@@ -4,6 +4,7 @@ import { overviewStatsKey } from "~/composables/useOverviewStats";
 import { activityCraft, activityCraftProgress } from "~/utils/playerActivity";
 import { IdleAlertTimer } from "~/utils/accountOverviewAlerts";
 import { getTierColor } from "~/utils";
+import { formatNumber } from "~/utils/formatNumber";
 
 const props = defineProps<{ playerId: string }>();
 const websocket = useWebsocketStore();
@@ -122,7 +123,7 @@ watchEffect(() => {
               :to="`/buildings/${project.building_id}`"
               class="text-xs text-muted hover:underline"
             >
-              {{ project.building_name }} · Quantity {{ project.quantity }}
+              {{ project.building_name }} · Quantity {{ formatNumber(project.quantity) }}
             </NuxtLink>
             <template v-if="craftProgress">
               <div class="mt-0.5 flex items-center gap-1.5">
@@ -133,12 +134,12 @@ watchEffect(() => {
                   aria-label="Craft progress"
                 />
                 <span class="shrink-0 text-xs text-muted"
-                  >{{ craftProgress.progress }} / {{ craftProgress.total }}</span
+                  >{{ formatNumber(craftProgress.progress) }} / {{ formatNumber(craftProgress.total) }}</span
                 >
               </div>
             </template>
             <p v-else-if="project?.progress != null" class="text-xs text-muted">
-              {{ project.progress }} progress · Total unknown
+              {{ formatNumber(project.progress) }} progress · Total unknown
             </p>
             <p v-else class="text-xs text-muted">
               {{ loadingCrafts ? "Loading active craft…" : "Progress unavailable" }}

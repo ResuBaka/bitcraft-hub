@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { passiveSummaryTiming, summarizePassiveCrafts } from "~/utils/passiveCraftSummary";
 import { getTierColor } from "~/utils";
+import { formatNumber } from "~/utils/formatNumber";
 import { passiveReadyAlerts } from "~/utils/accountOverviewAlerts";
 
 const props = defineProps<{ playerId: string }>();
@@ -126,15 +127,15 @@ onBeforeUnmount(() => {
                 </span>
                 <span
                   class="shrink-0 text-xs text-muted"
-                  :aria-label="`${summary.ready} of ${summary.total} projects ready to collect`"
-                  >{{ summary.ready }}/{{ summary.total }} ready</span
+                  :aria-label="`${formatNumber(summary.ready)} of ${formatNumber(summary.total)} projects ready to collect`"
+                  >{{ formatNumber(summary.ready) }}/{{ formatNumber(summary.total) }} ready</span
                 >
               </div>
               <AccountOverviewCraftCompletionBar
                 v-if="unseenSummaries.has(summary.key)"
                 :value="summary.ready"
                 :max="summary.total"
-                :description="`Mark ready ${summary.name} projects as seen (${summary.ready} of ${summary.total} ready)`"
+                :description="`Mark ready ${summary.name} projects as seen (${formatNumber(summary.ready)} of ${formatNumber(summary.total)} ready)`"
                 @acknowledge="acknowledge(summary.readyIds)"
               />
               <progress
@@ -142,7 +143,7 @@ onBeforeUnmount(() => {
                 :value="summary.ready"
                 :max="summary.total"
                 :aria-label="`${summary.name} projects ready to collect`"
-                :title="`${summary.ready} of ${summary.total} projects ready to collect`"
+                :title="`${formatNumber(summary.ready)} of ${formatNumber(summary.total)} projects ready to collect`"
                 class="block h-1.5 w-full accent-primary"
               />
             </div>

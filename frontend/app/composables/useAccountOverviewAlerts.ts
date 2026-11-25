@@ -10,6 +10,7 @@ import {
 } from "~/utils/accountOverviewAlerts";
 import {
   emptyJournal,
+  flushPassiveGroups,
   pruneJournal,
   recordObservation,
   type AlertEntry,
@@ -75,9 +76,29 @@ export function provideAccountOverviewAlerts(players: Ref<TrackedPlayer[]>) {
     if (tabIsActive()) unseenCount.value = 0;
   }
   useEventListener("focus", clearWhenActive);
-  useEventListener(() => import.meta.client ? document : null, "visibilitychange", clearWhenActive);
+  useEventListener(
+    () => (import.meta.client ? document : null),
+    "visibilitychange",
+    clearWhenActive,
+  );
   let disposed = false;
   let storageAvailable = true;
+  let passiveTimer: ReturnType<typeof setTimeout> | undefined;
+  function passiveAllowed(id: string) {
+    return players.value.some((p) => p.id === id)
+      ? alertsAllowed(preferences.value, id, "passive-ready")
+      : null;
+  }
+  function schedulePassiveFlush() {
+    clearTimeout(passiveTimer);
+    let next = Infinity;
+    for (const group of journal.passiveGroups ?? []) {
+      const allowed = passiveAllowed(group.player.id);
+      if (allowed !== null) next = Math.min(next, allowed ? group.until : 0);
+    }
+    if (Number.isFinite(next))
+      passiveTimer = setTimeout(() => updateJournal(), Math.max(0, next - Date.now()));
+  }
   function readJournal() {
     if (!storageAvailable) return;
     try {
@@ -91,7 +112,9 @@ export function provideAccountOverviewAlerts(players: Ref<TrackedPlayer[]>) {
     const commit = () => {
       if (disposed) return;
       readJournal();
-      pruneJournal(journal, Date.now());
+      const now = Date.now();
+      pruneJournal(journal, now);
+      const batches = flushPassiveGroups(journal, now, passiveAllowed);
       const entry = change?.(journal);
       entries.value = [...journal.entries];
       try {
@@ -99,6 +122,8 @@ export function provideAccountOverviewAlerts(players: Ref<TrackedPlayer[]>) {
       } catch {
         storageAvailable = false;
       }
+      schedulePassiveFlush();
+      for (const batch of batches) deliver(batch);
       if (entry) deliver(entry);
     };
     // Two open dashboards may receive the same websocket update together.
@@ -109,6 +134,7 @@ export function provideAccountOverviewAlerts(players: Ref<TrackedPlayer[]>) {
     if (e.key !== journalKey && e.key !== null) return;
     readJournal();
     entries.value = journal.entries;
+    schedulePassiveFlush();
   }
   let cleanup: ReturnType<typeof setInterval>;
   onMounted(() => {
@@ -150,9 +176,18 @@ export function provideAccountOverviewAlerts(players: Ref<TrackedPlayer[]>) {
     });
     playback.enqueue(id, type);
   }
-  watch(preferences, playback.update, { deep: true });
+  watch(
+    preferences,
+    () => {
+      playback.update();
+      if (journal.passiveGroups?.length) updateJournal();
+    },
+    { deep: true },
+  );
+  watch(players, schedulePassiveFlush);
   onBeforeUnmount(() => {
     disposed = true;
+    clearTimeout(passiveTimer);
     clearInterval(cleanup);
     window.removeEventListener("storage", reloadHistory);
     playback.dispose();

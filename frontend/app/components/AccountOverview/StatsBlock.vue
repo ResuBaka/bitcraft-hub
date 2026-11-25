@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { formatFoodTimer, meterValue, summarizeFoodBuffs } from "~/utils/monitorBars";
+import {
+  activeBuffsWithTime,
+  formatFoodTimer,
+  meterValue,
+  summarizeFoodBuffs,
+} from "~/utils/monitorBars";
 import { overviewStatsKey, useOverviewStats } from "~/composables/useOverviewStats";
 import { FoodExpiryTracker, vitalAlerts } from "~/utils/accountOverviewAlerts";
 import { overviewActivityKey } from "~/composables/useOverviewActivity";
@@ -39,15 +44,13 @@ onBeforeUnmount(() => {
   if (timer) clearInterval(timer);
 });
 
-const foodSummary = computed(() =>
-  summarizeFoodBuffs(
-    (data.value?.buffs ?? []).map((buff) => ({
-      ...buff,
-      remaining_seconds: buff.remaining_seconds == null ? null : Number(buff.remaining_seconds),
-    })),
+const activeBuffs = computed(() =>
+  activeBuffsWithTime(
+    data.value?.buffs ?? [],
     Math.max(0, Math.floor((now.value - receivedAt.value) / 1000)),
   ),
 );
+const foodSummary = computed(() => summarizeFoodBuffs(activeBuffs.value));
 </script>
 
 <template>
@@ -92,12 +95,13 @@ const foodSummary = computed(() =>
             :max="data.max_stamina"
             color="stamina"
           />
-          <div
-            class="min-w-0 text-sm @md:col-span-2"
-            title="Food-associated buffs may also be granted by other sources."
-          >
+          <div class="min-w-0 text-sm @md:col-span-2">
             <div class="flex flex-wrap justify-between gap-x-2">
-              <span class="font-medium">Food</span>
+              <span
+                class="font-medium"
+                title="Food-associated buffs may also be granted by other sources."
+                >Food</span
+              >
               <span class="text-muted">
                 <template v-if="data.buffs == null || !data.food_metadata_available"
                   >Unavailable</template
@@ -105,12 +109,14 @@ const foodSummary = computed(() =>
                 <template v-else-if="!foodSummary.count">{{
                   data.buffs_complete ? "None active" : "Timing unavailable"
                 }}</template>
-                <template v-else-if="foodSummary.next?.remaining == null">Permanent</template>
-                <template v-else>
-                  {{ formatFoodTimer(foodSummary.next.remaining) }} remaining{{
-                    foodSummary.next.paused ? " (paused)" : ""
-                  }}{{ foodSummary.count > 1 ? " · next expiry" : "" }}
-                </template>
+                <BitcraftBuffHint v-else-if="foodSummary.next" :buff="foodSummary.next">
+                  <template v-if="foodSummary.next.remaining == null">Permanent</template>
+                  <template v-else>
+                    {{ formatFoodTimer(foodSummary.next.remaining) }} remaining{{
+                      foodSummary.next.paused ? " (paused)" : ""
+                    }}{{ foodSummary.count > 1 ? " · next expiry" : "" }}
+                  </template>
+                </BitcraftBuffHint>
               </span>
             </div>
             <progress
@@ -127,6 +133,17 @@ const foodSummary = computed(() =>
             <p v-if="!data.buffs_complete && foodSummary.count" class="mt-1 text-xs text-muted">
               Some buff timing is unavailable.
             </p>
+          </div>
+          <div
+            v-if="activeBuffs.length"
+            class="flex flex-wrap items-baseline gap-1 text-xs @md:col-span-2"
+          >
+            <BitcraftBuffHint
+              v-for="buff in activeBuffs"
+              :key="`${buff.buff_id}:${buff.start_timestamp}`"
+              :buff="buff"
+              class="bg-elevated px-1.5 py-0.5"
+            />
           </div>
         </div>
         <p v-if="!websocket.isConnected" class="mt-1 text-xs text-muted">

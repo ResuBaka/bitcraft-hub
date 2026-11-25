@@ -11,6 +11,7 @@ import type { PlayerCraft } from "../app/types/PlayerCraft";
 import type { StatsSnapshot } from "../app/types/StatsSnapshot";
 import {
   emptyJournal,
+  flushPassiveGroups,
   pruneJournal,
   recordObservation,
 } from "../app/utils/accountOverviewAlertJournal";
@@ -77,6 +78,60 @@ const stats: StatsSnapshot = {
   food_metadata_available: true,
 };
 const player = { id: "1", name: "Sky" };
+
+test("staggered passive crafts produce a single collectible summary at a fixed deadline", () => {
+  let j = emptyJournal();
+  const finish = (id: string, name: string, now: number) => {
+    const [obs] = passiveReadyAlerts(
+      [],
+      [{ ...queued, id, recipe_name: name, status: "Complete", duration_seconds: 1200 }],
+      [],
+    );
+    return recordObservation(j, player, obs!, true, now);
+  };
+  expect(finish("a", "Bricks", 0)).toBeUndefined();
+  expect(flushPassiveGroups(j, 10_000, () => true)).toEqual([]);
+  j = JSON.parse(JSON.stringify(j)); // Another tab receives the same update.
+  finish("a", "Bricks", 20_000);
+  finish("b", "Bricks", 35_000);
+  finish("c", "Glass", 59_999);
+  expect(j.entries).toEqual([]);
+  expect(flushPassiveGroups(j, 60_000, () => true)).toMatchObject([
+    { message: "3 passive crafts ready to collect: 2 × Bricks, Glass." },
+  ]);
+  finish("d", "Glass", 60_000);
+  expect(flushPassiveGroups(j, 119_999, () => true)).toEqual([]);
+  expect(flushPassiveGroups(j, 120_000, () => true)).toMatchObject([
+    { message: "Glass is ready to collect." },
+  ]);
+  expect(flushPassiveGroups(j, 150_000, () => true)).toEqual([]);
+  expect(j.entries).toHaveLength(2);
+});
+
+test("passive windows respect duration limits, player scope, and mutes before delivery", () => {
+  const j = emptyJournal();
+  const other = { id: "2", name: "River" };
+  const obs = {
+    type: "passive-ready",
+    eventId: "a",
+    durationSeconds: null,
+    recipe: "Ore",
+  } as const;
+  recordObservation(j, player, obs, true, 0); // Unknown duration: 10 seconds.
+  recordObservation(j, other, { ...obs, durationSeconds: 86400 }, true, 0);
+  expect(flushPassiveGroups(j, 9999, () => true)).toEqual([]);
+  expect(flushPassiveGroups(j, 10_000, (id) => (id === player.id ? true : null))).toMatchObject([
+    { player },
+  ]);
+  expect(flushPassiveGroups(j, 119_999, () => true)).toEqual([]);
+  expect(flushPassiveGroups(j, 120_000, () => null)).toEqual([]);
+  expect(flushPassiveGroups(j, 120_000, () => true)).toMatchObject([{ player: other }]);
+  recordObservation(j, player, { ...obs, eventId: "b" }, true, 130_000);
+  flushPassiveGroups(j, 131_000, () => false);
+  recordObservation(j, player, { ...obs, eventId: "b" }, true, 132_000);
+  expect(flushPassiveGroups(j, 150_000, () => true)).toEqual([]);
+  expect(j.entries).toHaveLength(2);
+});
 
 test("vital alerts rearm after recovery and do not replay after reloading", () => {
   let journal = emptyJournal();
@@ -242,7 +297,7 @@ test("timed food buffs expire once; paused, permanent and replaced timers don't 
 
 test("history bounds, manual clearing, and delivery receipts are independent", () => {
   const j = emptyJournal();
-  const obs = { type: "passive-ready", eventId: "p" } as const;
+  const obs = { type: "food-expired", eventId: "p" } as const;
   expect(recordObservation(j, player, obs, false, 0)).toBeUndefined();
   expect(recordObservation(j, player, obs, true, 1)).toBeUndefined();
   for (let i = 0; i < 205; i++)

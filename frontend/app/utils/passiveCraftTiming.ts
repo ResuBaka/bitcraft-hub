@@ -1,15 +1,6 @@
-type PassiveTiming = { status: string; timestamp: string | null; duration_seconds: number | null };
+import { formatCountdown } from "./countdown";
 
-function duration(milliseconds: number): string {
-  let seconds = Math.max(0, Math.ceil(milliseconds / 1000));
-  const days = Math.floor(seconds / 86400);
-  seconds %= 86400;
-  const hours = Math.floor(seconds / 3600);
-  seconds %= 3600;
-  const minutes = Math.floor(seconds / 60);
-  seconds %= 60;
-  return [days ? `${days}d` : "", hours ? `${hours}h` : "", minutes ? `${minutes}m` : "", `${seconds}s`].filter(Boolean).join(" ");
-}
+type PassiveTiming = { status: string; timestamp: string | null; duration_seconds: number | null };
 
 /** Rows are grouped by status, owner, and recipe, but can have different times. */
 export function passiveCraftTiming(crafts: PassiveTiming[], now: number): string {
@@ -35,7 +26,7 @@ export function passiveCraftTiming(crafts: PassiveTiming[], now: number): string
     return `Completed: ${from}${first !== last ? ` – ${to}` : ""}${unknown}`;
   }
   if (last <= now) return `Finishing — awaiting server confirmation${unknown}`;
-  const from = duration(first - now);
-  const to = duration(last - now);
+  const from = formatCountdown(first - now);
+  const to = formatCountdown(last - now);
   return `Finishes in ${from}${from !== to ? ` – ${to}` : ""}${first <= now ? " (some awaiting server confirmation)" : ""}${unknown}`;
 }

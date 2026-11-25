@@ -1,4 +1,5 @@
 import type { PlayerCraft } from "~/types/PlayerCraft";
+import { formatCountdown } from "./countdown";
 
 type PassiveCraft = Pick<
   PlayerCraft,
@@ -70,24 +71,6 @@ export function summarizePassiveCrafts(crafts: PassiveCraft[]): PassiveCraftSumm
     }
   }
   return [...groups.values()];
-}
-
-export function formatCountdown(milliseconds: number): string {
-  let seconds = Math.ceil(milliseconds / 1000);
-  const days = Math.floor(seconds / 86400);
-  seconds %= 86400;
-  const hours = Math.floor(seconds / 3600);
-  seconds %= 3600;
-  const minutes = Math.floor(seconds / 60);
-  seconds %= 60;
-  return [
-    days && `${days}d`,
-    hours && `${hours}h`,
-    minutes && `${minutes}m`,
-    seconds && `${seconds}s`,
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
 export function passiveSummaryTiming(

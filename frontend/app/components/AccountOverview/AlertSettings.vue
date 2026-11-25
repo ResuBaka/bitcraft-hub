@@ -10,6 +10,7 @@ import type { TrackedPlayer } from "~/utils/accountOverviewShare";
 const props = defineProps<{ players: TrackedPlayer[] }>();
 const prefs = defineModel<AlertPreferences>({ required: true });
 const selected = ref("");
+const formatPercent = new Intl.NumberFormat(undefined, { style: "percent" }).format;
 const alertBlocks = accountOverviewBlocks.filter((block) =>
   Object.values(overviewAlertTypes).some((type) => type.block === block.id),
 );
@@ -61,6 +62,10 @@ const player = computed(
                 <span v-else-if="id === 'food-expired'" class="text-xs text-muted">
                   (only buffs with a total duration over 1 minute)
                 </span>
+                <span v-else-if="id === 'passive-ready'" class="text-xs text-muted">
+                  (grouped per player for 5% of the first craft’s duration, from 10 seconds to 2
+                  minutes)
+                </span>
                 <span v-else-if="id === 'activity-stopped'" class="text-xs text-muted">
                   (if stamina ran out, the timer starts when stamina is full again)
                 </span>
@@ -85,7 +90,7 @@ const player = computed(
               :aria-valuetext="`${prefs.volume}%`"
               class="min-w-0 flex-1 accent-primary"
             />
-            <span class="w-10 text-right text-sm tabular-nums">{{ prefs.volume }}%</span>
+            <span class="text-right text-sm tabular-nums">{{ formatPercent(prefs.volume / 100) }}</span>
           </div>
           <p class="text-xs text-muted">
             Applies to all alert sounds. At 0%, visual alerts still appear.

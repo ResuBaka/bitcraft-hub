@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { meterValue } from "~/utils/monitorBars";
+import { formatNumber } from "~/utils/formatNumber";
 
 const props = defineProps<{
   label: string;
@@ -15,9 +16,9 @@ const value = computed(() => meterValue(props.value, props.max));
     <div class="flex flex-wrap justify-between gap-x-2 text-sm">
       <span class="font-medium">{{ label }}</span>
       <span class="text-muted">
-        {{ props.value == null ? "Unavailable" : props.value.toLocaleString() }}
+        {{ props.value == null ? "Unavailable" : formatNumber(props.value) }}
         <template v-if="value !== null && props.max != null">
-          / {{ props.max.toLocaleString() }}</template
+          / {{ formatNumber(props.max) }}</template
         >
         <template v-else-if="props.value != null"> · max unavailable</template>
       </span>

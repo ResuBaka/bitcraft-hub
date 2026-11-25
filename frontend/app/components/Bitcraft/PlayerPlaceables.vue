@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useDocumentVisibility, useIntervalFn, useTimestamp } from "@vueuse/core";
 import { getTierColor } from "~/utils";
-import { formatCountdown } from "~/utils/passiveCraftSummary";
+import { formatCountdown } from "~/utils/countdown";
+import { formatNumber } from "~/utils/formatNumber";
 
 type Stage = {
   owner_id: string;
@@ -117,7 +118,7 @@ function stage(row: Stage) {
                 ? 'Ready to harvest'
                 : 'Ready to collect the outcome’s reward'
             "
-            >{{ group.ready }}/{{ group.total }} ready</span
+             >{{ formatNumber(group.ready) }}/{{ formatNumber(group.total) }} ready</span
           >
           <ul class="text-xs text-muted">
             <li
@@ -125,7 +126,7 @@ function stage(row: Stage) {
               :key="`${row.stage_id}:${row.growing}`"
               class="wrap-break-word"
             >
-              <span class="font-medium">{{ row.quantity }} × {{ row.name }}</span>
+              <span class="font-medium">{{ formatNumber(row.quantity) }} × {{ row.name }}</span>
               <span v-if="row.interactions.length"> · {{ row.interactions.join(", ") }}</span>
               <span v-if="row.growing"> · {{ stage(row) }}</span>
             </li>

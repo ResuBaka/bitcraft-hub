@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { refDebounced, useLocalStorage } from "@vueuse/core";
+import { formatNumber } from "~/utils/formatNumber";
 import DashboardGrid from "~/components/AccountOverview/DashboardGrid.client.vue";
 import type { PlayersResponse } from "~/types/PlayersResponse";
 import type { AccountOverviewBlockId, AddBlockRequest } from "~/utils/accountOverviewBlocks";
@@ -44,7 +45,7 @@ const displayedPlayers = computed(() =>
 );
 const { preferences: alertPreferences, unseenCount } = provideAccountOverviewAlerts(displayedPlayers);
 useSeoMeta({
-  title: () => unseenCount.value ? `(${unseenCount.value}) Account Overview` : "Account Overview",
+  title: () => unseenCount.value ? `(${formatNumber(unseenCount.value)}) Account Overview` : "Account Overview",
   description: "Monitor your account's status and crafting activity.",
 });
 useHead(() => ({

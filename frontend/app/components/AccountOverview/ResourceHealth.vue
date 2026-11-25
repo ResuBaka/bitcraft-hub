@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { hasSubscribedTopic } from "~/utils/websocketTopicRegistry";
+import { formatNumber } from "~/utils/formatNumber";
 
 // The Activity block keys this component by node; changing targets releases
 // the previous subscription and never carries its health to the next node.
@@ -114,8 +115,8 @@ onBeforeUnmount(() => {
       aria-label="Resource health"
     />
     <span class="shrink-0 text-xs text-muted">
-      {{ health
-      }}<template v-if="maxHealth != null && maxHealth > 0"> / {{ maxHealth }}</template> HP
+      {{ formatNumber(health)
+      }}<template v-if="maxHealth != null && maxHealth > 0"> / {{ formatNumber(maxHealth) }}</template> HP
     </span>
   </div>
   <p v-else class="text-xs text-muted">

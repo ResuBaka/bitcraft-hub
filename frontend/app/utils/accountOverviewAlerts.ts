@@ -3,6 +3,7 @@ import type { AccountOverviewBlockId } from "./accountOverviewBlocks";
 import { craftMatchesClaims } from "./craftClaimFilter";
 import type { StatsSnapshot } from "../types/StatsSnapshot";
 import type { CurrentActivity } from "./playerActivity";
+import { formatNumber } from "./formatNumber";
 
 export const overviewAlertTypes = {
   "food-expired": { label: "Food buff expired", block: "stats" },
@@ -18,7 +19,8 @@ export type AlertType = keyof typeof overviewAlertTypes;
 export type AlertObservation = (
   | { type: "low-health"; active: boolean }
   | { type: "full-stamina"; active: boolean; suppressed: boolean }
-  | { type: "activity-stopped" | "food-expired" | "passive-ready"; eventId: string }
+  | { type: "activity-stopped" | "food-expired"; eventId: string }
+  | { type: "passive-ready"; eventId: string; recipe: string; durationSeconds: number | null }
 ) & { message?: string };
 
 export type AlertPreferences = {
@@ -68,7 +70,8 @@ export function passiveReadyAlerts(
     .map((c) => ({
       type: "passive-ready",
       eventId: c.id,
-      message: `${c.recipe_name ?? `Recipe #${c.recipe_id}`} is ready to collect.`,
+      recipe: c.recipe_name ?? `Recipe #${c.recipe_id}`,
+      durationSeconds: c.duration_seconds,
     }));
 }
 
@@ -101,7 +104,7 @@ export function vitalAlerts(
     alerts.push({
       type: "low-health",
       active: health <= max_health * 0.25,
-      message: `Low health: ${health} / ${max_health}`,
+      message: `Low health: ${formatNumber(health)} / ${formatNumber(max_health)}`,
     });
   if (stamina != null && max_stamina != null && max_stamina > 0)
     alerts.push({
