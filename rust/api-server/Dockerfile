@@ -8,7 +8,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder
 # Use the measured CPU-optimized profile for dependencies and the application.
 ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=3 \
-    CARGO_PROFILE_RELEASE_LTO=true
+    CARGO_PROFILE_RELEASE_LTO=thin
 
 COPY --from=planner /usr/src/api-server/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
