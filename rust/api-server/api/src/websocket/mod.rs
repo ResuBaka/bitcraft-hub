@@ -504,6 +504,7 @@ async fn connect_to_db_logic(
     // The regional and global SDKs have different placeable descriptor layouts.
     // Read these descriptions once from the designated regional descriptor source.
     if !*remove_desc {
+        player_activity::listen_deployable_descriptions(&ctx, &global_app_state);
         let desc_tx = &placeables.desc;
         let interactions_tx = &placeables.interactions;
         let growth_tx = &placeables.growth;
@@ -757,6 +758,7 @@ async fn connect_to_db_logic(
         "claim_member_state",
         "claim_local_state",
         "deployable_state_v2",
+        "deployable_desc",
         "claim_treasury_event",
         "inventory_state",
         "progressive_action_state",
@@ -861,7 +863,10 @@ async fn connect_to_db_logic(
                 player_activity::changed(&activity_on_error, None);
                 tracing::warn!(region = region_number, "Player activity subscription failed: {err}");
             })
-            .subscribe(["SELECT player_action_state.* FROM player_action_state JOIN player_state ON player_state.entity_id = player_action_state.entity_id"]);
+            .subscribe([
+                "SELECT player_action_state.* FROM player_action_state JOIN player_state ON player_state.entity_id = player_action_state.entity_id",
+                "SELECT * FROM mounting_state",
+            ]);
         let stats_on_applied = global_app_state.clone();
         let stats_on_error = global_app_state.clone();
         ctx.subscription_builder()

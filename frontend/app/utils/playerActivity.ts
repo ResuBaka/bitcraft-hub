@@ -3,6 +3,8 @@ import type { PlayerCraft } from "~/types/PlayerCraft";
 
 export type CurrentActivity = {
   actionStart?: number;
+  mountId?: string;
+  detail?: string;
   label: string;
   icon: string;
   recipeKind: "craft" | "gather" | null;
@@ -23,7 +25,15 @@ export function currentPlayerActivity(
     recipeKind: CurrentActivity["recipeKind"] = null,
     recipeId: number | null = null,
     targetId: string | null = null,
-  ): CurrentActivity => ({ label, icon, recipeKind, recipeId, targetId, actionStart });
+  ): CurrentActivity => ({
+    label,
+    icon,
+    recipeKind,
+    recipeId,
+    targetId,
+    actionStart,
+    mountId: snapshot?.mount?.entity_id,
+  });
   if (!snapshot) return result("Loading…", "i-lucide-loader-circle");
   if (!snapshot.signed_in) return result("Offline", "i-lucide-circle-off");
   if (!snapshot.available || snapshot.actions === null)
@@ -71,7 +81,12 @@ export function currentPlayerActivity(
         );
       })
       .sort((a, b) => Number(b.start_ms) - Number(a.start_ms))[0];
-  if (!action) return result("Idle", "i-lucide-pause");
+  const mount = snapshot.mount;
+  const mountName = mount?.name?.trim() || `a ${mount?.kind?.toLowerCase() || "deployable"}`;
+  if (!action) {
+    const idle = result("Idle", "i-lucide-pause");
+    return mount ? { ...idle, detail: `On ${mountName}` } : idle;
+  }
   actionStart = Number(action.start_ms);
   if (action.action_type === "Craft")
     return {
@@ -87,6 +102,15 @@ export function currentPlayerActivity(
       action.recipe_id,
       action.target_id ?? null,
     );
+  if (mount && (action.action_type === "PlayerMove" || action.action_type === "DeployableMove")) {
+    if (mount.kind === "Boat")
+      return result(`${mount.driver ? "Sailing" : "Aboard"} ${mountName}`, "i-lucide-ship");
+    if (mount.kind === "Cart" && mount.driver)
+      return result(`Pulling ${mountName}`, "i-lucide-shopping-cart");
+    if (mount.kind === "Mount" || !mount.driver)
+      return result(`Riding ${mountName}`, "i-lucide-route");
+    return result(`Using ${mountName}`, "i-lucide-route");
+  }
   if (action.action_type === "PlayerMove")
     return result(
       snapshot.walking === null ? "Moving" : snapshot.walking ? "Walking" : "Running",
@@ -104,7 +128,12 @@ export class ActivityLinger {
 
   update(activity: CurrentActivity, now: number): CurrentActivity {
     if (activity.label === "Idle") {
-      if (this.previous && now - this.lastSeen < this.durationMs) return this.previous;
+      if (
+        this.previous &&
+        this.previous.mountId === activity.mountId &&
+        now - this.lastSeen < this.durationMs
+      )
+        return this.previous;
       this.previous = null;
       return activity;
     }

@@ -97,6 +97,43 @@ test("resolves the owner's exact project even when several projects use the same
 });
 
 describe("player activity", () => {
+  test.each([
+    ["PlayerMove", "Cart", "Handcart", true, "Pulling Handcart"],
+    ["DeployableMove", "Cart", "Covered Wagon", false, "Riding Covered Wagon"],
+    ["DeployableMove", "Boat", "Fishing Skiff", true, "Sailing Fishing Skiff"],
+    ["PlayerMove", "Boat", "Fishing Skiff", false, "Aboard Fishing Skiff"],
+    ["PlayerMove", "Mount", "Mountain Goat", true, "Riding Mountain Goat"],
+    ["PlayerMove", null, null, true, "Using a deployable"],
+  ] as const)("reports %s on %s (%s, driver=%s) as %s", (type, kind, name, driver, label) => {
+    const mount = { entity_id: "99", driver, kind, name };
+    expect(currentPlayerActivity({ ...snapshot, mount, actions: [action(type)] }, 1500).label).toBe(
+      label,
+    );
+  });
+
+  test("mounting and dismounting clear stale movement; mounted gathering still takes priority", () => {
+    const mount = { entity_id: "99", driver: true, kind: "Mount", name: "Mountain Goat" };
+    const moving = { ...snapshot, actions: [action("PlayerMove")] };
+    const linger = new ActivityLinger();
+    linger.update(currentPlayerActivity(moving, 1500), 1500);
+    expect(linger.update(currentPlayerActivity({ ...snapshot, mount }, 1501), 1501)).toMatchObject({
+      label: "Idle",
+      detail: "On Mountain Goat",
+    });
+    linger.update(currentPlayerActivity({ ...moving, mount }, 1502), 1502);
+    expect(linger.update(currentPlayerActivity(snapshot, 1503), 1503).label).toBe("Idle");
+    expect(
+      currentPlayerActivity(
+        {
+          ...moving,
+          mount,
+          actions: [...moving.actions, action("Extract", 23)],
+        },
+        1504,
+      ),
+    ).toMatchObject({ label: "Gathering", recipeId: 23 });
+  });
+
   test("recognizes a delayed public-project hit without keeping stale work active", () => {
     const hit = {
       ...action("Craft", 203006),

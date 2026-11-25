@@ -1,7 +1,9 @@
 //! Regional player action snapshots. Missing subscriptions or rows are unknown, not idle.
 use crate::crafting::station_projects::StationProjects;
 use entity::shared::Region;
-use game_module::module_bindings::{PlayerActionState, PlayerActionType};
+use game_module::module_bindings::{
+    DeployableDesc, DeployableType, MountingState, PlayerActionState, PlayerActionType,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,6 +13,7 @@ use ts_rs::TS;
 struct RegionActivity {
     ready: bool,
     players: HashMap<u64, Vec<PlayerActionState>>,
+    mounts: HashMap<u64, MountingState>,
     craft_starts: HashMap<u64, CraftStart>,
     station_projects: Arc<StationProjects>,
 }
@@ -42,6 +45,15 @@ impl RegionActivity {
 #[derive(Default)]
 pub(crate) struct PlayerActivity {
     regions: parking_lot::RwLock<HashMap<Region, RegionActivity>>,
+    deployable_descriptions: parking_lot::RwLock<HashMap<i32, (DeployableType, String)>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub(crate) struct ActivityMount {
+    pub entity_id: String,
+    pub driver: bool,
+    pub kind: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
@@ -65,9 +77,33 @@ pub(crate) struct ActivitySnapshot {
     pub walking: Option<bool>,
     pub server_time_ms: u64,
     pub actions: Option<Vec<ActivityAction>>,
+    pub mount: Option<ActivityMount>,
 }
 
 impl PlayerActivity {
+    pub fn set_mount(&self, region: Region, player: u64, mount: Option<&MountingState>) {
+        if let Some(state) = self.regions.write().get_mut(&region) {
+            if let Some(row) = mount {
+                state.mounts.insert(player, row.clone());
+            } else {
+                state.mounts.remove(&player);
+            }
+        }
+    }
+
+    pub fn clear_deployable_descriptions(&self) {
+        self.deployable_descriptions.write().clear();
+    }
+
+    pub fn deployable_description(&self, id: i32, desc: Option<&DeployableDesc>) {
+        let mut descriptions = self.deployable_descriptions.write();
+        if let Some(row) = desc {
+            descriptions.insert(id, (row.deployable_type, row.name.clone()));
+        } else {
+            descriptions.remove(&id);
+        }
+    }
+
     // The action targets the station. Only the continue-start event identifies
     // the project, and its request timestamp is also the action's start_time.
     pub fn craft_started(
@@ -148,6 +184,7 @@ impl PlayerActivity {
         player: u64,
         signed_in: bool,
         walking: Option<bool>,
+        description_id: impl FnOnce(u64) -> Option<i32>,
     ) -> ActivitySnapshot {
         let regions = self.regions.read();
         let state = regions.get(&region).filter(|state| state.ready);
@@ -156,6 +193,17 @@ impl PlayerActivity {
             available: state.is_some(),
             signed_in,
             walking,
+            mount: state.and_then(|s| s.mounts.get(&player)).map(|mount| {
+                let id = description_id(mount.deployable_entity_id);
+                let descriptions = self.deployable_descriptions.read();
+                let desc = id.and_then(|id| descriptions.get(&id));
+                ActivityMount {
+                    entity_id: mount.deployable_entity_id.to_string(),
+                    driver: mount.deployable_slot == 0,
+                    kind: desc.map(|(kind, _)| format!("{kind:?}")),
+                    name: desc.map(|(_, name)| name.clone()),
+                }
+            }),
             server_time_ms: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_millis() as u64)
@@ -201,7 +249,10 @@ pub(crate) fn player_snapshot(state: &crate::AppState, id: u64) -> Option<Activi
     Some(
         state
             .player_activity
-            .snapshot(region, id, signed_in, walking),
+            .snapshot(region, id, signed_in, walking, |entity| {
+                let row = state.deployable_state.get(&i64::try_from(entity).ok()?)?;
+                (row.region == region).then_some(row.deployable_description_id)
+            }),
     )
 }
 
@@ -259,7 +310,11 @@ mod tests {
         cache.insert(1, row);
         cache.ready(1);
         let project = || {
-            let a = cache.snapshot(1, 42, true, None).actions.unwrap().remove(0);
+            let a = cache
+                .snapshot(1, 42, true, None, |_| None)
+                .actions
+                .unwrap()
+                .remove(0);
             (a.craft_id, a.craft_owner_id)
         };
         assert_eq!(
@@ -286,7 +341,11 @@ mod tests {
         let mut row = action(10, 42, PlayerActionType::Craft);
         row.target = Some(2);
         let project = |cache: &PlayerActivity| {
-            let a = cache.snapshot(1, 42, true, None).actions.unwrap().remove(0);
+            let a = cache
+                .snapshot(1, 42, true, None, |_| None)
+                .actions
+                .unwrap()
+                .remove(0);
             assert_eq!(a.target_id.as_deref(), Some("2"));
             (a.craft_id, a.craft_owner_id)
         };
@@ -301,16 +360,55 @@ mod tests {
     }
 
     #[test]
+    fn mount_follows_the_riders_current_seat_and_region() {
+        let cache = PlayerActivity::default();
+        for region in [1, 2] {
+            cache.reset(region);
+            cache.ready(region);
+        }
+        let mut seat = MountingState {
+            entity_id: 42,
+            deployable_entity_id: 9007199254740993,
+            deployable_slot: 1,
+        };
+        cache
+            .deployable_descriptions
+            .write()
+            .insert(7, (DeployableType::Boat, "Fishing Skiff".into()));
+        let mount = |region, description| {
+            cache
+                .snapshot(region, 42, true, None, |entity| {
+                    assert_eq!(entity, 9007199254740993);
+                    description
+                })
+                .mount
+        };
+        cache.set_mount(1, 42, Some(&seat));
+        assert!(mount(2, Some(7)).is_none());
+        let passenger = mount(1, Some(7)).unwrap();
+        assert_eq!(passenger.entity_id, "9007199254740993");
+        assert_eq!(passenger.kind.as_deref(), Some("Boat"));
+        assert_eq!(passenger.name.as_deref(), Some("Fishing Skiff"));
+        assert!(!passenger.driver);
+        seat.deployable_slot = 0;
+        cache.set_mount(1, 42, Some(&seat));
+        let driver = mount(1, None).unwrap();
+        assert!(driver.driver && driver.kind.is_none());
+        cache.set_mount(1, 42, None);
+        assert!(mount(1, Some(7)).is_none());
+    }
+
+    #[test]
     fn missing_or_unsynced_rows_are_not_idle() {
         let cache = PlayerActivity::default();
         cache.reset(1);
-        let before = cache.snapshot(1, 42, true, None);
+        let before = cache.snapshot(1, 42, true, None, |_| None);
         assert!(!before.available && before.actions.is_none());
         cache.ready(1);
-        let missing = cache.snapshot(1, 42, true, None);
+        let missing = cache.snapshot(1, 42, true, None, |_| None);
         assert!(missing.available && missing.actions.is_none());
         cache.invalidate(1);
-        assert!(!cache.snapshot(1, 42, true, None).available);
+        assert!(!cache.snapshot(1, 42, true, None, |_| None).available);
     }
 
     #[test]
@@ -322,7 +420,10 @@ mod tests {
         upper.layer = PlayerActionLayer::UpperBody;
         cache.insert(1, upper);
         cache.ready(1);
-        let actions = cache.snapshot(1, 42, true, Some(false)).actions.unwrap();
+        let actions = cache
+            .snapshot(1, 42, true, Some(false), |_| None)
+            .actions
+            .unwrap();
         assert_eq!(actions.len(), 2);
         assert!(
             actions
@@ -330,11 +431,16 @@ mod tests {
                 .any(|action| action.action_type == "Craft" && action.recipe_id == Some(7))
         );
         cache.remove(1, 42, 10);
-        let actions = cache.snapshot(1, 42, true, None).actions.unwrap();
+        let actions = cache.snapshot(1, 42, true, None, |_| None).actions.unwrap();
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0].action_type, "PlayerMove");
         cache.remove(1, 42, 11);
-        assert!(cache.snapshot(1, 42, true, None).actions.is_none());
+        assert!(
+            cache
+                .snapshot(1, 42, true, None, |_| None)
+                .actions
+                .is_none()
+        );
     }
 
     #[test]
@@ -347,7 +453,7 @@ mod tests {
         cache.insert(1, action(12, 42, PlayerActionType::Extract));
         cache.remove(1, 42, 99);
         cache.ready(1);
-        let actions = cache.snapshot(1, 42, true, None).actions.unwrap();
+        let actions = cache.snapshot(1, 42, true, None, |_| None).actions.unwrap();
         assert_eq!(actions.len(), 3);
         assert_eq!(
             actions
@@ -357,7 +463,7 @@ mod tests {
             1
         );
         cache.remove(1, 42, 12);
-        let actions = cache.snapshot(1, 42, true, None).actions.unwrap();
+        let actions = cache.snapshot(1, 42, true, None, |_| None).actions.unwrap();
         assert_eq!(actions.len(), 2);
         assert!(actions.iter().all(|a| a.action_type == "Craft"));
     }

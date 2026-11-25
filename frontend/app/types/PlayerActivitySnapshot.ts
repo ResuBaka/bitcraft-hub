@@ -1,8 +1,11 @@
+import type { ActivityMount } from "./ActivityMount";
+
 export type PlayerActivitySnapshot = {
   player_id: string;
   available: boolean;
   signed_in: boolean;
   walking: boolean | null;
+  mount?: ActivityMount | null;
   server_time_ms: number | bigint;
   actions:
     | {

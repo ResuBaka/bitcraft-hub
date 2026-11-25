@@ -106,6 +106,7 @@ watchEffect(() => {
         <div class="min-w-0 flex-1">
           <p class="break-words leading-tight">
             <span class="font-medium">{{ current.label }}</span>
+            <span v-if="current.detail" class="text-muted"> · {{ current.detail }}</span>
             <template v-if="current.recipeKind">
               <span class="text-muted"> · </span>
               <span :class="tier != null && tier > 0 ? getTierColor(tier) : 'text-muted'">

@@ -25,6 +25,39 @@ pub(super) fn changed(state: &AppState, player_id: Option<u64>) {
 }
 
 pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
+    let mounts = ctx.db.mounting_state();
+    let target = state.clone();
+    mounts.on_initial_rows(move |_, rows| {
+        for row in rows.iter() {
+            target
+                .player_activity
+                .set_mount(region, row.entity_id, Some(row));
+        }
+    });
+    let target = state.clone();
+    mounts.on_insert(move |ctx, row| {
+        if !matches!(ctx.event, Event::SubscribeApplied) {
+            target
+                .player_activity
+                .set_mount(region, row.entity_id, Some(row));
+            changed(&target, Some(row.entity_id));
+        }
+    });
+    let target = state.clone();
+    mounts.on_update(move |_, _, row| {
+        target
+            .player_activity
+            .set_mount(region, row.entity_id, Some(row));
+        changed(&target, Some(row.entity_id));
+    });
+    let target = state.clone();
+    mounts.on_delete(move |_, row| {
+        target
+            .player_activity
+            .set_mount(region, row.entity_id, None);
+        changed(&target, Some(row.entity_id));
+    });
+
     let table = ctx.db.player_action_state();
     let target = state.clone();
     table.on_initial_rows(move |_, rows| {
@@ -56,6 +89,40 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
             .player_activity
             .remove(region, row.entity_id, row.auto_id);
         changed(&target, Some(row.entity_id));
+    });
+}
+
+pub(super) fn listen_deployable_descriptions(ctx: &DbConnection, state: &AppState) {
+    let table = ctx.db.deployable_desc();
+    state.player_activity.clear_deployable_descriptions();
+    let target = state.clone();
+    table.on_initial_rows(move |_, rows| {
+        for row in rows.iter() {
+            target
+                .player_activity
+                .deployable_description(row.id, Some(row));
+        }
+    });
+    let target = state.clone();
+    table.on_insert(move |ctx, row| {
+        if !matches!(ctx.event, Event::SubscribeApplied) {
+            target
+                .player_activity
+                .deployable_description(row.id, Some(row));
+            changed(&target, None);
+        }
+    });
+    let target = state.clone();
+    table.on_update(move |_, _, row| {
+        target
+            .player_activity
+            .deployable_description(row.id, Some(row));
+        changed(&target, None);
+    });
+    let target = state.clone();
+    table.on_delete(move |_, row| {
+        target.player_activity.deployable_description(row.id, None);
+        changed(&target, None);
     });
 }
 
