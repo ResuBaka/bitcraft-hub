@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
 import { compareSkillNames } from "~/utils/skillOrder";
+import { leaderboardSkillColumns } from "~/utils/leaderboardSkills";
 import type { GetTop100Response } from "~/types/GetTop100Response";
 
 const numberFormat = new Intl.NumberFormat(undefined);
@@ -196,21 +197,23 @@ const reorderByExperience = (list: Array<{ experience: number | bigint }>, start
 };
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
-  const list = leaderboard.value?.leaderboard?.[message.skill_name];
+  const board = leaderboard.value;
+  const list = board?.leaderboard[message.skill_name]?.filter((entry) => "experience" in entry && "level" in entry);
 
-  if (!list) {
+  if (!board || !list) {
     return;
   }
 
-  const index = list.findIndex((item) => Number(item?.player_id) === Number(message.user_id));
-  if (index === -1) {
+  const index = list.findIndex((item) => String(item.player_id) === String(message.user_id));
+  const previous = list[index];
+  if (!previous) {
     return;
   }
 
-  leaderboard.value.leaderboard[message.skill_name][index].experience = message.experience;
-  leaderboard.value.leaderboard[message.skill_name][index].level = message.level;
+  list[index] = { ...previous, experience: Number(message.experience), level: Number(message.level) };
+  reorderByExperience(list, index);
+  board.leaderboard[message.skill_name] = list;
   triggerRef(leaderboard);
-  reorderByExperience(leaderboard.value.leaderboard[message.skill_name], index);
 });
 
 registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
@@ -313,28 +316,7 @@ const columnsForSkill = computed(() => {
     ];
   }
 
-  return [
-    {
-      id: "rank",
-      header: "Rank",
-      meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
-    },
-    {
-      id: "player",
-      header: "Player",
-      meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
-    },
-    {
-      id: "level",
-      header: "Level",
-      meta: { class: { th: "w-30 text-center", td: "w-30 text-center" } },
-    },
-    {
-      id: "experience",
-      header: "Experience",
-      meta: { class: { th: "w-30 text-right", td: "w-30 text-right" } },
-    },
-  ];
+  return leaderboardSkillColumns;
 });
 </script>
 
@@ -413,6 +395,10 @@ const columnsForSkill = computed(() => {
 
             <template #level-cell="{ row }">
               {{ numberFormat.format(row.original.level) }}
+            </template>
+
+            <template #tool-cell="{ row }">
+              <BitcraftLeaderboardTool :tool="'tool' in row.original ? row.original.tool : undefined" />
             </template>
 
             <template #time-cell="{ row }">

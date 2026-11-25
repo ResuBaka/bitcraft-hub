@@ -1,6 +1,8 @@
 pub(crate) mod bitcraft;
 pub(crate) mod live;
 pub(crate) mod snapshots;
+mod tools;
+use tools::LeaderboardTool;
 
 use crate::{AppRouter, AppState, leaderboard};
 use crate::skill_descriptions::skill_sort_key;
@@ -1307,6 +1309,9 @@ pub(crate) struct LeaderboardSkill {
     pub(crate) experience: i32,
     pub(crate) level: i32,
     pub(crate) rank: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    tool: Option<LeaderboardTool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
@@ -1494,6 +1499,7 @@ pub(crate) async fn get_top_100(
                 experience: entry.xp as i32,
                 level: experience_to_level(entry.xp),
                 rank: rank as u64,
+                tool: None,
             }));
         }
 
@@ -1768,6 +1774,7 @@ pub(crate) async fn player_leaderboard(
                 experience: skill_exp as i32,
                 level: experience_to_level(skill_exp),
                 rank: rank as u64,
+                tool: None,
             }),
         ));
     }
@@ -1988,6 +1995,15 @@ pub(crate) async fn get_claim_leaderboard(
 
     let mut tasks: LeaderboardRankTypeTasks = vec![];
 
+    let tools = Arc::new(tools::equipped_tools(
+        &state,
+        skills.iter().filter(|s| s.skill_category != 0)
+            .flat_map(|s| player_ids.iter().map(move |&id| (id, s.id as i32)))
+            .collect(),
+    ).await.map_err(|error| {
+        error!("Failed to load claim leaderboard tools: {error}");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+    })?);
     for skill in skills {
         if skill.skill_category == 0 {
             continue;
@@ -1995,6 +2011,7 @@ pub(crate) async fn get_claim_leaderboard(
 
         let db = state.conn.clone();
         let player_ids = player_ids.clone();
+        let tools = Arc::clone(&tools);
         tasks.push(tokio::spawn(async move {
             let mut leaderboard: Vec<RankType> = Vec::new();
             let entries = Query::get_experience_state_player_ids_by_skill_id(
@@ -2020,6 +2037,7 @@ pub(crate) async fn get_claim_leaderboard(
                     experience: entry.experience,
                     level: experience_to_level(entry.experience as i64),
                     rank: rank as u64,
+                    tool: tools.get(&(entry.entity_id, skill.id as i32)).cloned(),
                 }));
             }
 

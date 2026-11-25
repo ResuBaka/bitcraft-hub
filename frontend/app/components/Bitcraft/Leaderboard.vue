@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
 import { compareSkillNames } from "~/utils/skillOrder";
+import { leaderboardSkillColumns } from "~/utils/leaderboardSkills";
 import type { LeaderboardBoard } from "~/types/LeaderboardBoard";
 import type { LeaderboardBoardRow } from "~/types/LeaderboardBoardRow";
 import type { LeaderboardBoardSnapshot } from "~/types/LeaderboardBoardSnapshot";
@@ -337,29 +338,6 @@ const timeColumns = computed(() => [
   },
 ]);
 
-const defaultColumns = computed(() => [
-  {
-    id: "rank",
-    header: "Rank",
-    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
-  },
-  {
-    id: "player",
-    header: "Player",
-    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
-  },
-  {
-    id: "level",
-    header: "Level",
-    meta: { class: { th: "w-30 text-center", td: "w-30 text-center" } },
-  },
-  {
-    id: "experience",
-    header: "Experience",
-    meta: { class: { th: "w-30 text-right", td: "w-30 text-right" } },
-  },
-]);
-
 const playerLinkClass = (row: LeaderboardBoardRow) => {
   return [
     "font-semibold hover:underline",
@@ -384,7 +362,7 @@ const columnsForSkill = (skill: string) => {
     return timeColumns.value;
   }
 
-  return defaultColumns.value;
+  return leaderboardSkillColumns;
 };
 </script>
 
@@ -419,7 +397,7 @@ const columnsForSkill = (skill: string) => {
             </UButton>
           </div>
 
-          <div class="rounded-lg border border-gray-200 shadow-sm dark:border-gray-800 flex-1">
+          <div class="min-w-0 rounded-lg border border-gray-200 shadow-sm dark:border-gray-800 flex-1">
             <div class="w-full overflow-x-auto">
               <UTable
                 :key="selectedSkills"
@@ -469,6 +447,9 @@ const columnsForSkill = (skill: string) => {
                 </template>
                 <template #level-cell="{ row }">
                   {{ numberFormat.format(row.original.level ?? 0) }}
+                </template>
+                <template #tool-cell="{ row }">
+                  <BitcraftLeaderboardTool :tool="row.original.tool" />
                 </template>
                 <template #time-cell="{ row }">
                   {{ secondsToDaysMinutesSecondsFormat(Number(row.original.time_played ?? 0)) }}

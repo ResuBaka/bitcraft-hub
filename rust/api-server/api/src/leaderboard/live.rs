@@ -48,6 +48,9 @@ pub(crate) struct LeaderboardBoardRow {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     time_played: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    tool: Option<super::LeaderboardTool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
@@ -165,6 +168,7 @@ fn row(
     entry: LeaderboardEntry,
     player_name: Option<String>,
     signed_in: bool,
+    tool: Option<super::LeaderboardTool>,
 ) -> LeaderboardBoardRow {
     let (experience, level, time_played) = match id {
         -4 => (None, Some(entry.xp as i32), None),
@@ -179,6 +183,7 @@ fn row(
         experience,
         level,
         time_played,
+        tool,
     }
 }
 
@@ -203,6 +208,12 @@ async fn load_boards(
             .map(|player| (player.entity_id, player.username))
             .collect()
     };
+    let mut tools = super::tools::equipped_tools(
+        state,
+        entries_by_board.iter().filter(|(id, _)| *id >= 0)
+            .flat_map(|(id, entries)| entries.iter().map(move |entry| (entry.user_id, *id)))
+            .collect(),
+    ).await?;
     Ok(entries_by_board
         .into_iter()
         .map(|(id, entries)| {
@@ -214,7 +225,8 @@ async fn load_boards(
                         .player_state
                         .get(&entry.user_id)
                         .is_some_and(|player| player.signed_in);
-                    row(id, entry, name, signed_in)
+                    let tool = tools.remove(&(entry.user_id, id));
+                    row(id, entry, name, signed_in, tool)
                 })
                 .collect();
             (id, rows)
@@ -450,7 +462,7 @@ mod tests {
             user_id: 9_007_199_254_740_993,
             xp: 520,
         };
-        let row = row(42, entry, Some("Miner".into()), false);
+        let row = row(42, entry, Some("Miner".into()), false, None);
         assert_eq!(row.player_id, "9007199254740993");
         assert_eq!(row.level, Some(2));
         assert_eq!(first.update(vec![row.clone()]), Some(1));
@@ -475,6 +487,7 @@ mod tests {
                     },
                     Some(format!("Miner {id}")),
                     false,
+                    None,
                 )
             })
             .collect()
@@ -532,6 +545,7 @@ mod tests {
             },
             Some("New miner".into()),
             false,
+            None,
         );
         rows.insert(2, new_row.clone());
         live.publish(42, rows.clone(), false);

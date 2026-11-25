@@ -72,6 +72,20 @@ pub(crate) struct ToolIndex {
     pub types: BTreeMap<i32, ToolTypeDesc>,
 }
 
+impl ToolIndex {
+    fn slots_by_skill(&self) -> BTreeMap<i32, i32> {
+        let mut slots: BTreeMap<_, _> = self.types.values()
+            .filter(|kind| kind.id > 0 && kind.skill_id > 0)
+            .map(|kind| (kind.skill_id, kind.id - 1))
+            .collect();
+        // The mallet has tool type 14 even in data where it has no assigned skill.
+        if self.types.contains_key(&14) {
+            slots.entry(SkillType::Construction as i32).or_insert(13);
+        }
+        slots
+    }
+}
+
 #[derive(Serialize)]
 pub(crate) struct ToolPowers {
     pub slots_by_skill: BTreeMap<i32, i32>,
@@ -280,29 +294,22 @@ impl PlayerStats {
         powers
     }
 
+    pub(crate) fn tool_slots_by_skill(&self) -> BTreeMap<i32, i32> {
+        let index = self.tools.read();
+        if index.ready { index.slots_by_skill() } else { BTreeMap::new() }
+    }
+
     pub fn tool_powers(&self) -> Option<ToolPowers> {
         let index = self.tools.read();
         if !index.ready {
             return None;
-        }
-        let mut slots_by_skill: BTreeMap<_, _> = index
-            .types
-            .values()
-            .filter(|kind| kind.id > 0 && kind.skill_id > 0)
-            .map(|kind| (kind.skill_id, kind.id - 1))
-            .collect();
-        // The mallet has tool type 14 even in data where it has no assigned skill.
-        if index.types.contains_key(&14) {
-            slots_by_skill
-                .entry(SkillType::Construction as i32)
-                .or_insert(13);
         }
         let mut power_by_item = BTreeMap::new();
         for tool in index.descriptions.values() {
             power_by_item.entry(tool.item_id).or_insert(tool.power);
         }
         Some(ToolPowers {
-            slots_by_skill,
+            slots_by_skill: index.slots_by_skill(),
             power_by_item,
         })
     }
