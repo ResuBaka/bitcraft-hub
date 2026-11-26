@@ -69,6 +69,11 @@ mod m20261124_000004_resource_health;
 mod m20261124_000005_placeables;
 mod m20261124_000006_placeable_tag;
 mod m20261124_000007_placeable_outcomes;
+mod m20261126_000001_atlas_building_locations;
+mod m20261126_000002_atlas_resource_locations;
+mod m20261126_000003_atlas_resource_subscription;
+mod m20261126_000004_atlas_resource_clusters;
+mod m20261126_000005_atlas_resource_cluster_positions;
 
 pub struct Migrator;
 
@@ -145,6 +150,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20261124_000005_placeables::Migration),
             Box::new(m20261124_000006_placeable_tag::Migration),
             Box::new(m20261124_000007_placeable_outcomes::Migration),
+            Box::new(m20261126_000001_atlas_building_locations::Migration),
+            Box::new(m20261126_000002_atlas_resource_locations::Migration),
+            Box::new(m20261126_000003_atlas_resource_subscription::Migration),
+            Box::new(m20261126_000004_atlas_resource_clusters::Migration),
+            Box::new(m20261126_000005_atlas_resource_cluster_positions::Migration),
         ]
     }
 }

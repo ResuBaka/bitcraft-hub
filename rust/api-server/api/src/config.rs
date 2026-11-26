@@ -22,6 +22,7 @@ pub(crate) struct Config {
     #[serde(alias = "liveupdatesws")]
     pub(crate) live_updates_ws: bool,
     pub(crate) tech_tier_research_map: TechTierResearchMap,
+    pub(crate) world_map: WorldMapConfig,
 }
 
 impl Default for Config {
@@ -49,7 +50,22 @@ impl Default for Config {
             origins: AllowedOriginConfig::default(),
             live_updates_ws: false,
             tech_tier_research_map,
+            world_map: WorldMapConfig::default(),
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub(crate) struct WorldMapConfig {
+    pub(crate) directory: std::path::PathBuf,
+    /// Disable this on read-only API replicas sharing the same PostgreSQL.
+    pub(crate) resource_sync_enabled: bool,
+}
+
+impl Default for WorldMapConfig {
+    fn default() -> Self {
+        Self { directory: "world-map".into(), resource_sync_enabled: true }
     }
 }
 

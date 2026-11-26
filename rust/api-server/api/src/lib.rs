@@ -171,6 +171,7 @@ async fn serve_with_shutdown(
     let app = create_app(&config, state.clone(), prometheus);
     let serve_state = state.clone();
     let live_updates = broadcaster.is_some();
+    let resource_sync_config = config.clone();
     let stop = shutdown.stop.clone();
     let mut server = tokio::spawn(async move {
         // Loading errors and shutdown during loading use the same producer and
@@ -182,6 +183,8 @@ async fn serve_with_shutdown(
         tracing::info!("App state ready");
         if live_updates {
             leaderboard::start_live_updates(serve_state.clone());
+            serve_state.atlas_players.clone().start(stop.clone());
+            world_map::resource_sync::start(&resource_sync_config, &serve_state);
         }
         db_loaded.send_replace(true);
         leaderboard::snapshots::start(serve_state);
@@ -542,6 +545,8 @@ mod database_metric_tests {
 #[derive(Deserialize)]
 struct QueryWebsocketOptions {
     encoding: Option<WebsocketEncoding>,
+    stream: Option<websocket::atlas_players::StreamKind>,
+    regions: Option<String>,
 }
 
 async fn websocket_handler(
@@ -550,6 +555,15 @@ async fn websocket_handler(
     State(state): State<AppState>,
     Query(websocket_options): Query<QueryWebsocketOptions>,
 ) -> impl IntoResponse {
+    let filter = match world_map::RegionFilter::parse(
+        websocket_options
+            .stream
+            .as_ref()
+            .and(websocket_options.regions.as_deref()),
+    ) {
+        Ok(filter) => filter,
+        Err(status) => return status.into_response(),
+    };
     tracing::debug!("Websocket upgraded with version: {version:?}");
     let clients = state.shutdown.clients.clone();
     let config = WebSocketConfig::builder()
@@ -562,7 +576,10 @@ async fn websocket_handler(
         .auto_ping(false)
         .build();
     ws.config(config)
-        .on_upgrade(move |socket| clients.track_future(websocket(socket, state, websocket_options)))
+        .on_upgrade(move |socket| {
+            clients.track_future(websocket(socket, state, websocket_options, filter))
+        })
+        .into_response()
 }
 
 #[allow(dead_code)]
@@ -575,9 +592,21 @@ struct ServerInstance {
 // This function deals with a single websocket connection, i.e., a single
 // connected client / user, for which we will spawn two independent tasks (for
 // receiving / sending chat messages).
-async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryWebsocketOptions) {
+async fn websocket(
+    stream: WebSocket,
+    state: AppState,
+    websocket_options: QueryWebsocketOptions,
+    filter: world_map::RegionFilter,
+) {
     use sea_orm::{ColumnTrait, QueryFilter};
     if state.shutdown.stop.is_cancelled() {
+        return;
+    }
+    if websocket_options.stream.is_some() {
+        state
+            .atlas_players
+            .serve(stream, state.shutdown.stop.clone(), filter)
+            .await;
         return;
     }
     let stop = state.shutdown.stop.clone();
@@ -1133,6 +1162,8 @@ mod websocket_broadcast_tests {
     }
 }
 
+mod world_map;
+
 pub(crate) type AppRouter = Router<AppState>;
 
 fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) -> Router {
@@ -1175,6 +1206,8 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .merge(auction_listing_state::get_routes())
         .merge(houses::get_routes())
         .merge(crafting::get_routes())
+        .merge(world_map::routes(config.world_map.directory.clone()))
+        .merge(world_map::resources::routes())
         .nest("/desc", desc_router)
         .route(
             "/metrics",
@@ -1395,6 +1428,8 @@ struct AppState {
     connection_state: Arc<dashmap::DashMap<String, bool>>,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
+    atlas_players: Arc<websocket::atlas_players::AtlasPlayers>,
+    atlas_roads: Arc<websocket::atlas_roads::AtlasRoads>,
     player_state: Arc<dashmap::DashMap<i64, entity::player_state::Model>>,
     player_stats: Arc<player_state::stats::PlayerStats>,
     player_equipment: Arc<player_state::equipment::PlayerEquipment>,
@@ -1488,6 +1523,8 @@ impl AppState {
             player_activity: Arc::new(player_state::activity::PlayerActivity::default()),
             clients_state,
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
+            atlas_players: Arc::new(websocket::atlas_players::AtlasPlayers::default()),
+            atlas_roads: Arc::new(websocket::atlas_roads::AtlasRoads::default()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),
             player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
             claim_local_state: Arc::new(dashmap::DashMap::new()),
@@ -2056,6 +2093,8 @@ pub struct Cli {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
+    #[command(about = "Fetch Overworld terrain from SpacetimeDB and build the map tile cache")]
+    GenerateWorldMap,
     #[command(
         about = "Measure database state initialization, then exit (no migrations or services)"
     )]
@@ -2128,6 +2167,7 @@ pub async fn main() -> anyhow::Result<()> {
 
     match &cli.command {
         Commands::ProfileInit { .. } => {}
+        Commands::GenerateWorldMap => {}
         Commands::Migrate { .. } => {}
         Commands::PrintConfig { .. } => {}
         Commands::Serve {
@@ -2151,6 +2191,7 @@ pub async fn main() -> anyhow::Result<()> {
     let _tracing_guard = setup_tracing(&config);
 
     match cli.command {
+        Commands::GenerateWorldMap => world_map::generate(&config).await?,
         Commands::ProfileInit { settle_seconds } => {
             let memory = startup_memory::StartupMemory::new();
             memory.snapshot("before_database_connection");

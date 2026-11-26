@@ -2,6 +2,8 @@
 //! interpreted as proof that a location is unclaimed.
 #![allow(dead_code)] // Includes standalone snapshot helpers used by tests.
 
+use super::map_details::{Bounds, Building, BuildingKind};
+use crate::world_map::RegionFilter;
 use entity::shared::Region;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
@@ -351,6 +353,72 @@ impl SortedOverworld {
         }
     }
 
+    fn map_tiles(&self, bounds: Bounds, output: &mut HashMap<TileCoordinates, Option<u64>>) {
+        let mut add = |coords, result| {
+            let claim = match result {
+                ClaimAtLocation::Claim(id) => Some(id),
+                ClaimAtLocation::Unknown => None,
+                ClaimAtLocation::Unclaimed => return,
+            };
+            output
+                .entry(coords)
+                .and_modify(|old| {
+                    if *old != claim {
+                        *old = None;
+                    }
+                })
+                .or_insert(claim);
+        };
+        // The compact base is sorted by x then z. Seek directly into each
+        // visible column instead of scanning every claim tile in the world.
+        let limit = i32::from(i16::MAX);
+        if bounds.min_z <= limit {
+            let min_z = bounds.min_z as u32;
+            let max_z = bounds.max_z.min(limit) as u32;
+            for x in bounds.min_x..=bounds.max_x.min(limit) {
+                let column = (x as u32) << 16;
+                let mut pos = self
+                    .base
+                    .coords
+                    .partition_point(|&key| key < (column | min_z));
+                let end = self
+                    .base
+                    .coords
+                    .partition_point(|&key| key <= (column | max_z));
+                while pos < end {
+                    let key = self.base.coords[pos];
+                    let coords = unpack(key);
+                    let start = pos;
+                    pos += 1;
+                    while pos < end && self.base.coords[pos] == key {
+                        pos += 1;
+                    }
+                    if !self.dirty_coords.contains_key(&coords) {
+                        add(
+                            coords,
+                            Self::resolve(
+                                self.base.claim_slots[start..pos]
+                                    .iter()
+                                    .map(|&slot| self.base.claims[slot as usize]),
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+        // Dirty coordinates override their baseline rows (including removals).
+        for &coords in self.dirty_coords.keys() {
+            if bounds.contains(coords) {
+                add(coords, self.lookup(coords));
+            }
+        }
+        for &coords in self.base.wide_by_coord.keys() {
+            if bounds.contains(coords) && !self.dirty_coords.contains_key(&coords) {
+                add(coords, self.lookup(coords));
+            }
+        }
+    }
+
     fn maybe_rebuild(&mut self) {
         if self.edits.len() >= MAX_TILE_EDITS || self.dirty_coords.len() >= MAX_DIRTY_COORDS {
             self.rebuild();
@@ -464,6 +532,7 @@ impl Overworld {
 #[derive(Default)]
 struct LiveRegion {
     overworld: Overworld,
+    map_buildings: HashMap<(BuildingKind, u64), Building>,
     // Interior lookups use descriptions/networks, not tile coordinates. Keep
     // the tile's claim here so a subsequent move can still be indexed.
     interior_tiles: HashMap<u64, u64>,
@@ -636,6 +705,63 @@ impl ClaimLocationSubscriptions {
 
     pub(crate) fn finish_initial(&self, region: Region) {
         self.update(region, |state| state.initial_applied = true);
+    }
+
+    pub(crate) fn set_map_buildings(
+        &self,
+        region: Region,
+        kind: BuildingKind,
+        items: impl IntoIterator<Item = (u64, Option<Building>)>,
+    ) {
+        self.update(region, |state| {
+            for (id, building) in items {
+                if let Some(building) = building {
+                    state.map_buildings.insert((kind, id), building);
+                } else {
+                    state.map_buildings.remove(&(kind, id));
+                }
+            }
+        });
+    }
+
+    pub(super) fn map_buildings(&self, bounds: Bounds, regions: &RegionFilter) -> Vec<Building> {
+        let mut out = Vec::new();
+        for (id, region) in self.regions.read().iter() {
+            if !regions.includes(*id) {
+                continue;
+            }
+            let region = region.read();
+            if region.initial_applied {
+                out.extend(
+                    region
+                        .map_buildings
+                        .values()
+                        .filter(|b| bounds.contains((b.x, b.z)))
+                        .copied(),
+                );
+            }
+        }
+        out
+    }
+
+    pub(super) fn map_tiles(
+        &self,
+        bounds: Bounds,
+        regions: &RegionFilter,
+    ) -> HashMap<TileCoordinates, Option<u64>> {
+        let mut out = HashMap::new();
+        for (id, region) in self.regions.read().iter() {
+            if !regions.includes(*id) {
+                continue;
+            }
+            let region = region.read();
+            if region.initial_applied
+                && let Overworld::Ready(index) = &region.overworld
+            {
+                index.map_tiles(bounds, &mut out);
+            }
+        }
+        out
     }
 
     pub(crate) fn claims_initial<'a>(

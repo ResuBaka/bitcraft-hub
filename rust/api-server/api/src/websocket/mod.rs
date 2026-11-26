@@ -1,4 +1,6 @@
 pub(crate) mod subscriptions;
+pub(super) mod atlas_players;
+pub(super) mod atlas_roads;
 
 use crate::AppState;
 use crate::auction_listing_state::bitcraft::{
@@ -179,6 +181,8 @@ fn connect_to_db<M: __sdk::SpacetimeModule>(
         .on_disconnect(move |_ctx, err| {
             if let Some(region_number) = region_number {
                 tmp_disconnect_global_app_state.claim_locations.invalidate(region_number);
+                tmp_disconnect_global_app_state.atlas_players.invalidate(region_number);
+                tmp_disconnect_global_app_state.atlas_roads.invalidate(region_number);
                 tmp_disconnect_global_app_state.player_stats.invalidate(region_number);
                 tmp_disconnect_global_app_state.player_equipment.invalidate(region_number);
                 tmp_disconnect_global_app_state.player_activity.invalidate(region_number);
@@ -492,6 +496,8 @@ async fn connect_to_db_logic(
     player_stats::listen(&ctx, region_number, global_app_state.clone());
     if !config.spacetimedb.skip_state_tables {
         crate::player_state::equipment::listen(&ctx, region_number, &global_app_state);
+        atlas_players::listen(&ctx, region_number, global_app_state.atlas_players.clone());
+        atlas_roads::listen(&ctx, region_number, global_app_state.atlas_roads.clone());
     }
 
     crate::claims::events::register_listeners(
@@ -789,12 +795,15 @@ async fn connect_to_db_logic(
     ];
 
     tables_to_subscribe.extend_from_slice(shared_tables::TABLES);
+    tables_to_subscribe.extend_from_slice(claim_locations::MAP_BUILDING_TABLES);
 
     let sql_subscribe = vec![
         ("equipment_state", "SELECT * FROM equipment_state"),
         ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON building_state.entity_id = location_state.entity_id"),
         ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON portal_state.entity_id = location_state.entity_id"),
         ("location_state", "SELECT location_state.* FROM location_state JOIN claim_tile_state ON claim_tile_state.entity_id = location_state.entity_id"),
+        ("paved_tile_state", "SELECT * FROM paved_tile_state WHERE related_entity_id = 0"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN paved_tile_state ON paved_tile_state.entity_id = location_state.entity_id WHERE location_state.dimension = 1 AND paved_tile_state.related_entity_id = 0"),
         // ("location_state", "SELECT * FROM location_state where dimension = 1"),
         (
             "mobile_entity_state",
@@ -815,6 +824,10 @@ async fn connect_to_db_logic(
     let initial_failed = initial_completion.clone();
     let claim_locations = global_app_state.claim_locations.clone();
     let claim_locations_on_error = global_app_state.claim_locations.clone();
+    let atlas_players_on_applied = global_app_state.atlas_players.clone();
+    let atlas_players_on_error = global_app_state.atlas_players.clone();
+    let atlas_roads_on_applied = global_app_state.atlas_roads.clone();
+    let atlas_roads_on_error = global_app_state.atlas_roads.clone();
     let claim_locations_enabled = !config.spacetimedb.skip_state_tables;
     let equipment_on_applied = global_app_state.player_equipment.clone();
     let equipment_on_error = global_app_state.player_equipment.clone();
@@ -823,6 +836,8 @@ async fn connect_to_db_logic(
         .on_applied(move |_ctx: &SubscriptionEventContext| {
             if claim_locations_enabled {
                 claim_locations.finish_initial(region_number);
+                atlas_players_on_applied.ready(region_number);
+                atlas_roads_on_applied.ready(region_number);
                 equipment_on_applied.ready(region_number);
             }
             if let Some(tx) = initial_completion.lock().unwrap().take() {
@@ -831,6 +846,8 @@ async fn connect_to_db_logic(
         })
         .on_error(move |ctx: &ErrorContext, err: Error| {
             claim_locations_on_error.invalidate(region_number);
+            atlas_players_on_error.invalidate(region_number);
+            atlas_roads_on_error.invalidate(region_number);
             equipment_on_error.invalidate(region_number);
             tracing::warn!(
                 region = region_number,

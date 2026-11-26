@@ -13,6 +13,10 @@ const items = computed(() => [
     to: "/claims",
   },
   {
+    label: "Map",
+    to: "/map",
+  },
+  {
     label: "Empires",
     to: "/empires",
   },

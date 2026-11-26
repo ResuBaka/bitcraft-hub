@@ -5,6 +5,9 @@ pub(crate) mod claim_location;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
 pub(crate) mod events;
+mod map;
+mod map_buildings;
+pub(crate) mod map_details;
 pub(crate) mod member_cache;
 
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
@@ -30,20 +33,27 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 use ts_rs::TS;
 
+fn starter_claim_tier(upgrades: &[claim_tech_desc::Model]) -> i32 {
+    upgrades
+        .iter()
+        .filter(|upgrade| upgrade.tech_type == claim_tech_desc::ClaimTechType::StarterTech)
+        .min_by_key(|upgrade| upgrade.id)
+        .map_or(2, |upgrade| upgrade.tier)
+}
+
+fn is_claim_tier_upgrade(tech_type: &claim_tech_desc::ClaimTechType) -> bool {
+    use claim_tech_desc::ClaimTechType;
+    matches!(tech_type, ClaimTechType::Homestead | ClaimTechType::Settlement)
+}
+
 fn claim_progression(upgrades: &[claim_tech_desc::Model], learned: &[i32], building_tiers: &HashSet<i32>) -> (i32, i32) {
     use claim_tech_desc::ClaimTechType;
-
-    let starter_tier = upgrades
-        .iter()
-        .filter(|upgrade| upgrade.tech_type == ClaimTechType::StarterTech)
-        .min_by_key(|upgrade| upgrade.id)
-        .map_or(2, |upgrade| upgrade.tier);
+    let starter_tier = starter_claim_tier(upgrades);
 
     let learned_upgrades = upgrades
         .iter()
         .filter(|upgrade| {
-            matches!(upgrade.tech_type, ClaimTechType::Homestead | ClaimTechType::Settlement)
-                && learned.contains(&upgrade.id)
+            is_claim_tier_upgrade(&upgrade.tech_type) && learned.contains(&upgrade.id)
         });
     let tier = learned_upgrades.clone().map(|upgrade| upgrade.tier).max().unwrap_or(starter_tier);
     // Even ranks are Townships; the preceding odd rank is the same-tier Homestead.
@@ -210,10 +220,99 @@ mod claim_tier_tests {
         assert_eq!(claim_progression(&upgrades, &[3, 2], &HashSet::from([4])), (5, 4));
     }
 
+    #[tokio::test]
+    async fn map_returns_public_overworld_markers_with_exact_ids_and_claim_tiers() {
+        use axum::{
+            body::{Body, to_bytes},
+            http::Request,
+        };
+        use sea_orm::{DatabaseBackend, MockDatabase, Value};
+        use std::collections::BTreeMap;
+        use tower::ServiceExt;
+
+        let claim_id = 504_403_158_266_578_089_i64;
+        let learned = vec![10, 11, 12];
+        let conn = MockDatabase::new(DatabaseBackend::Postgres)
+            .append_query_results([[BTreeMap::from([
+                ("entity_id", Value::from(claim_id)),
+                ("learned", Value::from(learned.clone())),
+            ])]])
+            .into_connection();
+        let (tx, _) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(conn, tx, Default::default());
+        let upgrades = [
+            upgrade(10, 2, ClaimTechType::StarterTech),
+            upgrade(11, 5, ClaimTechType::Settlement),
+            upgrade(12, 9, ClaimTechType::Mining),
+        ];
+        for tech in &upgrades {
+            state.claim_tech_desc.insert(tech.id, tech.clone());
+        }
+        for (id, dimension) in [(claim_id, 1), (claim_id + 1, 2)] {
+            state.claim_state.insert(
+                id,
+                entity::claim_state::Model {
+                    entity_id: id,
+                    owner_player_entity_id: 0,
+                    owner_building_entity_id: 0,
+                    name: "Map claim".into(),
+                    neutral: false,
+                    region: 13,
+                },
+            );
+            state.claim_local_state.insert(
+                id as u64,
+                entity::claim_local_state::Model {
+                    entity_id: id,
+                    supplies: 0,
+                    building_maintenance: 0.0,
+                    num_tiles: 42,
+                    num_tile_neighbors: 0,
+                    location: Some(Location {
+                        x: 1201,
+                        z: 1233,
+                        dimension,
+                    }),
+                    treasury: 0,
+                    xp_gained_since_last_coin_minting: 0,
+                    supplies_purchase_threshold: 0,
+                    supplies_purchase_price: 0.0,
+                    building_description_id: 0,
+                    region: 13,
+                },
+            );
+        }
+        let response = get_routes()
+            .with_state(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/world-map/claims")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 4096).await.unwrap();
+        let tier = claim_progression(&upgrades, &learned, &HashSet::new()).0;
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+            serde_json::json!([{
+                "id": claim_id.to_string(), "name": "Map claim", "tier": tier,
+                "region": 13, "x": 1201, "z": 1233, "tiles": 42, "members": 0
+            }])
+        );
+    }
+
 }
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
+        .route("/world-map/claims", axum::routing::get(map::list))
+        .route("/world-map/claim-rosters", axum::routing::get(map::rosters))
+        .route("/world-map/claim-details", axum::routing::get(map_details::get))
+        .route("/world-map/buildings", axum::routing::get(map_buildings::get))
+        .route("/world-map/roads", axum::routing::get(crate::websocket::atlas_roads::get))
         .route("/api/bitcraft/claims/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::list).into())
         .route("/api/bitcraft/claims/{id}/crafting/activity", axum_codec::routing::get(crate::crafting::claim::activity).into())
         .route(

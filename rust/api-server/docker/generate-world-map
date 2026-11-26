@@ -1,0 +1,2 @@
+#!/bin/sh
+exec bitcraft-hub-api generate-world-map "$@"

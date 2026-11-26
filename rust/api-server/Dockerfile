@@ -35,6 +35,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt update && apt install --no-install-recommends libssl3t64 ca-certificates -y
 
-COPY --from=builder /usr/src/api-server/bitcraft-hub-api .
+COPY --from=builder /usr/src/api-server/bitcraft-hub-api /usr/local/bin/bitcraft-hub-api
+COPY --chmod=0755 docker/generate-world-map /usr/local/bin/generate-world-map
+# Preserve existing Compose commands that refer to the binary by relative path.
+RUN ln -s /usr/local/bin/bitcraft-hub-api ./bitcraft-hub-api
 
-CMD ["./bitcraft-hub-api"]
+CMD ["bitcraft-hub-api", "serve"]

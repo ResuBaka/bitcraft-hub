@@ -12,6 +12,7 @@ import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardRespons
 import type { RankType } from "~/types/RankType";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { useDelayedPending } from "~/utils";
+import { gameCoordinates } from "~/utils/gameCoordinates";
 import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 import { groupProfessionEquipment } from "~/utils/playerEquipment";
 import { compareSkillNames } from "~/utils/skillOrder";
@@ -552,6 +553,10 @@ const getRankName = (rank: number) => {
 };
 
 const playerTitle = computed(() => `Player ${playerData.value?.username || route.params.id}`);
+const playerCoordinates = computed(() => {
+  const location = playerData.value?.player_location;
+  return location && gameCoordinates(location.location_x, location.location_z);
+});
 const playerDescription = computed(() => `View ${playerTitle.value} on BitCraft Hub, including skills, claims, crafting projects and inventories.`);
 const requestUrl = useRequestURL();
 const socialConfig = useRuntimeConfig();
@@ -657,8 +662,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 v-if="playerData.player_location"
                 class="text-sm text-gray-600 dark:text-gray-300"
               >
-                N: {{ Math.floor(playerData.player_location.location_z / 3 / 1000) }} E:
-                {{ Math.floor(playerData.player_location.location_x / 3 / 1000) }}
+                N: {{ playerCoordinates?.north }} E: {{ playerCoordinates?.east }}
                 <span class="mx-1">•</span>
                 <bitcraft-region
                   v-if="playerData.player_location.region"

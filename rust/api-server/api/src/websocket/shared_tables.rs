@@ -214,6 +214,7 @@ pub(super) const METADATA: &[&str] = &[
     "buff_desc",
     "buff_type_desc",
     "food_desc",
+    "paving_tile_desc",
 ];
 
 pub(super) fn owns(table: &str) -> bool {
@@ -319,6 +320,23 @@ macro_rules! metadata_listeners {
             s.player_equipment
                 .global_item_stats(key, row.map(|desc| desc.stats));
         });
+        // Only the ID and tier are needed for the road palette. Both SDK
+        // modules expose those fields, so no shared-row conversion is needed.
+        let paving = ctx.db.paving_tile_desc();
+        let target = state.atlas_roads.clone();
+        paving.on_initial(move |_, rows| {
+            target.replace_tiers(rows.iter().map(|row| (row.id, row.tier)));
+        });
+        let target = state.atlas_roads.clone();
+        paving.on_insert(move |ctx, row| {
+            if !matches!(ctx.event, Event::SubscribeApplied) {
+                target.set_tier(row.id, Some(row.tier));
+            }
+        });
+        let target = state.atlas_roads.clone();
+        paving.on_update(move |_, _, row| target.set_tier(row.id, Some(row.tier)));
+        let target = state.atlas_roads.clone();
+        paving.on_delete(move |_, row| target.set_tier(row.id, None));
         let state = state.clone();
         snapshot.finish.push(Box::new(move || {
             state.player_stats.finish_food(source);

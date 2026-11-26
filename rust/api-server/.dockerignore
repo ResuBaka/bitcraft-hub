@@ -4,6 +4,7 @@ target
 .env
 migration/.env
 storage
+world-map
 tmp
 perf.data*
 flamegraph*.svg

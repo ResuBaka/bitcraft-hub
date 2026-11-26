@@ -57,5 +57,6 @@ moveIcons.ts
 .github/workflows_disable/main-branch.tmp.yml
 rust/api-server/profile.json.gz
 rust/api-server/debug/
+/rust/api-server/world-map/
 discord.txt
 
