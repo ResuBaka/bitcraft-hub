@@ -1,9 +1,12 @@
 import { useIntervalFn, useLocalStorage } from "@vueuse/core";
+import { normalizeAtlasResourceColor } from "~/utils/atlasResources";
 import {
   ATLAS_MONITOR_KEY,
+  DEFAULT_TRACKED_PLAYER_COLOR,
   MAX_FAVORITES,
   MAX_TRACKED_TARGETS,
   monitorKey,
+  monitorEntityId,
   readAtlasMonitor,
   trackedAtlasPlayers,
   type MonitorPreferences,
@@ -14,7 +17,7 @@ import {
 export function useAtlasMonitor(base: string | undefined) {
   const preferences = useLocalStorage<MonitorPreferences>(
     ATLAS_MONITOR_KEY,
-    { tracking: [], favorites: [] },
+    { tracking: [], favorites: [], playerColors: {} },
     { serializer: { read: readAtlasMonitor, write: JSON.stringify }, writeDefaults: false },
   );
   const rosters = shallowRef<MonitorRosters>({});
@@ -78,7 +81,7 @@ export function useAtlasMonitor(base: string | undefined) {
   );
   onScopeDispose(() => request?.abort());
 
-  function toggle(list: keyof MonitorPreferences, target: MonitorTarget) {
+  function toggle(list: "tracking" | "favorites", target: MonitorTarget) {
     if (list === "tracking" && target.kind === "resource") return;
     const rows = preferences.value[list];
     const key = monitorKey(target);
@@ -89,5 +92,24 @@ export function useAtlasMonitor(base: string | undefined) {
     }
   }
 
-  return { preferences, rosters, rosterLoading, rosterError, refreshRosters, targets, toggle };
+  function setPlayerColor(id: string, value: string | undefined) {
+    if (!monitorEntityId(id)) return;
+    const color = normalizeAtlasResourceColor(value);
+    if (value !== undefined && !color) return;
+    const next = { ...preferences.value.playerColors };
+    if (color && color !== DEFAULT_TRACKED_PLAYER_COLOR) next[id] = color;
+    else delete next[id];
+    preferences.value.playerColors = next;
+  }
+
+  return {
+    preferences,
+    rosters,
+    rosterLoading,
+    rosterError,
+    refreshRosters,
+    targets,
+    toggle,
+    setPlayerColor,
+  };
 }

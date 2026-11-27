@@ -1,8 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { readMapUrl, writeMapUrl } from "../app/utils/worldMapUrl";
+import { readMapUrl, readSavedMapView, splitMapQuery, writeMapUrl } from "../app/utils/worldMapUrl";
 import { MAP_BUILDING_GROUPS } from "../app/utils/mapBuildings";
 
 describe("world map links", () => {
+  test("stores the shared view locally and only strips map parameters from the URL", () => {
+    const query = {
+      x: "81234",
+      z: "12345",
+      zoom: "6.5",
+      layers: "terrain,resources",
+      resources: "2",
+      source: "chat",
+    };
+    expect(splitMapQuery(query)).toEqual({ shared: true, other: { source: "chat" } });
+    expect(splitMapQuery({ source: "chat" }).shared).toBe(false);
+    const state = readMapUrl(query);
+    expect(readSavedMapView(JSON.stringify(writeMapUrl(state)))).toEqual(state);
+    expect(readSavedMapView("invalid JSON")).toEqual(readMapUrl({}));
+  });
   test("round-trips position, fractional zoom, visible layers, region and the exact claim ID", () => {
     const state = readMapUrl({
       x: "81234.125",

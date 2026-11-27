@@ -211,7 +211,7 @@ impl World {
         Ok(())
     }
 
-    pub(super) fn build(self, root: &Path, version: String) -> Result<Manifest> {
+    pub(super) fn build(self, root: &Path, version: String, quality: u8) -> Result<Manifest> {
         let layout = self
             .layout
             .context("No regional SpacetimeDB databases are configured")?;
@@ -296,6 +296,16 @@ impl World {
             })?;
             children = parents;
         }
+        // Build every parent from lossless pixels before encoding delivery
+        // tiles, so compression artifacts don't accumulate at wider zooms.
+        tiles.par_iter().enumerate().try_for_each(|(z, keys)| {
+            let side = 1u32 << z;
+            keys.par_iter().try_for_each(|&key| {
+                let path = tile_path(root, z as u8, (key % side, key / side));
+                encode_delivery_tile(&path, quality)
+                    .with_context(|| format!("Could not compress {}", path.display()))
+            })
+        })?;
         tracing::info!(
             tiles = tiles.iter().map(Vec::len).sum::<usize>(),
             "Built world atlas"
@@ -509,6 +519,15 @@ fn save(root: &Path, z: u8, coord: TileCoord, image: &RgbaImage) -> Result<()> {
         .with_context(|| format!("Could not write {}", path.display()))
 }
 
+fn encode_delivery_tile(path: &Path, quality: u8) -> Result<()> {
+    let image = image::open(path)?.into_rgb8();
+    let encoded = webp::Encoder::from_rgb(image.as_raw(), image.width(), image.height())
+        .encode_simple(false, f32::from(quality))
+        .map_err(|err| anyhow::anyhow!("WebP encoder failed: {err:?}"))?;
+    std::fs::write(path, &*encoded)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -672,7 +691,7 @@ mod tests {
                 }],
             )
             .unwrap();
-        let manifest = world.build(&root, "test".into()).unwrap();
+        let manifest = world.build(&root, "test".into(), 78).unwrap();
         assert_eq!(manifest.regions[6].chunks, 1);
         assert!(manifest.regions[6].active);
         assert_eq!(manifest.regions[6].name.as_deref(), Some("Test region"));
@@ -680,12 +699,18 @@ mod tests {
         assert_eq!(manifest.background_color, "#282f41");
         assert_eq!(manifest.tiles[0], vec![0]);
         assert!(manifest.tiles.last().unwrap().len() < 4);
-        let image = image::open(tile_path(&root, 0, (0, 0)))
-            .unwrap()
-            .into_rgba8();
+        let tile = std::fs::read(tile_path(&root, 0, (0, 0))).unwrap();
+        assert_eq!(&tile[12..16], b"VP8 ");
+        let image = image::load_from_memory(&tile).unwrap().into_rgba8();
         assert!(image.pixels().all(|p| p[3] == 255));
-        assert!(image.pixels().any(|p| *p == OCEAN_BACKGROUND));
-        assert!(image.pixels().any(|p| *p != OCEAN_BACKGROUND));
+        let distance = |pixel: &Rgba<u8>| {
+            (0..3)
+                .map(|i| pixel[i].abs_diff(OCEAN_BACKGROUND[i]))
+                .max()
+                .unwrap()
+        };
+        assert!(distance(image.get_pixel(0, 0)) <= 4);
+        assert!(image.pixels().any(|p| distance(p) > 16));
         std::fs::remove_dir_all(root).unwrap();
     }
 }

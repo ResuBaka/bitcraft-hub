@@ -2,7 +2,12 @@ export type MonitorKind = "player" | "claim";
 export type MonitorTarget = { kind: MonitorKind | "resource"; id: string; name: string };
 export type MonitorMember = { id: string; name: string };
 export type MonitorRosters = Record<string, MonitorMember[]>;
-export type MonitorPreferences = { tracking: MonitorTarget[]; favorites: MonitorTarget[] };
+export type MonitorPreferences = {
+  tracking: MonitorTarget[];
+  favorites: MonitorTarget[];
+  playerColors: Record<string, string>;
+};
+export const DEFAULT_TRACKED_PLAYER_COLOR = "#ffd27a";
 
 export const ATLAS_MONITOR_KEY = "bitcraft-atlas-monitor-v1";
 export const MAX_TRACKED_TARGETS = 20;
@@ -45,12 +50,20 @@ function readTargets(value: unknown, limit: number, allowResources = false): Mon
 export function readAtlasMonitor(raw: string): MonitorPreferences {
   try {
     const data = JSON.parse(raw);
+    const playerColors: Record<string, string> = {};
+    for (const [id, value] of Object.entries(data?.playerColors ?? {})) {
+      const color = normalizeAtlasResourceColor(value);
+      if (monitorEntityId(id) && color && color !== DEFAULT_TRACKED_PLAYER_COLOR) {
+        playerColors[id] = color;
+      }
+    }
     return {
       tracking: readTargets(data?.tracking, MAX_TRACKED_TARGETS),
       favorites: readTargets(data?.favorites, MAX_FAVORITES, true),
+      playerColors,
     };
   } catch {
-    return { tracking: [], favorites: [] };
+    return { tracking: [], favorites: [], playerColors: {} };
   }
 }
 
@@ -69,3 +82,4 @@ export function trackedAtlasPlayers(targets: readonly MonitorTarget[], rosters: 
   }
   return players;
 }
+import { normalizeAtlasResourceColor } from "./atlasResources";

@@ -39,6 +39,26 @@ export interface MapUrlState {
   claim?: string;
 }
 
+export const ATLAS_VIEW_KEY = "bitcraft-atlas-view-v1";
+
+const mapQueryKeys = Object.keys(writeMapUrl(readMapUrl({})));
+
+export function splitMapQuery<T>(query: Readonly<Record<string, T>>) {
+  const shared = Object.keys(query).some((key) => mapQueryKeys.includes(key));
+  const other = Object.fromEntries(
+    Object.entries(query).filter(([key]) => !mapQueryKeys.includes(key)),
+  );
+  return { shared, other };
+}
+
+export function readSavedMapView(raw: string | null): MapUrlState {
+  try {
+    return readMapUrl((raw && JSON.parse(raw)) || {});
+  } catch {
+    return readMapUrl({});
+  }
+}
+
 function readNumber(value: unknown): number | undefined {
   if (typeof value !== "string" || !/^-?\d+(?:\.\d+)?$/.test(value)) return;
   const parsed = Number(value);

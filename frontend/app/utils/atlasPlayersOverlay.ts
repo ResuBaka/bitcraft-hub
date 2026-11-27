@@ -6,6 +6,7 @@ import VectorSource from "ol/source/Vector.js";
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style.js";
 import { decodeAtlasPlayerUpdate, mobilePlayerCoordinate } from "./atlasPlayers";
 import type { AtlasMarkerScale } from "./atlasMarkerScale";
+import { DEFAULT_TRACKED_PLAYER_COLOR } from "./atlasMonitor";
 
 export type AtlasPlayersStatus = "off" | "connecting" | "live" | "reconnecting";
 
@@ -18,22 +19,46 @@ export function createAtlasPlayersOverlay(
   markerScale?: AtlasMarkerScale,
   labelScale?: AtlasMarkerScale,
   onTrackedVisible?: (ids: ReadonlySet<string>) => void,
+  fetchNames?: (ids: string[], signal: AbortSignal) => Promise<Record<string, string>>,
 ) {
   const source = new VectorSource<Feature<Point>>({ wrapX: false });
   let tracked: ReadonlyMap<string, string> = new Map();
-  const trackedStyles = new Map<string, [Style, Style]>();
+  let colors: Readonly<Record<string, string>> = {};
+  const customDots = new Map<string, Style>();
+  const labels = new Map<string, { name: string; highlighted: boolean; style: Style }>();
+  const names = new Map<string, string>();
+  const pendingNames = new Set<string>();
+  let nameBatch: Set<string> | undefined;
+  let nameTimer: ReturnType<typeof setTimeout> | undefined;
+  let nextNameAttempt = 0;
   let showAll = false;
-  const dot = (radius: number) =>
+  let showNames = false;
+  const dot = (radius: number, trackedColor?: string) =>
     new Style({
       image: new CircleStyle({
         radius,
-        fill: new Fill({ color: "#79f8ec" }),
-        stroke: new Stroke({ color: "#123232", width: 1.5 }),
+        fill: new Fill({ color: trackedColor ?? "#79f8ec" }),
+        stroke: new Stroke({
+          color: trackedColor ? "#3b2714" : "#123232",
+          width: trackedColor ? 2 : 1.5,
+        }),
         declutterMode: "none",
       }),
+      zIndex: trackedColor ? 1 : 0,
     });
   const near = dot(5);
   const far = dot(3);
+  const highlightedDot = dot(6, DEFAULT_TRACKED_PLAYER_COLOR);
+  function trackedDot(id: string) {
+    const color = colors[id];
+    if (!color) return highlightedDot;
+    let marker = customDots.get(color);
+    if (!marker) {
+      marker = dot(6, color);
+      customDots.set(color, marker);
+    }
+    return markerScale?.apply(marker) ?? marker;
+  }
   const layer = new VectorLayer({
     source,
     visible: false,
@@ -42,43 +67,38 @@ export function createAtlasPlayersOverlay(
     declutter: "tracked-player-labels",
     style: (feature, resolution) => {
       const id = String(feature.getId());
-      if (!tracked.has(id)) return showAll ? (resolution < 16 ? near : far) : undefined;
-      let styles = trackedStyles.get(id);
-      if (!styles) {
-        const marker = new Style({
-          image: new CircleStyle({
-            radius: 6,
-            fill: new Fill({ color: "#ffd27a" }),
-            stroke: new Stroke({ color: "#3b2714", width: 2 }),
-            declutterMode: "none",
-          }),
-          zIndex: 1,
-        });
-        const label = new Style({
+      const highlighted = tracked.has(id);
+      if (!highlighted && !showAll) return;
+      const marker = highlighted ? trackedDot(id) : resolution < 16 ? near : far;
+      if (!showNames) return marker;
+      const name = names.get(id) || tracked.get(id);
+      if (!name) return marker;
+      let label = labels.get(id);
+      if (!label || label.name !== name || label.highlighted !== highlighted) {
+        const style = new Style({
           text: new Text({
-            text: tracked.get(id),
-            offsetY: -12,
+            text: name,
             textBaseline: "bottom",
             font: "600 12px system-ui, sans-serif",
-            fill: new Fill({ color: "#fff0d2" }),
+            fill: new Fill({ color: highlighted ? "#fff0d2" : "#d5fffc" }),
             stroke: new Stroke({ color: "#172630", width: 3 }),
           }),
-          zIndex: 2,
+          zIndex: highlighted ? 3 : 2,
         });
-        styles = [marker, label];
-        trackedStyles.set(id, styles);
+        label = { name, highlighted, style };
+        labels.set(id, label);
       }
-      markerScale?.apply(styles[0]);
-      labelScale?.apply(styles[1]);
-      return styles;
+      labelScale?.apply(label.style);
+      const image = marker.getImage() as CircleStyle;
+      label.style.getText()?.setOffsetY(-(image.getRadius() + 1) * image.getScaleArray()[1] - 4);
+      return [marker, label.style];
     },
   });
-  markerScale?.track(layer, () => {
-    markerScale.apply(near);
-    markerScale.apply(far);
-  });
-  markerScale?.apply(near);
-  markerScale?.apply(far);
+  const scaleMarkers = () => {
+    for (const marker of [near, far, highlightedDot]) markerScale?.apply(marker);
+  };
+  markerScale?.track(layer, scaleMarkers);
+  scaleMarkers();
   labelScale?.track(layer);
   map.addLayer(layer);
   let enabled = false;
@@ -89,6 +109,67 @@ export function createAtlasPlayersOverlay(
   let synced = false;
   let count = 0;
   let visibleTracked = new Set<string>();
+
+  function scheduleNames() {
+    if (
+      !showNames ||
+      !fetchNames ||
+      signal.aborted ||
+      nameBatch ||
+      nameTimer !== undefined ||
+      !pendingNames.size
+    )
+      return;
+    nameTimer = setTimeout(
+      async () => {
+        nameTimer = undefined;
+        const ids: string[] = [];
+        for (const id of pendingNames) {
+          pendingNames.delete(id);
+          if ((showAll || tracked.has(id)) && source.getFeatureById(id) && !tracked.get(id))
+            ids.push(id);
+          if (ids.length === 128) break;
+        }
+        if (!ids.length) return;
+        nameBatch = new Set(ids);
+        try {
+          const loaded = await fetchNames(ids, signal);
+          if (!signal.aborted) {
+            for (const id of ids) names.set(id, typeof loaded[id] === "string" ? loaded[id] : "");
+            layer.changed();
+          }
+        } catch {
+          if (!signal.aborted) {
+            for (const id of ids) pendingNames.add(id);
+            nextNameAttempt = Date.now() + 30_000;
+          }
+        } finally {
+          nameBatch = undefined;
+          scheduleNames();
+        }
+      },
+      Math.max(80, nextNameAttempt - Date.now()),
+    );
+  }
+
+  function queueName(id: string) {
+    if (
+      !showNames ||
+      !fetchNames ||
+      !(showAll || tracked.has(id)) ||
+      tracked.get(id) ||
+      names.has(id) ||
+      nameBatch?.has(id)
+    )
+      return;
+    pendingNames.add(id);
+  }
+
+  function queueVisibleNames() {
+    if (!showNames || !fetchNames) return;
+    source.forEachFeature((feature) => queueName(String(feature.getId())));
+    scheduleNames();
+  }
 
   function publishTracked() {
     if (!onTrackedVisible) return;
@@ -103,6 +184,8 @@ export function createAtlasPlayersOverlay(
     synced = false;
     count = 0;
     source.clear(true);
+    labels.clear();
+    pendingNames.clear();
   }
 
   function retryConnection() {
@@ -140,6 +223,8 @@ export function createAtlasPlayersOverlay(
         retryDelay = 1_000;
       } else {
         for (const id of update.remove) {
+          labels.delete(id);
+          pendingNames.delete(id);
           const feature = source.getFeatureById(id);
           if (feature && !Array.isArray(feature)) {
             source.removeFeature(feature);
@@ -149,6 +234,7 @@ export function createAtlasPlayersOverlay(
       }
       const added: Feature<Point>[] = [];
       for (const [id, x, z] of update.type === "snapshot" ? update.players : update.upsert) {
+        queueName(id);
         const coordinates = mobilePlayerCoordinate(x, z);
         const current = source.getFeatureById(id);
         if (current && !Array.isArray(current)) {
@@ -160,6 +246,7 @@ export function createAtlasPlayersOverlay(
         }
       }
       source.addFeatures(added);
+      scheduleNames();
       count += added.length;
       publishTracked();
       setStatus("live", count);
@@ -201,14 +288,16 @@ export function createAtlasPlayersOverlay(
     }
     // An omitted scope means all regions, not the previous scope.
     configure(scope ?? "");
+    if (next) queueVisibleNames();
   }
 
   function setTracking(next: ReadonlyMap<string, string>) {
     tracked = next;
-    trackedStyles.clear();
+    labels.clear();
     layer.changed();
     configure();
     publishTracked();
+    queueVisibleNames();
   }
 
   function trackedPosition(id: string) {
@@ -217,6 +306,32 @@ export function createAtlasPlayersOverlay(
     return !Array.isArray(feature) ? feature?.getGeometry()?.getCoordinates() : undefined;
   }
 
-  signal.addEventListener("abort", () => configure(regions, true), { once: true });
-  return { setEnabled, setTracking, trackedPosition };
+  function setColors(next: Readonly<Record<string, string>>) {
+    colors = next;
+    customDots.clear();
+    layer.changed();
+  }
+
+  function setShowNames(next: boolean) {
+    if (next === showNames) return;
+    showNames = next;
+    if (next) {
+      queueVisibleNames();
+    } else {
+      clearTimeout(nameTimer);
+      nameTimer = undefined;
+      pendingNames.clear();
+    }
+    layer.changed();
+  }
+
+  signal.addEventListener(
+    "abort",
+    () => {
+      clearTimeout(nameTimer);
+      configure(regions, true);
+    },
+    { once: true },
+  );
+  return { setEnabled, setTracking, trackedPosition, setColors, setShowNames };
 }

@@ -18,8 +18,15 @@ test("stored favorites are separate from active tracking and retain exact IDs", 
         favorites: [favorite, player("18446744073709551616", "Invalid"), player("0", "Invalid")],
       }),
     ),
-  ).toEqual({ tracking: [claim("9")], favorites: [favorite] });
-  expect(readAtlasMonitor("not JSON")).toEqual({ tracking: [], favorites: [] });
+  ).toEqual({ tracking: [claim("9")], favorites: [favorite], playerColors: {} });
+  expect(readAtlasMonitor("not JSON")).toEqual({ tracking: [], favorites: [], playerColors: {} });
+});
+
+test("saved player colors preserve exact IDs and accept only valid hex overrides", () => {
+  const preferences = readAtlasMonitor(
+    '{"playerColors":{"18446744073709551615":"#ABC","2":"red","3":"#ffd27a","0":"#123456"}}',
+  );
+  expect(preferences.playerColors).toEqual({ "18446744073709551615": "#aabbcc" });
 });
 
 test("claim rosters and individually tracked players are deduplicated", () => {

@@ -59,13 +59,15 @@ impl Default for Config {
 #[serde(default)]
 pub(crate) struct WorldMapConfig {
     pub(crate) directory: std::path::PathBuf,
+    /// Lossy WebP quality, from 0 to 100.
+    pub(crate) webp_quality: u8,
     /// Disable this on read-only API replicas sharing the same PostgreSQL.
     pub(crate) resource_sync_enabled: bool,
 }
 
 impl Default for WorldMapConfig {
     fn default() -> Self {
-        Self { directory: "world-map".into(), resource_sync_enabled: true }
+        Self { directory: "world-map".into(), webp_quality: 78, resource_sync_enabled: true }
     }
 }
 

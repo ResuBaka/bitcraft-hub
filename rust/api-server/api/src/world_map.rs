@@ -20,11 +20,17 @@ use game_module::module_bindings::{
 };
 use spacetimedb_sdk::{DbContext, Event};
 use std::{
+    fs::{self, OpenOptions},
+    io::ErrorKind,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::Duration,
 };
 use tokio::sync::oneshot;
+
+fn is_terrain_version(version: &str) -> bool {
+    version.len() == 16 && version.bytes().all(|c| c.is_ascii_hexdigit())
+}
 
 #[derive(Default)]
 pub(crate) struct RegionFilter(Option<Vec<Region>>);
@@ -96,8 +102,7 @@ where
                         else {
                             return StatusCode::NOT_FOUND.into_response();
                         };
-                        if version.len() != 16
-                            || !version.bytes().all(|c| c.is_ascii_hexdigit())
+                        if !is_terrain_version(&version)
                             || z > raster::MAX_ZOOM
                             || x >= (1 << z)
                             || y >= (1 << z)
@@ -138,6 +143,11 @@ async fn serve(file: PathBuf, mime: &'static str, cache: &'static str) -> Respon
 }
 
 pub(super) async fn generate(config: &Config) -> Result<()> {
+    let quality = config.world_map.webp_quality;
+    ensure!(
+        quality <= 100,
+        "World map WebP quality must be between 0 and 100"
+    );
     let mut world = raster::World::default();
     for database in config.spacetimedb.regional_databases() {
         tracing::info!(database, "Fetching map metadata and terrain");
@@ -152,28 +162,91 @@ pub(super) async fn generate(config: &Config) -> Result<()> {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()?
-            .install(|| publish(world, &directory))
+            .install(|| publish(world, &directory, quality))
     })
     .await?
 }
 
-fn publish(world: raster::World, directory: &Path) -> Result<()> {
+fn publish(world: raster::World, directory: &Path, quality: u8) -> Result<()> {
     let version = format!("{:016x}", rand::random::<u64>());
-    std::fs::create_dir_all(directory)?;
+    fs::create_dir_all(directory)?;
+    // Serialize generators sharing this directory. The lock file stays in
+    // place so another process always locks the same inode.
+    let lock = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(directory.join(".generate.lock"))?;
+    lock.lock().context("Could not lock the terrain cache")?;
+    let manifest_path = directory.join("index.json");
+    let previous = published_version(&manifest_path);
     let root = directory.join(&version);
-    std::fs::create_dir(&root)?;
+    fs::create_dir(&root)?;
     let temporary_manifest = directory.join(format!("index.{version}.tmp"));
     let result = (|| {
-        let manifest = world.build(&root, version)?;
-        std::fs::write(&temporary_manifest, serde_json::to_vec(&manifest)?)?;
-        std::fs::rename(&temporary_manifest, directory.join("index.json"))?;
+        let manifest = world.build(&root, version.clone(), quality)?;
+        fs::write(&temporary_manifest, serde_json::to_vec(&manifest)?)?;
+        fs::rename(&temporary_manifest, &manifest_path)?;
         Ok(())
     })();
     if result.is_err() {
-        let _ = std::fs::remove_file(&temporary_manifest);
-        let _ = std::fs::remove_dir_all(&root);
+        let _ = fs::remove_file(&temporary_manifest);
+        let _ = fs::remove_dir_all(&root);
+        return result;
+    }
+    if let Err(error) = previous
+        .and_then(|previous| prune_terrain_versions(directory, &version, previous.as_deref()))
+    {
+        tracing::warn!(%error, "Published terrain but could not clean up older revisions");
     }
     result
+}
+
+fn published_version(path: &Path) -> Result<Option<String>> {
+    #[derive(serde::Deserialize)]
+    struct Published {
+        version: String,
+    }
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    let Published { version } = serde_json::from_slice(&bytes)?;
+    ensure!(
+        is_terrain_version(&version),
+        "Invalid version in the previous terrain manifest"
+    );
+    Ok(Some(version))
+}
+
+fn prune_terrain_versions(directory: &Path, active: &str, previous: Option<&str>) -> Result<()> {
+    for entry in fs::read_dir(directory)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        let file_type = entry.file_type()?;
+        let removed = if file_type.is_dir()
+            && is_terrain_version(name)
+            && name != active
+            && Some(name) != previous
+        {
+            fs::remove_dir_all(entry.path())
+        } else if file_type.is_file()
+            && name
+                .strip_prefix("index.")
+                .and_then(|name| name.strip_suffix(".tmp"))
+                .is_some_and(is_terrain_version)
+        {
+            fs::remove_file(entry.path())
+        } else {
+            continue;
+        };
+        if let Err(error) = removed {
+            tracing::warn!(%error, path = %entry.path().display(), "Could not remove obsolete terrain cache entry");
+        }
+    }
+    Ok(())
 }
 
 async fn fetch_region(
@@ -292,7 +365,7 @@ mod tests {
         std::fs::create_dir_all(&tiles).unwrap();
         std::fs::write(tiles.join("0.webp"), b"tile").unwrap();
         std::fs::write(root.join("index.json"), b"{}").unwrap();
-        assert!(publish(raster::World::default(), &root).is_err());
+        assert!(publish(raster::World::default(), &root, 78).is_err());
 
         let app = routes::<()>(root.clone());
         for (uri, status, cache) in [
@@ -330,4 +403,36 @@ mod tests {
         assert_eq!(std::fs::read(root.join("index.json")).unwrap(), b"{}");
         std::fs::remove_dir_all(root).unwrap();
     }
+}
+#[test]
+fn failed_publish_keeps_existing_tiles_and_cleanup_keeps_two_revisions() {
+    let root =
+        std::env::temp_dir().join(format!("bitcraft-map-prune-{:016x}", rand::random::<u64>()));
+    let active = "1111111111111111";
+    let previous = "2222222222222222";
+    let old = "3333333333333333";
+    for name in [active, previous, old, "notes"] {
+        fs::create_dir_all(root.join(name)).unwrap();
+    }
+    let manifest = root.join("index.json");
+    fs::write(&manifest, format!(r#"{{"version":"{active}"}}"#)).unwrap();
+    let stale = root.join(format!("index.{old}.tmp"));
+    fs::write(&stale, []).unwrap();
+
+    assert!(publish(raster::World::default(), &root, 78).is_err());
+    assert_eq!(
+        published_version(&manifest).unwrap().as_deref(),
+        Some(active)
+    );
+    assert!(root.join(old).is_dir());
+    assert!(stale.is_file());
+
+    prune_terrain_versions(&root, active, Some(previous)).unwrap();
+    assert!(root.join(active).is_dir());
+    assert!(root.join(previous).is_dir());
+    assert!(root.join("notes").is_dir());
+    assert!(manifest.is_file());
+    assert!(!root.join(old).exists());
+    assert!(!stale.exists());
+    fs::remove_dir_all(root).unwrap();
 }

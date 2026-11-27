@@ -13,3 +13,8 @@ export function mapGameCoordinates(x: number, z: number) {
   const locationX = Math.round((x / SMALL_HEX_WIDTH) * 1_000 - rowShift);
   return gameCoordinates(locationX, locationZ);
 }
+
+export function mapChatCoordinates(x: number, z: number) {
+  const { north, east } = mapGameCoordinates(x, z);
+  return `(coord=${north},${east})`;
+}

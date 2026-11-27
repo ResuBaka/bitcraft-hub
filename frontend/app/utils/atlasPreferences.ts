@@ -2,6 +2,7 @@ import { normalizeAtlasResourceColor, type AtlasResourceColors } from "./atlasRe
 
 export const ATLAS_PREFERENCES_KEY = "bitcraft-atlas-preferences-v1";
 export const ATLAS_DISPLAY_SIZE = { min: 75, max: 175, step: 5, default: 100 } as const;
+export const ATLAS_SATURATION = { min: 100, max: 400, step: 5, default: 100 } as const;
 
 export function atlasDisplaySize(value: unknown) {
   const { min, max, step } = ATLAS_DISPLAY_SIZE;
@@ -12,6 +13,9 @@ export function atlasDisplaySize(value: unknown) {
 export interface AtlasPreferences {
   disabledRegions: number[];
   showResourceIcons: boolean;
+  showPlayerNames: boolean;
+  terrainSaturation: number;
+  pavingSaturation: number;
   showGrid: boolean;
   showRegionNumbers: boolean;
   showRegionNames: boolean;
@@ -44,6 +48,9 @@ export function readAtlasPreferences(raw: string | null): AtlasPreferences {
   const defaults = {
     disabledRegions: [],
     showResourceIcons: true,
+    showPlayerNames: false,
+    terrainSaturation: ATLAS_SATURATION.default,
+    pavingSaturation: ATLAS_SATURATION.default,
     showGrid: false,
     showRegionNumbers: false,
     showRegionNames: false,
@@ -54,7 +61,12 @@ export function readAtlasPreferences(raw: string | null): AtlasPreferences {
   if (!raw) return defaults;
   try {
     const saved:
-      | (Partial<AtlasPreferences> & { hiddenRegions?: number[]; displaySize?: number })
+      | (Partial<AtlasPreferences> & {
+          hiddenRegions?: number[];
+          displaySize?: number;
+          vibrantTerrain?: boolean;
+          vibrantPaving?: boolean;
+        })
       | null = JSON.parse(raw);
     const disabledRegions = saved?.disabledRegions ?? saved?.hiddenRegions;
     const resourceColors: Record<number, string> = {};
@@ -69,6 +81,9 @@ export function readAtlasPreferences(raw: string | null): AtlasPreferences {
         ? [...new Set(disabledRegions.filter((id) => Number.isInteger(id) && id > 0 && id <= 255))]
         : [],
       showResourceIcons: saved?.showResourceIcons !== false,
+      showPlayerNames: saved?.showPlayerNames === true,
+      terrainSaturation: readSaturation(saved?.terrainSaturation, saved?.vibrantTerrain),
+      pavingSaturation: readSaturation(saved?.pavingSaturation, saved?.vibrantPaving),
       showGrid: saved?.showGrid === true,
       showRegionNumbers: saved?.showRegionNumbers === true,
       showRegionNames: saved?.showRegionNames === true,
@@ -79,4 +94,11 @@ export function readAtlasPreferences(raw: string | null): AtlasPreferences {
   } catch {
     return defaults;
   }
+}
+
+function readSaturation(value: unknown, legacy: unknown) {
+  const { min, max, step } = ATLAS_SATURATION;
+  if (typeof value !== "number" || !Number.isFinite(value))
+    return legacy === true ? 155 : ATLAS_SATURATION.default;
+  return Math.min(max, Math.max(min, Math.round(value / step) * step));
 }

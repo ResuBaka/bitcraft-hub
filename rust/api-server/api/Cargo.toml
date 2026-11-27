@@ -57,6 +57,7 @@ sea-orm-cli =  { workspace = true }
 crossbeam-channel = "0.5.17"
 parking_lot = "0.13.0"
 image = { version = "0.25.10", default-features = false, features = ["webp"] }
+webp = { version = "0.3.1", default-features = false }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

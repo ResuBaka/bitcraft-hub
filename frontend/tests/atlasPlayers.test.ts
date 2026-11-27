@@ -2,6 +2,9 @@ import { expect, test } from "bun:test";
 import type OlMap from "ol/Map.js";
 import type Point from "ol/geom/Point.js";
 import VectorLayer from "ol/layer/Vector.js";
+import type Style from "ol/style/Style.js";
+import type CircleStyle from "ol/style/Circle.js";
+import { createAtlasMarkerScale } from "../app/utils/atlasMarkerScale";
 import { decodeAtlasPlayerUpdate, mobilePlayerCoordinate } from "../app/utils/atlasPlayers";
 import { createAtlasPlayersOverlay } from "../app/utils/atlasPlayersOverlay";
 import { SMALL_HEX_WIDTH } from "../app/utils/worldMap";
@@ -121,6 +124,84 @@ test("tracking uses the regional live stream without displaying untracked player
     overlay.setEnabled(false, "none");
     expect(locations.at(-1)).toEqual([]);
     expect(layer.getVisible()).toBe(false);
+  } finally {
+    controller.abort();
+  }
+});
+
+test("tracked and other visible online players show names above their markers", async () => {
+  const layers: VectorLayer[] = [];
+  const map = { addLayer: (layer: VectorLayer) => layers.push(layer) } as unknown as OlMap;
+  const controller = new AbortController();
+  const socket = Object.assign(new EventTarget(), { close: () => {} });
+  const requested = Promise.withResolvers<string[]>();
+  const scale = createAtlasMarkerScale(1);
+  const overlay = createAtlasPlayersOverlay(
+    map,
+    "https://example.test",
+    controller.signal,
+    () => {},
+    () => socket as unknown as WebSocket,
+    scale,
+    undefined,
+    undefined,
+    async (ids) => {
+      requested.resolve(ids);
+      return { "2": "Bea", "3": "Cora" };
+    },
+  );
+  try {
+    overlay.setEnabled(true);
+    overlay.setTracking(
+      new Map([
+        ["1", "Alice"],
+        ["3", ""],
+      ]),
+    );
+    socket.dispatchEvent(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          type: "snapshot",
+          players: [
+            ["1", 1000, 2000],
+            ["2", 1100, 2200],
+            ["3", 1200, 4000],
+          ],
+        }),
+      }),
+    );
+    const layer = layers[0]!;
+    const player = layer.getSource()!.getFeatureById("1")!;
+    expect(Array.isArray(layer.getStyleFunction()!(player, 2))).toBe(false);
+    overlay.setShowNames(true);
+    const label = (id: string) =>
+      (
+        layer.getStyleFunction()!(layer.getSource()!.getFeatureById(id)!, 2) as Style[]
+      )[1]?.getText();
+    expect(label("1")?.getText()).toBe("Alice");
+    const nameFrame = Promise.withResolvers<void>();
+    layer.once("change", () => nameFrame.resolve());
+    expect(await requested.promise).toEqual(["2", "3"]);
+    await nameFrame.promise;
+    expect(label("2")?.getText()).toBe("Bea");
+    expect(label("3")?.getText()).toBe("Cora");
+    const markerColor = (id: string) => {
+      const feature = layer.getSource()!.getFeatureById(id)!;
+      const styles = layer.getStyleFunction()!(feature, 2) as Style[];
+      return (styles[0]!.getImage() as CircleStyle).getFill()?.getColor();
+    };
+    overlay.setColors({ "1": "#123456", "2": "#654321" });
+    expect(markerColor("1")).toBe("#123456");
+    expect(markerColor("2")).toBe("#79f8ec");
+    expect(markerColor("3")).toBe("#ffd27a");
+    overlay.setColors({});
+    expect(markerColor("1")).toBe("#ffd27a");
+    const normal = label("1")!.getOffsetY();
+    expect(normal).toBeLessThan(0);
+    scale.set(1.75);
+    expect(label("1")!.getOffsetY()).toBeLessThan(normal);
+    overlay.setShowNames(false);
+    expect(Array.isArray(layer.getStyleFunction()!(player, 2))).toBe(false);
   } finally {
     controller.abort();
   }

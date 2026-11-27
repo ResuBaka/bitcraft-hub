@@ -24,6 +24,7 @@ test.each([
     const controller = new AbortController();
     const loaded = Promise.withResolvers<void>();
     const zoomed = Promise.withResolvers<void>();
+    let saturation = 1;
     const requests: { minX: number; centerX: number; centerZ: number; visibleMinX?: number }[] = [];
     const refresh = createAtlasRoadsOverlay(
       map,
@@ -39,11 +40,14 @@ test.each([
         const first = requests.length === 1;
         return {
           runs: [[120, 121, 140, 7]],
+          tiers: { 7: 2 },
           visibleOnly: first,
           truncated: first && limitedStatus === "truncated",
           scale: first ? scale : 1,
         };
       },
+      undefined,
+      () => saturation,
     );
     try {
       refresh();
@@ -58,6 +62,18 @@ test.each([
           ?.get("overview"),
       ).toBe(scale !== undefined);
       expect(features().some((f) => !!f.getStyleFunction())).toBe(scale === undefined);
+      const paved = features().find((feature) => feature.get("color"))!;
+      const pavingColor = () =>
+        (layers.item(0).getStyleFunction()!(paved, 2) as Style).getFill()?.getColor();
+      const standard = pavingColor();
+      saturation = 1.25;
+      const boosted = pavingColor();
+      expect(boosted).not.toEqual(standard);
+      saturation = 2;
+      expect(pavingColor()).not.toEqual(boosted);
+      saturation = 1;
+      expect(pavingColor()).toEqual(standard);
+      expect(requests).toHaveLength(1);
 
       view.setResolution(1);
       refresh();

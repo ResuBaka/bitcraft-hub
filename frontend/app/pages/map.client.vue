@@ -5,7 +5,7 @@ import OlMap from "ol/Map.js";
 import Overlay from "ol/Overlay.js";
 import View from "ol/View.js";
 import { defaults as controls } from "ol/control/defaults.js";
-import { buffer, createEmpty, extend, getCenter, getWidth } from "ol/extent.js";
+import { buffer, containsCoordinate, createEmpty, extend, getCenter, getWidth } from "ol/extent.js";
 import Point from "ol/geom/Point.js";
 import { fromExtent } from "ol/geom/Polygon.js";
 import { defaults as interactions } from "ol/interaction/defaults.js";
@@ -29,6 +29,7 @@ import { createAtlasPlayersOverlay, type AtlasPlayersStatus } from "~/utils/atla
 import {
   ATLAS_DISPLAY_SIZE,
   ATLAS_PREFERENCES_KEY,
+  ATLAS_SATURATION,
   atlasRegionScope,
   readAtlasPreferences,
   setAtlasRegionsEnabled,
@@ -45,7 +46,8 @@ import {
 } from "~/utils/atlasResources";
 import { createAtlasResourcesOverlay, type ResourcesStatus } from "~/utils/atlasResourcesOverlay";
 import { ATLAS_MAX_TILES_LOADING, enableAtlasZoomTileLoading } from "~/utils/atlasTileLoading";
-import { mapGameCoordinates } from "~/utils/gameCoordinates";
+import { vibrantAtlasColor } from "~/utils/atlasVibrantColors";
+import { mapChatCoordinates, mapGameCoordinates } from "~/utils/gameCoordinates";
 import { MAP_BUILDING_GROUPS, MAP_BUILDING_STYLES } from "~/utils/mapBuildings";
 import { createMapBuildingsOverlay, type MapBuildingsStatus } from "~/utils/mapBuildingsOverlay";
 import { createTerrainHexOverlay } from "~/utils/terrainHexOverlay";
@@ -70,7 +72,15 @@ import {
   type WorldMapLayout,
   type WorldMapRegion,
 } from "~/utils/worldMap";
-import { readMapUrl, writeMapUrl, type MapCamera, type MapUrlState } from "~/utils/worldMapUrl";
+import {
+  ATLAS_VIEW_KEY,
+  readMapUrl,
+  readSavedMapView,
+  splitMapQuery,
+  writeMapUrl,
+  type MapCamera,
+  type MapUrlState,
+} from "~/utils/worldMapUrl";
 
 definePageMeta({ layout: "map" });
 
@@ -80,6 +90,7 @@ useSeoMeta({
 });
 
 const target = useTemplateRef<HTMLElement>("target");
+const layersButton = useTemplateRef<HTMLElement>("layersButton");
 const router = useRouter();
 const mapRoute = router.currentRoute.value.matched.at(-1);
 const config = useRuntimeConfig();
@@ -106,18 +117,27 @@ const openLayerOptions = ref<string>();
 const disabledRegions = ref<number[]>([]);
 const disabledRegionIds = computed(() => new Set(disabledRegions.value));
 const showResourceIcons = ref(true);
+const showPlayerNames = ref(false);
 const showGrid = ref(false);
 const showRegionNumbers = ref(false);
 const showRegionNames = ref(false);
 const resourceColors = shallowRef<AtlasResourceColors>({});
-const displaySizes = reactive<{ iconSize: number; infoSize: number }>({
+const displaySizes = reactive<
+  Record<"iconSize" | "infoSize" | "terrainSaturation" | "pavingSaturation", number>
+>({
   iconSize: ATLAS_DISPLAY_SIZE.default,
   infoSize: ATLAS_DISPLAY_SIZE.default,
+  terrainSaturation: ATLAS_SATURATION.default,
+  pavingSaturation: ATLAS_SATURATION.default,
 });
 const displaySizeControls = [
-  { key: "iconSize", label: "Icon size" },
-  { key: "infoSize", label: "Info size" },
+  { key: "terrainSaturation", label: "Terrain saturation", range: ATLAS_SATURATION },
+  { key: "pavingSaturation", label: "Paving saturation", range: ATLAS_SATURATION },
+  { key: "iconSize", label: "Icon size", range: ATLAS_DISPLAY_SIZE },
+  { key: "infoSize", label: "Info size", range: ATLAS_DISPLAY_SIZE },
 ] as const;
+const terrainSaturation = computed(() => displaySizes.terrainSaturation / 100);
+const pavingSaturation = computed(() => displaySizes.pavingSaturation / 100);
 const iconFactor = computed(() => displaySizes.iconSize / 100);
 const infoFactor = computed(() => displaySizes.infoSize / 100);
 let markerScale: AtlasMarkerScale | undefined;
@@ -161,7 +181,13 @@ function onLayerMenuToggle(event: Event) {
 }
 const oceanBackdropStyle = computed(() => {
   const color = atlas.value?.backgroundColor;
-  return color && /^#[a-f\d]{6}$/i.test(color) ? { "--atlas-ocean-color": color } : undefined;
+  const base = color && /^#[a-f\d]{6}$/i.test(color) ? color : "#193a4a";
+  return {
+    "--atlas-ocean-color":
+      terrainSaturation.value !== 1 && showTerrain.value && currentHasTerrain.value
+        ? vibrantAtlasColor(base, terrainSaturation.value)
+        : base,
+  };
 });
 const listedRegions = computed(() =>
   [...(atlas.value?.regions ?? [])].sort((a, b) => b.z - a.z || a.x - b.x),
@@ -186,7 +212,16 @@ const settingsRegionGroups = computed(() =>
 );
 const selected = shallowRef<WorldMapRegion>();
 const currentHasTerrain = ref(false);
-const initialMapState = readMapUrl(router.currentRoute.value.query);
+function readCurrentMapState() {
+  const { query } = router.currentRoute.value;
+  if (splitMapQuery(query).shared) return readMapUrl(query);
+  try {
+    return readSavedMapView(localStorage.getItem(ATLAS_VIEW_KEY));
+  } catch {
+    return readMapUrl({});
+  }
+}
+const initialMapState = readCurrentMapState();
 const layers = reactive(initialMapState.layers);
 const claimDetails = reactive(initialMapState.claimDetails);
 const buildingGroups = ref(initialMapState.buildingGroups);
@@ -294,10 +329,12 @@ let findClaim: ((id: string) => WorldMapClaim | undefined) | undefined;
 let pendingClaimId: string | undefined;
 let restoredClaim: WorldMapClaim | undefined;
 let restoreUrl: ((state: MapUrlState) => void) | undefined;
-let readCamera: (() => MapCamera | undefined) | undefined;
+let readCamera: ((rendered?: boolean) => MapCamera | undefined) | undefined;
 let applyingUrl = false;
-let writtenUrl: string | undefined;
-let urlTimer: ReturnType<typeof setTimeout> | undefined;
+let viewSaveTimer: ReturnType<typeof setTimeout> | undefined;
+const contextPoint = shallowRef<{ x: number; z: number; region?: number }>();
+let pointRegion: ((coordinate: number[]) => number | undefined) | undefined;
+const toast = useToast();
 
 async function loadResourceCatalog() {
   const signal = cancel?.signal;
@@ -333,6 +370,20 @@ function toggleResource(id: number, enabled: boolean) {
   );
 }
 
+function removeLegendResource(id: number, event: MouseEvent) {
+  const row = (event.currentTarget as HTMLButtonElement).closest("li");
+  const next = (
+    row?.nextElementSibling ?? row?.previousElementSibling
+  )?.querySelector<HTMLButtonElement>(".atlas-resource-remove");
+  toggleResource(id, false);
+  (next ?? layersButton.value)?.focus({ preventScroll: true });
+}
+
+function clearLegendResources() {
+  resourceIds.value = [];
+  layersButton.value?.focus({ preventScroll: true });
+}
+
 function toggleFavoriteResource(type: Pick<AtlasResourceType, "id" | "name">) {
   monitor.toggle("favorites", { kind: "resource", id: String(type.id), name: type.name });
 }
@@ -348,41 +399,116 @@ function showFavoriteResource(id: number, enabled: boolean) {
   if (enabled) showResources.value = true;
 }
 
-function scheduleUrlUpdate() {
-  if (!map || applyingUrl) return;
-  clearTimeout(urlTimer);
-  urlTimer = setTimeout(() => {
-    const current = router.currentRoute.value;
-    const view = map?.getView();
-    if (
-      !view ||
-      view.getAnimating() ||
-      view.getInteracting() ||
-      current.matched.at(-1) !== mapRoute
-    )
-      return;
+function captureMapState(): MapUrlState {
+  return {
+    layers,
+    claimDetails,
+    buildingGroups: buildingGroups.value,
+    resourceIds: resourceIds.value,
+    claimTiers: claimTiers.value,
+    camera: readCamera?.(),
+    region: selected.value?.id,
+    claim: selectedClaim.value?.id ?? pendingClaimId,
+  };
+}
 
-    const state = writeMapUrl({
-      layers,
-      claimDetails,
-      buildingGroups: buildingGroups.value,
-      resourceIds: resourceIds.value,
-      claimTiers: claimTiers.value,
-      camera: readCamera?.(),
-      region: selected.value?.id,
-      claim: selectedClaim.value?.id ?? pendingClaimId,
-    });
-    const location = {
-      path: current.path,
-      query: { ...current.query, ...state },
-      hash: current.hash,
-    };
-    const fullPath = router.resolve(location).fullPath;
-    if (current.fullPath === fullPath) return;
-    writtenUrl = fullPath;
-    void router.replace(location);
+function saveMapView() {
+  if (!readCamera || applyingUrl) return false;
+  try {
+    localStorage.setItem(ATLAS_VIEW_KEY, JSON.stringify(writeMapUrl(captureMapState())));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleViewSave() {
+  if (!readCamera || applyingUrl) return;
+  clearTimeout(viewSaveTimer);
+  viewSaveTimer = setTimeout(() => {
+    viewSaveTimer = undefined;
+    saveMapView();
   }, 90);
 }
+
+function restoreSharedView() {
+  const current = router.currentRoute.value;
+  if (!restoreUrl || current.matched.at(-1) !== mapRoute) return;
+  const { shared, other } = splitMapQuery(current.query);
+  if (!shared) return;
+  clearTimeout(viewSaveTimer);
+  viewSaveTimer = undefined;
+  restoreUrl(readMapUrl(current.query));
+  if (saveMapView()) {
+    void router.replace({ path: current.path, query: other, hash: current.hash });
+  }
+}
+
+function captureContextPoint(event: MouseEvent) {
+  const coordinate =
+    event.clientX || event.clientY ? map?.getEventCoordinate(event) : map?.getView().getCenter();
+  const [x, z] = coordinate ?? [];
+  contextPoint.value =
+    x === undefined || z === undefined
+      ? undefined
+      : {
+          x,
+          z,
+          region: pointRegion?.([x, z]),
+        };
+}
+
+async function copyMapContext(kind: "point" | "view" | "chat") {
+  let text: string;
+  const point = contextPoint.value;
+  if (kind === "chat") {
+    if (!point || !currentHasTerrain.value) return;
+    text = mapChatCoordinates(point.x, point.z);
+  } else {
+    const state = captureMapState();
+    state.camera = readCamera?.(true);
+    if (kind === "point") {
+      const zoom = map?.getView().getZoom();
+      if (!point || zoom === undefined) return;
+      state.camera = {
+        space: currentHasTerrain.value ? "world" : "grid",
+        x: point.x,
+        z: point.z,
+        zoom,
+      };
+      state.region = point.region;
+      state.claim = undefined;
+    }
+    const current = router.currentRoute.value;
+    const { other } = splitMapQuery(current.query);
+    const { href } = router.resolve({
+      path: current.path,
+      query: { ...other, ...writeMapUrl(state) },
+      hash: current.hash,
+    });
+    text = new URL(href, window.location.href).href;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.add({ title: kind === "chat" ? "Coordinates copied" : "Map link copied" });
+  } catch {
+    window.prompt("Copy this text:", text);
+  }
+}
+
+const mapContextItems = computed(() => [
+  {
+    label: "Copy link to this point",
+    disabled: !contextPoint.value,
+    onSelect: () => copyMapContext("point"),
+  },
+  { label: "Copy link to current view", onSelect: () => copyMapContext("view") },
+  {
+    label: "Copy in-game coordinates",
+    disabled: !contextPoint.value || !currentHasTerrain.value,
+    onSelect: () => copyMapContext("chat"),
+  },
+]);
 
 function openRequestedClaim() {
   if (!pendingClaimId || !showClaims.value) return;
@@ -398,7 +524,7 @@ function openRequestedClaim() {
 function clearClaim() {
   if (pendingClaimId) {
     pendingClaimId = undefined;
-    scheduleUrlUpdate();
+    scheduleViewSave();
   }
   selectedClaim.value = undefined;
 }
@@ -544,6 +670,9 @@ async function load() {
       const preferences = readAtlasPreferences(localStorage.getItem(ATLAS_PREFERENCES_KEY));
       disabledRegions.value = preferences.disabledRegions;
       showResourceIcons.value = preferences.showResourceIcons;
+      showPlayerNames.value = preferences.showPlayerNames;
+      displaySizes.terrainSaturation = preferences.terrainSaturation;
+      displaySizes.pavingSaturation = preferences.pavingSaturation;
       showGrid.value = preferences.showGrid;
       showRegionNumbers.value = preferences.showRegionNumbers;
       showRegionNames.value = preferences.showRegionNames;
@@ -621,6 +750,9 @@ async function load() {
       : (raster ?? CURRENT_WORLD_LAYOUT);
   atlas.value = data;
   const bounds = schematic ? schematicRegionExtent : regionExtent;
+  const regionBounds = data.regions.map((region) => ({ id: region.id, extent: bounds(region) }));
+  pointRegion = (coordinate) =>
+    regionBounds.find(({ extent }) => containsCoordinate(extent, coordinate))?.id;
   const world = data.regions.reduce(
     (extent, region) => extend(extent, bounds(region)),
     createEmpty(),
@@ -765,6 +897,7 @@ async function load() {
       source,
       request.signal,
       () => showTerrain.value,
+      () => terrainSaturation.value,
     );
     refreshRoads = createAtlasRoadsOverlay(
       canvas,
@@ -776,6 +909,7 @@ async function load() {
       },
       cachedMapQuery(`${source}roads`),
       () => regionScope.value,
+      () => pavingSaturation.value,
     );
     resourceOverlay = createAtlasResourcesOverlay(
       canvas,
@@ -842,18 +976,50 @@ async function load() {
       (ids) => {
         visibleTrackedPlayers.value = ids;
       },
+      source
+        ? (ids, signal) =>
+            $fetch(`${source}player-names`, {
+              query: { ids: ids.join(",") },
+              signal,
+              timeout: 5_000,
+              retry: 0,
+            })
+        : undefined,
     );
     setPlayersVisible = playersOverlay.setEnabled;
   }
+  if (!schematic) {
+    const viewport = canvas.getViewport();
+    let pointer: PointerEvent | undefined;
+    const updatePointerCoordinates = () => {
+      if (!pointer) return;
+      const [x, z] = canvas.getEventCoordinate(pointer) ?? [];
+      if (x === undefined || z === undefined) return;
+      const { north, east } = mapGameCoordinates(x, z);
+      coordinates.value = `N ${number.format(north)} · E ${number.format(east)}`;
+    };
+    viewport.addEventListener(
+      "pointermove",
+      (event) => {
+        if (event.pointerType === "touch") return;
+        pointer = event;
+        updatePointerCoordinates();
+      },
+      { passive: true, signal: request.signal },
+    );
+    viewport.addEventListener(
+      "pointerleave",
+      () => {
+        pointer = undefined;
+        coordinates.value = "";
+      },
+      { signal: request.signal },
+    );
+    // Keep the coordinates under a stationary cursor accurate while the view moves.
+    canvas.on("postrender", updatePointerCoordinates);
+  }
   canvas.on("moveend", () => {
-    if (!schematic) {
-      const [x, z] = view.getCenter() ?? [];
-      if (x !== undefined && z !== undefined) {
-        const { north, east } = mapGameCoordinates(x, z);
-        coordinates.value = `N ${number.format(north)} · E ${number.format(east)}`;
-      }
-    }
-    scheduleUrlUpdate();
+    scheduleViewSave();
     refreshTerrainHexes?.();
     refreshClaimDetails?.();
     refreshBuildings?.();
@@ -888,7 +1054,6 @@ async function load() {
     if (claimAtPixel(event.pixel)) return;
     const cluster = resourceOverlay?.clusterAtPixel(event.pixel);
     if (!cluster) return;
-    clearTimeout(urlTimer);
     stopOverview?.();
     resourceOverlay?.zoomToCluster(cluster);
   });
@@ -898,8 +1063,8 @@ async function load() {
   });
   const space = schematic ? "grid" : "world";
   let otherSpaceCamera: MapCamera | undefined;
-  readCamera = () => {
-    if (otherSpaceCamera) return otherSpaceCamera;
+  readCamera = (rendered = false) => {
+    if (otherSpaceCamera && !rendered) return otherSpaceCamera;
     const [x, z] = view.getCenter() ?? [];
     const zoom = view.getZoom();
     if (x !== undefined && z !== undefined && zoom !== undefined) {
@@ -957,20 +1122,25 @@ async function load() {
       applyingUrl = false;
     }
   };
-  restoreUrl(readMapUrl(router.currentRoute.value.query));
+  if (splitMapQuery(router.currentRoute.value.query).shared) restoreSharedView();
+  else restoreUrl(readCurrentMapState());
+  window.addEventListener("pagehide", saveMapView, { signal: request.signal });
   if (showClaims.value) void setClaimsVisible?.(true);
   refreshTerrainHexes?.();
   refreshClaimDetails?.();
   refreshBuildings?.();
   setPlayersVisible?.(showPlayers.value, regionScope.value);
   playersOverlay?.setTracking(monitorTargets.value);
+  playersOverlay?.setColors(monitorPreferences.value.playerColors);
+  playersOverlay?.setShowNames(showPlayerNames.value);
   refreshRoads?.();
   refreshResources?.();
 }
 
 function terrainLayer(data: WorldMapAtlas, projection: Projection, base: string) {
   const tileSets = data.tiles.map((keys) => new Set(keys));
-  return new TileLayer({
+  const layer = new TileLayer({
+    className: "ol-layer atlas-terrain-layer",
     visible: showTerrain.value,
     cacheSize: 96,
     preload: 1,
@@ -991,8 +1161,32 @@ function terrainLayer(data: WorldMapAtlas, projection: Projection, base: string)
       },
     }),
   });
+  // Scope the filter to tile draws. A CSS filter on the moving layer canvas
+  // can leave Chromium's composited surface blank or stale during updates.
+  let previousFilter: string | undefined;
+  layer.on("prerender", ({ context }) => {
+    if (terrainSaturation.value === 1 || !context || !("filter" in context)) return;
+    previousFilter = context.filter;
+    context.filter = `saturate(${terrainSaturation.value})`;
+  });
+  layer.on("postrender", ({ context }) => {
+    if (previousFilter !== undefined && context && "filter" in context)
+      context.filter = previousFilter;
+    previousFilter = undefined;
+  });
+  return layer;
 }
 
+watch(terrainSaturation, () => {
+  map?.getLayers().forEach((layer) => {
+    if (layer.getClassName() === "ol-layer atlas-terrain-layer") layer.changed();
+  });
+});
+watch(pavingSaturation, () => {
+  map?.getLayers().forEach((layer) => {
+    if (layer.getClassName() === "ol-layer atlas-paving-layer") layer.changed();
+  });
+});
 watch(resourceIcons, (icons) => setResourceIcons?.(icons));
 watch(resourceColors, (colors) => setResourceColors?.(colors));
 watch(iconFactor, (factor) => markerScale?.set(factor));
@@ -1001,6 +1195,9 @@ watch(
   [
     disabledRegions,
     showResourceIcons,
+    showPlayerNames,
+    () => displaySizes.terrainSaturation,
+    () => displaySizes.pavingSaturation,
     showGrid,
     showRegionNumbers,
     showRegionNames,
@@ -1011,6 +1208,9 @@ watch(
   ([
     disabledRegions,
     showResourceIcons,
+    showPlayerNames,
+    terrainSaturation,
+    pavingSaturation,
     showGrid,
     showRegionNumbers,
     showRegionNames,
@@ -1024,6 +1224,9 @@ watch(
         JSON.stringify({
           disabledRegions,
           showResourceIcons,
+          showPlayerNames,
+          terrainSaturation,
+          pavingSaturation,
           showGrid,
           showRegionNumbers,
           showRegionNames,
@@ -1080,10 +1283,15 @@ watch(
   },
   { flush: "sync" },
 );
-watch(claimDetails, scheduleUrlUpdate, { flush: "sync" });
+watch(claimDetails, scheduleViewSave, { flush: "sync" });
 watch([showBuildings, buildingGroups], () => refreshBuildings?.());
 watch(showPlayers, (visible) => setPlayersVisible?.(visible, regionScope.value));
 watch(monitorTargets, (targets) => playersOverlay?.setTracking(targets));
+watch(showPlayerNames, (visible) => playersOverlay?.setShowNames(visible));
+watch(
+  () => monitorPreferences.value.playerColors,
+  (colors) => playersOverlay?.setColors(colors),
+);
 watch(showRoads, () => refreshRoads?.());
 watch([showResources, resourceIds], () => refreshResources?.());
 watch([showResources, openLayerOptions, currentHasTerrain], ([enabled, menu, available]) => {
@@ -1103,22 +1311,10 @@ watch(
     selected,
     selectedClaim,
   ],
-  scheduleUrlUpdate,
+  scheduleViewSave,
   { flush: "sync" },
 );
-watch(
-  () => router.currentRoute.value.fullPath,
-  (fullPath) => {
-    if (fullPath === writtenUrl) {
-      writtenUrl = undefined;
-      return;
-    }
-    const current = router.currentRoute.value;
-    if (current.matched.at(-1) !== mapRoute) return;
-    clearTimeout(urlTimer);
-    restoreUrl?.(readMapUrl(current.query));
-  },
-);
+watch(() => router.currentRoute.value.fullPath, restoreSharedView);
 watch(selectedClaim, () => invalidateClaims?.(), { flush: "sync" });
 watch(
   selectedClaim,
@@ -1161,7 +1357,8 @@ watch(
   { flush: "post" },
 );
 onBeforeUnmount(() => {
-  clearTimeout(urlTimer);
+  clearTimeout(viewSaveTimer);
+  if (viewSaveTimer !== undefined) saveMapView();
   cancel?.abort();
   map?.dispose();
   map = undefined;
@@ -1175,13 +1372,20 @@ onBeforeUnmount(() => {
   <div class="atlas-shell" :style="[oceanBackdropStyle, { '--atlas-info-scale': infoFactor }]">
     <h1 class="sr-only">World Atlas</h1>
     <section class="atlas-frame" aria-label="Interactive overworld map">
-      <div
-        ref="target"
-        tabindex="0"
-        aria-label="Overworld map. Drag to pan, or use the arrow keys. Scroll or use plus and minus to zoom."
-        class="atlas-map"
-        @keydown.esc.stop.prevent="dismissClaim"
-      />
+      <UContextMenu :items="mapContextItems" :disabled="!atlas" :modal="false">
+        <div
+          ref="target"
+          tabindex="0"
+          aria-label="Overworld map. Drag to pan. Scroll to zoom. Right-click for sharing options."
+          class="atlas-map"
+          @contextmenu.capture="captureContextPoint"
+          @pointerdown.capture="
+            ($event.pointerType === 'touch' || $event.pointerType === 'pen') &&
+            captureContextPoint($event)
+          "
+          @keydown.esc.stop.prevent="dismissClaim"
+        />
+      </UContextMenu>
       <div v-if="atlas" class="atlas-controls">
         <button type="button" title="Zoom in" aria-label="Zoom in" @click="zoomBy(1)">+</button>
         <button type="button" title="Zoom out" aria-label="Zoom out" @click="zoomBy(-1)">−</button>
@@ -1240,7 +1444,7 @@ onBeforeUnmount(() => {
 
     <div class="atlas-layer-stack">
       <details name="atlas-menu" class="atlas-menu atlas-layer-menu" @toggle="onLayerMenuToggle">
-        <summary class="atlas-menu-button">Layers</summary>
+        <summary ref="layersButton" class="atlas-menu-button">Layers</summary>
         <div class="atlas-panel">
           <fieldset class="atlas-layer-options">
             <legend class="atlas-eyebrow">Show on map</legend>
@@ -1505,7 +1709,12 @@ onBeforeUnmount(() => {
         class="atlas-resource-legend"
         aria-labelledby="atlas-resource-legend-title"
       >
-        <h2 id="atlas-resource-legend-title" class="atlas-eyebrow">Selected resources</h2>
+        <div class="atlas-resource-legend-header">
+          <h2 id="atlas-resource-legend-title" class="atlas-eyebrow">Selected resources</h2>
+          <button type="button" class="atlas-resource-clear" @click="clearLegendResources">
+            Clear all
+          </button>
+        </div>
         <ul>
           <li v-for="type in selectedResourceTypes" :key="type.id">
             <AtlasResourceKey
@@ -1521,6 +1730,15 @@ onBeforeUnmount(() => {
               :custom="!!resourceColors[type.id]"
               @change="setResourceColor(type.id, $event)"
             />
+            <button
+              type="button"
+              class="atlas-resource-remove"
+              :aria-label="`Remove ${type.name} from selected resources`"
+              :title="`Remove ${type.name}`"
+              @click="removeLegendResource(type.id, $event)"
+            >
+              ×
+            </button>
           </li>
         </ul>
         <p v-if="resourcesStatus === 'truncated'" class="atlas-resource-limit" role="status">
@@ -1546,6 +1764,7 @@ onBeforeUnmount(() => {
           @toggle="monitor.toggle"
           @resource="showFavoriteResource"
           @locate="locateTrackedPlayer"
+          @player-color="monitor.setPlayerColor"
           @retry="monitor.refreshRosters"
         />
       </details>
@@ -1593,7 +1812,7 @@ onBeforeUnmount(() => {
           <fieldset class="atlas-layer-options">
             <legend class="atlas-eyebrow">Map display</legend>
             <div
-              v-for="{ key, label } in displaySizeControls"
+              v-for="{ key, label, range } in displaySizeControls"
               :key="key"
               class="atlas-size-control"
             >
@@ -1603,9 +1822,9 @@ onBeforeUnmount(() => {
                   :id="`atlas-display-${key}`"
                   v-model.number="displaySizes[key]"
                   type="range"
-                  :min="ATLAS_DISPLAY_SIZE.min"
-                  :max="ATLAS_DISPLAY_SIZE.max"
-                  :step="ATLAS_DISPLAY_SIZE.step"
+                  :min="range.min"
+                  :max="range.max"
+                  :step="range.step"
                   :aria-valuetext="`${displaySizes[key]}%`"
                 />
                 <span class="atlas-display-value" aria-hidden="true">{{ displaySizes[key] }}%</span>
@@ -1614,8 +1833,8 @@ onBeforeUnmount(() => {
                 class="atlas-display-reset"
                 type="button"
                 :aria-label="`Reset ${label.toLowerCase()}`"
-                :disabled="displaySizes[key] === ATLAS_DISPLAY_SIZE.default"
-                @click="displaySizes[key] = ATLAS_DISPLAY_SIZE.default"
+                :disabled="displaySizes[key] === range.default"
+                @click="displaySizes[key] = range.default"
               >
                 Reset
               </button>
@@ -1627,6 +1846,10 @@ onBeforeUnmount(() => {
             <p class="atlas-settings-note">
               Use colored dots when icons are off. Clusters still show counts.
             </p>
+          </fieldset>
+          <fieldset class="atlas-layer-options atlas-claim-options">
+            <legend class="atlas-eyebrow">Players</legend>
+            <label><input v-model="showPlayerNames" type="checkbox" /> Show player names</label>
           </fieldset>
           <fieldset class="atlas-layer-options atlas-claim-options">
             <legend class="atlas-eyebrow">Region display</legend>
@@ -2059,9 +2282,35 @@ onBeforeUnmount(() => {
   background: #102531;
   padding: 0.5rem 0.65rem;
 }
-.atlas-resource-legend h2 {
-  color: #f0c78c;
+.atlas-resource-legend-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.55rem;
   margin-bottom: 0.3rem;
+}
+.atlas-resource-legend h2,
+.atlas-resource-clear {
+  color: #f0c78c;
+}
+.atlas-resource-clear {
+  font-size: 0.72rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.atlas-resource-remove {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid #47616b;
+  border-radius: 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.atlas-resource-remove:hover {
+  background: #274854;
 }
 .atlas-resource-legend ul {
   display: grid;

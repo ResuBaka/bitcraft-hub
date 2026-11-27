@@ -6,6 +6,7 @@ import VectorLayer from "ol/layer/Vector.js";
 import VectorSource from "ol/source/Vector.js";
 import { Fill, Stroke, Style } from "ol/style.js";
 import type { WorldMapAtlas } from "./worldMap";
+import { vibrantAtlasColor } from "./atlasVibrantColors";
 import {
   containsTerrainHexBounds,
   TERRAIN_HEX_MAX_RESOLUTION,
@@ -25,6 +26,7 @@ export function createTerrainHexOverlay(
   base: string,
   signal: AbortSignal,
   visible: () => boolean,
+  saturation: () => number = () => 1,
 ) {
   const pixelSampler = terrainPixelSampler(data);
   if (!pixelSampler) return;
@@ -32,12 +34,25 @@ export function createTerrainHexOverlay(
   const tiles = new Map<number, Promise<Uint8ClampedArray | undefined>>();
   const source = new VectorSource<Feature<MultiPolygon>>({ wrapX: false });
   const layer = new VectorLayer({
+    className: "ol-layer atlas-terrain-layer",
     source,
     visible: false,
     maxResolution: TERRAIN_HEX_MAX_RESOLUTION,
     updateWhileAnimating: true,
     updateWhileInteracting: true,
-    style: (feature) => feature.get("hexStyle") as Style,
+    style: (feature) => {
+      const style = feature.get("hexStyle") as Style;
+      const factor = saturation();
+      if (factor === 1) return style;
+      const vivid = feature.get("vibrantStyle") as { factor: number; style: Style } | undefined;
+      if (vivid?.factor === factor) return vivid.style;
+      const next = vivid?.style ?? style.clone();
+      const color = vibrantAtlasColor(style.getFill()!.getColor() as string, factor);
+      next.getFill()!.setColor(color);
+      next.getStroke()!.setColor(color);
+      feature.set("vibrantStyle", { factor, style: next }, true);
+      return next;
+    },
   });
   // Existing raster tiles remain underneath as a fallback while colors load.
   map.getLayers().insertAt(1, layer);

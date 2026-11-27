@@ -2,6 +2,7 @@ import Feature from "ol/Feature.js";
 import type OlMap from "ol/Map.js";
 import { buffer, getCenter, getHeight, getWidth } from "ol/extent.js";
 import MultiLineString from "ol/geom/MultiLineString.js";
+import { vibrantAtlasColor } from "./atlasVibrantColors";
 import MultiPolygon from "ol/geom/MultiPolygon.js";
 import { fromExtent, type default as Polygon } from "ol/geom/Polygon.js";
 import VectorLayer from "ol/layer/Vector.js";
@@ -48,12 +49,15 @@ export function createAtlasRoadsOverlay(
   setStatus: (status: AtlasRoadsStatus) => void,
   fetchRoads: AtlasFetch<RoadQuery, AtlasRoadsResponse>,
   regionScope: () => string | undefined = () => undefined,
+  saturation: () => number = () => 1,
 ) {
   const source = new VectorSource<Feature<MultiPolygon | Polygon>>({ wrapX: false });
   const style = (color: string, width: number) =>
     new Style({ fill: new Fill({ color }), stroke: new Stroke({ color, width }) });
   const styles = new Map<string, { near: Style; far: Style; overview: Style }>();
+  let styleSaturation = 1;
   const layer = new VectorLayer({
+    className: "ol-layer atlas-paving-layer",
     source,
     visible: false,
     maxResolution: ROAD_MAX_RESOLUTION,
@@ -63,15 +67,21 @@ export function createAtlasRoadsOverlay(
     updateWhileAnimating: true,
     updateWhileInteracting: true,
     style: (feature, resolution) => {
-      const color = feature.get("color") as string;
-      let palette = styles.get(color);
+      const base = feature.get("color") as string;
+      const factor = saturation();
+      if (factor !== styleSaturation) {
+        styleSaturation = factor;
+        styles.clear();
+      }
+      let palette = styles.get(base);
       if (!palette) {
+        const color = factor === 1 ? base : vibrantAtlasColor(base, factor);
         palette = {
           near: style(color, 0.65),
           far: style(color, 1.5),
           overview: style(color, 0.5),
         };
-        styles.set(color, palette);
+        styles.set(base, palette);
       }
       if (feature.get("overview")) return palette.overview;
       return resolution < 2 ? palette.near : palette.far;

@@ -11,6 +11,9 @@ test("local preferences default to visible regions and icons", () => {
   const defaults = {
     disabledRegions: [],
     showResourceIcons: true,
+    showPlayerNames: false,
+    terrainSaturation: 100,
+    pavingSaturation: 100,
     showGrid: false,
     showRegionNumbers: false,
     showRegionNames: false,
@@ -27,6 +30,31 @@ test("local preferences default to visible regions and icons", () => {
     disabledRegions: [7, 25],
     showResourceIcons: false,
   });
+});
+
+test("terrain and paving saturations are independent and stay out of shared links", () => {
+  expect(readAtlasPreferences('{"vibrantPaving":true}')).toMatchObject({
+    pavingSaturation: 155,
+    terrainSaturation: 100,
+  });
+  expect(readAtlasPreferences('{"vibrantTerrain":true}').terrainSaturation).toBe(155);
+  expect(readAtlasPreferences('{"vibrantTerrain":"true"}').terrainSaturation).toBe(100);
+  expect(readAtlasPreferences('{"terrainSaturation":342,"pavingSaturation":450}')).toMatchObject({
+    terrainSaturation: 340,
+    pavingSaturation: 400,
+  });
+  expect(
+    readAtlasPreferences('{"vibrantTerrain":true,"terrainSaturation":100}').terrainSaturation,
+  ).toBe(100);
+  const state = readMapUrl({ terrainSaturation: "150", pavingSaturation: "200" });
+  expect(state).not.toHaveProperty("terrainSaturation");
+  expect(state).not.toHaveProperty("pavingSaturation");
+});
+
+test("map player names are opt-in and kept out of shared state", () => {
+  expect(readAtlasPreferences('{"showPlayerNames":true}').showPlayerNames).toBe(true);
+  expect(readAtlasPreferences('{"showPlayerNames":"true"}').showPlayerNames).toBe(false);
+  expect(readMapUrl({ showPlayerNames: "true" })).not.toHaveProperty("showPlayerNames");
 });
 
 test("icon and info sizes are independent browser-only preferences", () => {

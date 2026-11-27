@@ -5,14 +5,14 @@ mod placeables;
 pub(crate) mod stats;
 
 use crate::{AppRouter, AppState};
-use axum::Router;
+use axum::{Json, Router};
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{StatusCode, header};
 use entity::player_state::TeleportLocation;
 use entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use entity::{mobile_entity_state, player_state, player_username_state};
 use log::error;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::collections::HashMap;
@@ -20,6 +20,7 @@ use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
+        .route("/world-map/player-names", axum::routing::get(atlas_player_names))
         .route("/players", axum_codec::routing::get(list_players).into())
         .route(
             "/players/{id}",
@@ -65,6 +66,62 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/players/all",
             axum_codec::routing::get(get_all).into(),
         )
+}
+
+const ATLAS_NAME_BATCH: usize = 128;
+
+#[derive(Deserialize)]
+struct AtlasPlayerNameParams {
+    ids: String,
+}
+
+fn atlas_name_ids(ids: &str) -> Result<Vec<i64>, StatusCode> {
+    if ids.len() >= ATLAS_NAME_BATCH * 21 || ids.split(',').count() > ATLAS_NAME_BATCH {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    ids.split(',')
+        .map(|id| {
+            id.parse::<u64>()
+                .ok()
+                .filter(|id| *id > 0)
+                .map(|id| id as i64)
+                .ok_or(StatusCode::BAD_REQUEST)
+        })
+        .collect()
+}
+
+async fn atlas_player_names(
+    State(state): State<AppState>,
+    Query(params): Query<AtlasPlayerNameParams>,
+) -> Result<impl axum::response::IntoResponse, StatusCode> {
+    let ids = atlas_name_ids(&params.ids)?;
+    let names = player_username_state::Entity::find()
+        .select_only()
+        .column(player_username_state::Column::EntityId)
+        .column(player_username_state::Column::Username)
+        .filter(player_username_state::Column::EntityId.is_in(ids))
+        .into_tuple::<(i64, String)>()
+        .all(&state.conn)
+        .await
+        .map_err(|err| {
+            tracing::error!(%err, "Could not load atlas player names");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    let names = names
+        .into_iter()
+        .map(|(id, name)| ((id as u64).to_string(), name))
+        .collect::<HashMap<_, _>>();
+    Ok(([(header::CACHE_CONTROL, "public, max-age=60")], Json(names)))
+}
+
+#[cfg(test)]
+#[test]
+fn atlas_name_lookup_validates_bounded_batches_and_preserves_exact_ids() {
+    assert_eq!(atlas_name_ids("42,18446744073709551615").unwrap(), vec![42, -1]);
+    for invalid in ["", "0", "1,bad", "18446744073709551616"] {
+        assert!(atlas_name_ids(invalid).is_err());
+    }
+    assert!(atlas_name_ids(&vec!["42"; ATLAS_NAME_BATCH + 1].join(",")).is_err());
 }
 
 async fn player_activity(

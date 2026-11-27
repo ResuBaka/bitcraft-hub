@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { normalizeAtlasResourceColor } from "~/utils/atlasResources";
 
-const props = defineProps<{ name: string; color: string; custom: boolean }>();
+const props = withDefaults(
+  defineProps<{ name: string; color: string; custom: boolean; description?: string }>(),
+  { description: "Used for dots and cluster badges. In-game icons keep their original colors." },
+);
 const emit = defineEmits<{ change: [color: string | undefined] }>();
 const open = ref(false);
 const hex = ref(props.color);
@@ -43,7 +46,7 @@ function reset() {
     <template #content>
       <div class="atlas-resource-color-content">
         <h2>{{ name }} color</h2>
-        <p>Used for dots and cluster badges. In-game icons keep their original colors.</p>
+        <p>{{ description }}</p>
         <UColorPicker :model-value="color" format="hex" size="sm" @update:model-value="apply" />
         <label>
           Hex color

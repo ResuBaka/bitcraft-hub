@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { unpack } from "msgpackr/unpack";
+import AtlasResourceColorPicker from "~/components/Atlas/ResourceColorPicker.vue";
 import type { ClaimResponse } from "~/types/ClaimResponse";
 import type { PlayersResponse } from "~/types/PlayersResponse";
 import { MAX_RESOURCE_FILTERS } from "~/utils/atlasResources";
 import {
+  DEFAULT_TRACKED_PLAYER_COLOR,
   monitorEntityId,
   monitorKey,
   MAX_FAVORITES,
@@ -26,7 +28,8 @@ const props = defineProps<{
   showResources: boolean;
 }>();
 const emit = defineEmits<{
-  toggle: [list: keyof MonitorPreferences, target: MonitorTarget];
+  toggle: [list: "tracking" | "favorites", target: MonitorTarget];
+  playerColor: [id: string, color: string | undefined];
   locate: [id: string];
   retry: [];
   resource: [id: number, enabled: boolean];
@@ -163,6 +166,24 @@ function visibleMembers(id: string) {
         <li v-for="target in group.targets" :key="monitorKey(target)">
           <div class="monitor-target">
             <span>{{ target.name }} <small>{{ target.kind }}</small></span>
+            <AtlasResourceColorPicker
+              v-if="group.key === 'tracking' && target.kind === 'player'"
+              :name="target.name"
+              :color="preferences.playerColors[target.id] ?? DEFAULT_TRACKED_PLAYER_COLOR"
+              :custom="!!preferences.playerColors[target.id]"
+              description="Changes this player's marker on the map."
+              @change="emit('playerColor', target.id, $event)"
+            />
+            <button
+              v-if="group.key === 'tracking' && target.kind === 'player'"
+              class="monitor-jump"
+              type="button"
+              :aria-label="`Jump to ${target.name} on the map`"
+              :disabled="!visiblePlayers.has(target.id)"
+              @click="emit('locate', target.id)"
+            >
+              Jump
+            </button>
             <button
               v-if="target.kind === 'resource'"
               type="button"
@@ -201,25 +222,39 @@ function visibleMembers(id: string) {
             </button>
           </div>
           <template v-if="group.key === 'tracking' && target.kind !== 'resource'">
-            <div v-if="target.kind === 'player'" class="monitor-status">
-              <button
-                v-if="visiblePlayers.has(target.id)"
-                type="button"
-                @click="emit('locate', target.id)"
-              >
-                Locate on map
-              </button>
-              <span v-else>Not visible on the map</span>
-            </div>
+            <p
+              v-if="target.kind === 'player'"
+              v-show="!visiblePlayers.has(target.id)"
+              class="monitor-status"
+            >
+              No live position in enabled regions.
+            </p>
             <details v-else-if="rosters[target.id]" class="monitor-status">
               <summary>
                 {{ visibleMembers(target.id).length }} visible ·
                 {{ rosters[target.id]?.length }} members
               </summary>
               <ul v-if="visibleMembers(target.id).length" class="monitor-members">
-                <li v-for="member in visibleMembers(target.id)" :key="member.id">
-                  <button type="button" @click="emit('locate', member.id)">
-                    {{ member.name || `Player ${member.id}` }} · Locate
+                <li
+                  v-for="member in visibleMembers(target.id)"
+                  :key="member.id"
+                  class="monitor-target"
+                >
+                  <span>{{ member.name || `Player ${member.id}` }}</span>
+                  <AtlasResourceColorPicker
+                    :name="member.name || `Player ${member.id}`"
+                    :color="preferences.playerColors[member.id] ?? DEFAULT_TRACKED_PLAYER_COLOR"
+                    :custom="!!preferences.playerColors[member.id]"
+                    description="Changes this player's marker on the map."
+                    @change="emit('playerColor', member.id, $event)"
+                  />
+                  <button
+                    class="monitor-jump"
+                    type="button"
+                    :aria-label="`Jump to ${member.name || `player ${member.id}`} on the map`"
+                    @click="emit('locate', member.id)"
+                  >
+                    Jump
                   </button>
                 </li>
               </ul>
@@ -287,6 +322,15 @@ function visibleMembers(id: string) {
 .monitor-panel button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+.monitor-panel .monitor-jump {
+  padding-inline: 0.35rem;
+  border: 1px solid #47616b;
+  border-radius: 0.3rem;
+  text-decoration: none;
+}
+.monitor-jump:not(:disabled):hover {
+  background: #274854;
 }
 .monitor-status button,
 .monitor-note button {
